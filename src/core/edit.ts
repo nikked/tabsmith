@@ -34,6 +34,7 @@ export type Action =
   | { readonly kind: 'move'; readonly move: Move }
   | { readonly kind: 'setCursor'; readonly cursor: Cursor }
   | { readonly kind: 'addBar' }
+  | { readonly kind: 'removeBar' }
   | { readonly kind: 'addColumn' }
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
@@ -146,6 +147,13 @@ export const retune = (score: Score, tuning: Tuning): Score => {
   }
 }
 
+export const removeBarDropsNotes = (score: Score, bar: number): boolean =>
+  score.bars.length > 1 &&
+  (score.bars[bar]?.columns.some((column) =>
+    column.some((cell) => cell !== null),
+  ) ??
+    false)
+
 export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   const dropped = stringCount(score) - tuning.strings.length
   if (dropped <= 0) return false
@@ -254,6 +262,19 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         ...state,
         score: { ...state.score, bars },
         cursor: { ...state.cursor, bar, column: 0 },
+      })
+    }
+
+    case 'removeBar': {
+      if (state.score.bars.length <= 1) return resetDigits(state)
+      const score = {
+        ...state.score,
+        bars: state.score.bars.filter((_, index) => index !== state.cursor.bar),
+      }
+      return resetDigits({
+        ...state,
+        score,
+        cursor: clampCursor(score, state.cursor),
       })
     }
 

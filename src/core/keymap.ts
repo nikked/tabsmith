@@ -26,7 +26,6 @@ const MOVES: Readonly<Record<string, Action>> = {
   End: { kind: 'move', move: 'barEnd' },
   Backspace: { kind: 'clear' },
   Delete: { kind: 'clear' },
-  Enter: { kind: 'addBar' },
   ']': { kind: 'addColumn' },
   '[': { kind: 'removeColumn' },
   x: { kind: 'mute' },
@@ -43,6 +42,10 @@ export const keyToAction = (event: KeyPress): Action | null => {
 
   if (key.length === 1 && key >= '0' && key <= '9') {
     return { kind: 'digit', digit: Number(key) }
+  }
+
+  if (key === 'Enter') {
+    return event.shiftKey === true ? { kind: 'removeBar' } : { kind: 'addBar' }
   }
 
   if (key === 'Tab') {

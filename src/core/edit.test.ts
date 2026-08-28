@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   apply,
   initialState,
+  removeBarDropsNotes,
   retune,
   retuneDropsNotes,
   type Action,
@@ -192,6 +193,68 @@ describe('removeColumn', () => {
     }
     const after = apply(state, { kind: 'removeColumn' })
     expect(after.score.bars[0]?.columns).toHaveLength(1)
+  })
+})
+
+describe('removeBar', () => {
+  const threeBars = (): EditorState =>
+    run(initialState(), { kind: 'addBar' }, { kind: 'addBar' })
+
+  it('removes the bar the cursor is in', () => {
+    const state = run(threeBars(), digit(9))
+    expect(state.cursor.bar).toBe(2)
+    const after = apply(state, { kind: 'removeBar' })
+    expect(after.score.bars).toHaveLength(2)
+    expect(cellAt(after, 0, 0, 0)).toBeNull()
+    expect(cellAt(after, 1, 0, 0)).toBeNull()
+  })
+
+  it('pulls the cursor back when the last bar goes', () => {
+    const after = apply(threeBars(), { kind: 'removeBar' })
+    expect(after.cursor.bar).toBe(1)
+  })
+
+  it('leaves earlier bars and their notes alone', () => {
+    const state = run(
+      initialState(),
+      digit(7),
+      { kind: 'addBar' },
+      digit(5),
+    )
+    const after = apply(state, { kind: 'removeBar' })
+    expect(after.score.bars).toHaveLength(1)
+    expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+  })
+
+  it('refuses to remove the only bar', () => {
+    const state = run(initialState(), digit(7))
+    const after = apply(state, { kind: 'removeBar' })
+    expect(after.score.bars).toHaveLength(1)
+    expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+  })
+})
+
+describe('removeBarDropsNotes', () => {
+  const twoBars = (...actions: readonly Action[]): EditorState =>
+    run(initialState(), { kind: 'addBar' }, ...actions)
+
+  it('is false for an untouched bar', () => {
+    expect(removeBarDropsNotes(twoBars().score, 0)).toBe(false)
+  })
+
+  it('is true once any cell in the bar is filled', () => {
+    expect(removeBarDropsNotes(twoBars(digit(0)).score, 1)).toBe(true)
+    expect(removeBarDropsNotes(twoBars({ kind: 'mute' }).score, 1)).toBe(true)
+  })
+
+  it('is false for the only bar, however full it is', () => {
+    const single = run(initialState(), digit(9))
+    expect(removeBarDropsNotes(single.score, 0)).toBe(false)
+    expect(apply(single, { kind: 'removeBar' }).score.bars).toHaveLength(1)
+  })
+
+  it('is false for a bar index that does not exist', () => {
+    expect(removeBarDropsNotes(twoBars().score, 7)).toBe(false)
   })
 })
 

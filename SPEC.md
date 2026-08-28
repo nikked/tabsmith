@@ -189,6 +189,7 @@ Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 | `Home` `End` | First / last column of the current bar |
 | `Tab` `Shift+Tab` | Next / previous bar |
 | `Enter` | Append a bar after the current one and move into it |
+| `Shift+Enter` | Remove the current bar. Confirms first when it holds notes; never removes the only bar. |
 | `]` `[` | Add a column to the current bar / remove the last one (only when empty, never below 1) |
 
 No timing is involved: `digitPending` is cleared by actions, never by elapsed time, so `1` `0`
@@ -205,6 +206,17 @@ returns the state unchanged. Modifiers are always typed after the fret, so `9` t
 `h9`.
 
 Clicking a grid cell sets the cursor. That is the only mouse interaction: no drag, no selection.
+
+Removing a bar is gated the way a narrowing retune is (§2b): `removeBarDropsNotes` is pure and
+lives in `core/`, and the UI confirms before dispatching when it returns true. Losing a bar of
+notes is unrecoverable for the same reasons — no undo (§6), and §5 autosaves immediately.
+
+```ts
+removeBarDropsNotes(score, bar) => boolean   // true only when the removal would really happen
+```
+
+It folds in the last-bar guard deliberately, so the UI cannot prompt about a removal the
+reducer is going to refuse.
 
 ```ts
 keyToAction(e: KeyboardEvent): Action | null   // pure

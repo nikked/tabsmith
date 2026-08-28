@@ -47,6 +47,13 @@ describe('keyToAction', () => {
     })
   })
 
+  it('maps Enter by shift state', () => {
+    expect(keyToAction({ key: 'Enter' })).toEqual({ kind: 'addBar' })
+    expect(keyToAction({ key: 'Enter', shiftKey: true })).toEqual({
+      kind: 'removeBar',
+    })
+  })
+
   it('maps structure and clearing keys', () => {
     expect(keyToAction({ key: 'Enter' })).toEqual({ kind: 'addBar' })
     expect(keyToAction({ key: ']' })).toEqual({ kind: 'addColumn' })
