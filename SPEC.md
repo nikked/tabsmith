@@ -60,8 +60,8 @@ Notes on the model:
 
 - **No note duration.** A note occupies exactly one column. A "long" note is you leaving
   columns empty before the next one. `7` followed by two empty columns and `7` with a
-  hypothetical duration of 3 render identically (`7--`), so duration would be data that does
-  no work.
+  hypothetical duration of 3 render identically (`7----`), so duration would be data that
+  does no work.
 - **Chords are free.** A column may hold a cell on every string at once; that is a chord, and
   it needs no representation of its own. Column width is the max across the whole column, so a
   chord stays aligned even when one of its notes carries a technique.
@@ -131,9 +131,20 @@ renderScore(score, opts?: { maxWidth?: number }) => string
 **Cell text** — `mute` → `x`; `fret` → `(link ?? '') + fret + decorationText(decoration)`; empty
 → `''`. `decorationText` is `''` when absent, `~` for vibrato, and `b` or `b${to}` for a bend.
 
-**Column width** — `max(1, ...cellTexts.map(len))`, computed per column. Each cell is left-aligned
-and padded to that width with `-`. This is what keeps multi-digit frets and techniques aligned
-without a global width.
+**Column width** — `max(1, ...cellTexts.map(len))`, computed per column, plus one pad character
+for every column but the last in its bar. The last needs none: the bar line already separates it
+from whatever follows.
+
+That one rule closes two ambiguities together. Digits in neighbouring columns can never touch, so
+`2` then `2` reads `2-2` and never `22`, which is fret 22. And an empty column keeps a width of
+its own, so a rest stays visible: `2 _ 2` renders `2---2` where `2 2` renders `2-2`, and a
+trailing rest shows as `2--` against a bare `2`. Timing is carried by empty columns (§2), so those
+pairs must not look alike. A separator added only where digits would otherwise collide is the
+tempting cheaper rule, and it is wrong: that dash is indistinguishable from an empty column, which
+makes the gap disappear.
+
+Each cell is left-aligned and padded to its column width with `-`. This is what keeps multi-digit
+frets and techniques aligned without a global width.
 
 **A bar row** is its columns concatenated, followed by `|`. **A line** is the tuning label
 padded to the width of the longest label, `|`, then the bars. One line per string, labelled
@@ -147,17 +158,17 @@ gets a system to itself. Systems are separated by a blank line.
 Worked example — bar of 8 columns, `7` on G, hammer to `9`, then `12` on B with vibrato:
 
 ```
-e|-----------|
-B|------12~--|
-G|7h9--------|
-D|-----------|
-A|-----------|
-E|-----------|
+e|------------------|
+B|-----------12~----|
+G|7-h9--------------|
+D|------------------|
+A|------------------|
+E|------------------|
 ```
 
-Counting columns from 0: column 1 is 2 wide (`h9`), column 5 is 3 wide (`12~`), the other six
-are 1, so the bar is `1+2+1+1+1+3+1+1 = 11` characters wide. Every string line is that same
-length.
+Counting columns from 0: column 1 is 3 wide (`h9` and its pad), column 5 is 4 (`12~`), column 7
+is 1 because it is last and empty, and the rest are 2 — so the bar is `2+3+2+2+2+4+2+1 = 18`
+characters wide. Every string line is that same length.
 
 ## 4. Keymap
 
