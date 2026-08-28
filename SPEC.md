@@ -244,7 +244,7 @@ src/
 ## 9. Build plan
 
 1. **Scaffold** — Vite React-TS, strict tsconfig, Vitest wired.
-   *Verify:* `npm run dev` serves a blank page, `npm test` runs.
+   *Verify:* `pnpm dev` serves a blank page, `pnpm test` runs.
 2. **Model + render** — `model.ts`, `render.ts`.
    *Verify:* unit tests on fixtures — empty score, multi-digit alignment, link/decoration
    widths, a bend with and without a target, a chord column with a technique on one of its
