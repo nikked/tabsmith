@@ -39,8 +39,8 @@ export type Action =
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
 
-export const initialState = (): EditorState => ({
-  score: emptyScore(),
+export const initialState = (score: Score | null = null): EditorState => ({
+  score: score ?? emptyScore(),
   cursor: { bar: 0, column: 0, slot: 0 },
   digitPending: false,
   digitTarget: 'fret',

@@ -1,13 +1,18 @@
-import { useReducer, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { apply, initialState, retuneDropsNotes } from '../core/edit.ts'
 import { TUNINGS } from '../core/model.ts'
+import { load, save } from '../storage.ts'
 import { Output } from './Output.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
 import { TabGrid } from './TabGrid.tsx'
 
 export default function App() {
-  const [state, dispatch] = useReducer(apply, undefined, initialState)
+  const [state, dispatch] = useReducer(apply, undefined, () => initialState(load()))
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
+
+  useEffect(() => {
+    save(state.score)
+  }, [state.score])
 
   const selectTuning = (name: string) => {
     const tuning = TUNINGS.find((candidate) => candidate.name === name)
