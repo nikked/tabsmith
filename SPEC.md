@@ -120,7 +120,8 @@ Both are pure and live in `core/`. Dropping notes is unrecoverable — there is 
 dispatching `retune`. It never asks when nothing would be lost, which is every same-width
 switch and every switch on an empty document.
 
-`retune` also clamps `cursor.slot` into the new row count.
+`retune` also moves `cursor.slot` by the same bottom-up offset it applies to the rows, then
+clamps it into the new row count, so the cursor stays on the string it was on.
 
 ## 3. ASCII rendering
 
