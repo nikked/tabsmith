@@ -1,5 +1,166 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #8a8a8a;
+  --line: #d4d4d4;
+  --cursor: #ffe08a;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171d;
+    --fg: #e8e8e8;
+    --muted: #7a7a7a;
+    --line: #33353f;
+    --cursor: #5c4a12;
+  }
+}
+
 body {
   margin: 0;
   font: 16px/1.4 system-ui, sans-serif;
-  color-scheme: light dark;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.staff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 2.25rem 1.1rem;
+  font-family: ui-monospace, monospace;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.staff:focus {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.bar {
+  display: grid;
+  justify-content: start;
+  column-gap: 2px;
+  row-gap: 3px;
+}
+
+.label.repeated {
+  visibility: hidden;
+}
+
+.label,
+.barline {
+  color: var(--muted);
+  padding: 0 0.35rem;
+  user-select: none;
+}
+
+.cell {
+  min-width: 1.5rem;
+  padding: 0.1rem 0.15rem;
+  text-align: center;
+  white-space: pre;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+
+.cell.current {
+  background: var(--cursor);
+  border-radius: 2px;
+}
+
+.output {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.output pre {
+  margin: 0;
+  padding: 0.75rem;
+  font-family: ui-monospace, monospace;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  border-radius: 4px;
+  overflow-x: auto;
+  align-self: stretch;
+}
+
+button {
+  font: inherit;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.shortcuts h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.6rem;
+}
+
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.shortcuts dt {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.shortcuts dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.modes {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.modes button[aria-pressed='true'] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
 }

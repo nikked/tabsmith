@@ -7,12 +7,19 @@ Single user, single document, no backend.
 
 ## 1. Shape of the thing
 
-Two panes:
+Two modes, toggled in the header. Only one is on screen at a time — the ASCII is the thing you
+leave with, not something you watch while typing.
 
-- **Editor** — a grid of cells, one row per string × N columns, grouped into bars. Fixed-width
+- **Edit** — a grid of cells, one row per string × N columns, grouped into bars. Fixed-width
   boxes, current cell highlighted. This is *not* ASCII; it's a grid of boxes, so alignment is
-  free.
-- **Output** — the rendered ASCII, read-only, with a Copy button.
+  free. Bars wrap onto a new row as they are added, and each bar carries its own string labels;
+  the editor never scrolls sideways at any window size. Below it sits the §4 keymap, because a
+  keyboard-driven editor has to make its bindings discoverable without this document.
+- **ASCII** — the rendered output, read-only, with a Copy button.
+
+Wrapping in the two modes is deliberately independent. The ASCII wraps on `maxWidth` characters
+(§3) because that is what the pasted text has to fit. The grid wraps on the actual width of the
+window, which no character count can predict.
 
 The ASCII is a pure function of the document. It is never edited directly and never parsed
 back. That's the single most important constraint in the design: alignment cannot break,
@@ -260,6 +267,7 @@ src/
     App.tsx
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Output.tsx    <pre> of ASCII + copy
+    Shortcuts.tsx the §4 keymap as a list
   storage.ts      load/save
 ```
 
