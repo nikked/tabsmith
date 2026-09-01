@@ -1,7 +1,6 @@
-import type { Bar, Cell, Column, Decoration, Score } from './model.ts'
+import type { Bar, Cell, Column, Decoration, Row, Score } from './model.ts'
 
 const PAD = '-'
-const DEFAULT_MAX_WIDTH = 80
 
 const decorationText = (decoration: Decoration): string => {
   if (decoration.kind === '~') return '~'
@@ -40,9 +39,6 @@ const barRow = (sized: readonly SizedColumn[], slot: number): string =>
     .map(({ column, width }) => cellText(column.cells[slot]).padEnd(width, PAD))
     .join('')}|`
 
-const barWidth = (sized: readonly SizedColumn[]): number =>
-  sized.reduce((total, { width }) => total + width, 0) + 1
-
 type MeasuredBar = { readonly sized: readonly SizedColumn[] }
 
 /**
@@ -68,37 +64,26 @@ const chordRow = (system: readonly MeasuredBar[]): string | null => {
   return line === '' ? null : line
 }
 
-const packSystems = (
-  bars: readonly MeasuredBar[],
-  available: number,
-): readonly (readonly MeasuredBar[])[] => {
-  const systems: MeasuredBar[][] = []
-  let current: MeasuredBar[] = []
-  let used = 0
-  for (const bar of bars) {
-    const width = barWidth(bar.sized)
-    if (current.length > 0 && used + width > available) {
-      systems.push(current)
-      current = []
-      used = 0
-    }
-    current.push(bar)
-    used += width
-  }
-  if (current.length > 0) systems.push(current)
-  return systems
-}
+/**
+ * A row's name is bracketed the way a section's is; the note under it is
+ * written as typed, so it can be an aside, a tempo mark or a fingering hint
+ * rather than only a parenthetical. Both sit at the left margin, because they
+ * title the whole row rather than any string in it.
+ */
+const rowHeading = (row: Row): readonly string[] =>
+  [
+    row.title === undefined || row.title === '' ? '' : `[${row.title}]`,
+    row.note ?? '',
+  ].filter((line) => line !== '')
 
-export const renderScore = (
-  score: Score,
-  opts?: { maxWidth?: number },
-): string => {
+export const renderScore = (score: Score): string => {
   const { strings } = score.tuning
   const labelWidth = Math.max(0, ...strings.map((label) => label.length))
-  const available = (opts?.maxWidth ?? DEFAULT_MAX_WIDTH) - (labelWidth + 1)
-  const bars = score.bars.map((bar) => ({ sized: sizeColumns(bar) }))
-  return packSystems(bars, available)
-    .map((system) => {
+  return score.rows
+    .map((row) => {
+      const system: readonly MeasuredBar[] = row.bars.map((bar) => ({
+        sized: sizeColumns(bar),
+      }))
       const staff = strings.map(
         (label, slot) =>
           `${label.padEnd(labelWidth)}|${system
@@ -106,11 +91,11 @@ export const renderScore = (
             .join('')}`,
       )
       const chords = chordRow(system)
-      return (
-        chords === null
-          ? staff
-          : [...staff, `${' '.repeat(labelWidth + 1)}${chords}`]
-      ).join('\n')
+      return [
+        ...rowHeading(row),
+        ...staff,
+        ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
+      ].join('\n')
     })
     .join('\n\n')
 }

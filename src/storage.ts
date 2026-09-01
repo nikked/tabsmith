@@ -1,7 +1,7 @@
 import type { Cell, Column, Score, Tuning } from './core/model.ts'
 
 const KEY = 'tabsmith'
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -30,6 +30,20 @@ const isColumn = (value: unknown, strings: number): value is Column =>
   value.cells.every(isCell) &&
   (value.chord === undefined || typeof value.chord === 'string')
 
+const isBar = (value: unknown, strings: number): boolean =>
+  isRecord(value) &&
+  isArray(value.columns) &&
+  value.columns.length > 0 &&
+  value.columns.every((column) => isColumn(column, strings))
+
+const isRow = (value: unknown, strings: number): boolean =>
+  isRecord(value) &&
+  (value.title === undefined || typeof value.title === 'string') &&
+  (value.note === undefined || typeof value.note === 'string') &&
+  isArray(value.bars) &&
+  value.bars.length > 0 &&
+  value.bars.every((bar) => isBar(bar, strings))
+
 const isScore = (value: unknown): value is Score => {
   if (!isRecord(value)) return false
   const tuning = value.tuning
@@ -37,15 +51,9 @@ const isScore = (value: unknown): value is Score => {
   if (typeof value.defaultBarColumns !== 'number') return false
   const strings = tuning.strings.length
   return (
-    isArray(value.bars) &&
-    value.bars.length > 0 &&
-    value.bars.every(
-      (bar) =>
-        isRecord(bar) &&
-        isArray(bar.columns) &&
-        bar.columns.length > 0 &&
-        bar.columns.every((column) => isColumn(column, strings)),
-    )
+    isArray(value.rows) &&
+    value.rows.length > 0 &&
+    value.rows.every((row) => isRow(row, strings))
   )
 }
 

@@ -18,7 +18,7 @@ const SHORTCUTS: readonly Shortcut[] = [
   { keys: ['←', '→'], does: 'Previous / next column, crossing bars' },
   {
     keys: ['↑', '↓'],
-    does: 'String up / down, and on into the chord field below the strings',
+    does: 'String up / down, on into the row title above or the chord fields below',
   },
   { keys: ['Space'], does: 'Next column' },
   { keys: ['Home', 'End'], does: 'First / last column of the bar' },
@@ -26,13 +26,17 @@ const SHORTCUTS: readonly Shortcut[] = [
   { keys: ['Enter'], does: 'Add a bar after this one' },
   {
     keys: ['Shift+Enter'],
-    does: 'Remove this bar. Asks first when it holds notes.',
+    does: 'Remove this bar. Asks first when it holds anything.',
   },
   { keys: [']', '['], does: 'Add a column / remove the last empty one' },
+  {
+    keys: ['}', '{'],
+    does: 'Start a new row below / remove this row. Asks when it holds anything.',
+  },
   { keys: ['Click'], does: 'Move the cursor to a cell' },
   {
-    keys: ['Enter', 'Esc', '↑'],
-    does: 'Leave a chord field and hand the keys back to the grid',
+    keys: ['Enter', 'Esc'],
+    does: 'Leave a title or a chord field and hand the keys back to the grid',
   },
 ]
 

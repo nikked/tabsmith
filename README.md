@@ -20,18 +20,22 @@ pnpm lint     # oxlint
 Two modes, toggled in the header. Only one is on screen at a time — the ASCII is the thing you
 leave with, not something you watch while typing.
 
-- **Edit** — a grid of cells, one row per string × N columns, grouped into bars. Fixed-width
-  boxes, current cell highlighted. This is *not* ASCII; it's a grid of boxes, so alignment is
-  free. Bars wrap onto a new row as they are added, and each bar carries its own string labels;
-  the editor never scrolls sideways at any window size. Below it sits the §4 keymap, because a
-  keyboard-driven editor has to make its bindings discoverable without this document.
+- **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
+  grouped into rows. Fixed-width boxes, current cell highlighted. This is *not* ASCII; it's a
+  grid of boxes, so alignment is free. Below it sits the §4 keymap, because a keyboard-driven
+  editor has to make its bindings discoverable without this document.
 - **ASCII** — the rendered output, read-only, with a Copy button.
 
 The header carries the tuning dropdown, a Clear button and the mode toggle.
 
-Wrapping in the two modes is deliberately independent. The ASCII wraps on `maxWidth` characters
-(§3) because that is what the pasted text has to fit. The grid wraps on the actual width of the
-window, which no character count can predict.
+Neither mode wraps. Rows are part of the document (§2), so how the tab is broken up is a
+decision you make once and both modes obey: the same bars sit together in the grid and in the
+ASCII. Nothing reflows when the window changes size, which is the point — a row you arranged
+stays arranged.
+
+The cost is that a row with more bars than the window is wide scrolls sideways. That is the
+honest failure: the row really is that wide, and it will be that wide wherever it is pasted.
+Wrapping it would hide the one thing you need to see.
 
 The ASCII is a pure function of the document. It is never edited directly and never parsed
 back. That's the single most important constraint in the design: alignment cannot break,
@@ -61,14 +65,24 @@ type Column = {
   readonly chord?: string                   // chord name, written under the column
 }
 type Bar = { readonly columns: readonly Column[] }
+type Row = {
+  readonly title?: string               // bracketed on render: [Main Riff]
+  readonly note?: string                // written above the staff as typed
+  readonly bars: readonly Bar[]
+}
 
 type Score = {
   readonly tuning: Tuning
-  readonly bars: readonly Bar[]
+  readonly rows: readonly Row[]
   readonly defaultBarColumns: number    // new bars start at this width; default 12
 }
 
-type Cursor = { readonly bar: number; readonly column: number; readonly slot: number }
+type Cursor = {
+  readonly row: number
+  readonly bar: number
+  readonly column: number
+  readonly slot: number
+}
 
 type EditorState = {
   readonly score: Score
@@ -92,6 +106,15 @@ Notes on the model:
   `chord` key behind and never reaches the ASCII.
 - **Bars own their columns.** Default 12, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
+- **A row can be titled**, because a tab is usually several named parts rather than one long
+  one. Vertically a row reads title, strings, chord fields, and rows stack, so `↑` and `↓` walk
+  that whole column and step into the neighbouring row at either end. The title is bracketed on render; the note under it is written as typed, so it can be an
+  aside, a tempo mark or a fingering hint rather than only a parenthetical. Both are absent when
+  empty, the same as a chord name.
+- **Rows own their bars**, and a row is a line of the finished tab. Nesting rather than a flag
+  on `Bar` is what makes a bar in two rows, or in none, unconstructible — the same reason a
+  column holds its own cells. A row holds at least one bar and a score at least one row, so
+  removing the last bar of a row removes the row with it.
 - `Link` is a *prefix* on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
   suffix (`7~`). The union makes `{ kind: 'mute' }` structurally unable to carry either.
 - **A bend's target is optional.** `{ kind: 'b' }` renders `7b`, `{ kind: 'b', to: 9 }` renders
@@ -102,9 +125,9 @@ Notes on the model:
 - `Fret`'s `0..24` bound is enforced in `keymap.ts`, at the edge: a digit that would take the
   cell out of range replaces instead of appending (§4), and a single digit is always in range,
   so an out-of-range fret is unconstructible. The type stays a plain `number`.
-- `emptyScore` is Standard tuning, two bars of `defaultBarColumns` columns, cursor at bar 0 /
-  column 0 / the top string. Two because one bar reads as a fragment, and the second is the
-  cheapest way to show that bars are the unit you work in.
+- `emptyScore` is Standard tuning, one row of two bars of `defaultBarColumns` columns, cursor at
+  row 0 / bar 0 / column 0 / the top string. Two bars because one reads as a fragment, and the
+  second is the cheapest way to show that bars are the unit you work in.
 
 ## 2b. Tunings
 
@@ -152,7 +175,7 @@ clamps it into the new row count, so the cursor stays on the string it was on.
 ## 3. ASCII rendering
 
 ```
-renderScore(score, opts?: { maxWidth?: number }) => string
+renderScore(score) => string
 ```
 
 **Cell text** — `mute` → `x`; `fret` → `(link ?? '') + fret + decorationText(decoration)`; empty
@@ -184,10 +207,14 @@ name loses its column, and it is preferable to truncating it.
 padded to the width of the longest label, `|`, then the bars. One line per string, labelled
 from `tuning.strings`.
 
-**Wrapping** — bars are greedily packed into systems up to `maxWidth` (default 80). `maxWidth`
-is the width of the whole rendered line, label prefix included, so bars are packed into
-`maxWidth - labelWidth` and no line ever exceeds it. A bar is never split; a bar too wide to fit
-gets a system to itself. Systems are separated by a blank line.
+**A row's heading** is up to two lines above the staff, at the left margin rather than indented
+to it: they title the whole row, not any string in it. `[title]` then the note verbatim, either
+one on its own, and nothing at all when the row has neither.
+
+**Systems** — one per `Row`, in order, separated by a blank line. There is no packing and no
+maximum width: the document says which bars share a line, so rendering has nothing left to
+decide. A greedy packer would have to overrule that arrangement to honour a width, and the
+arrangement is the part you actually care about.
 
 Worked example — bar of 8 columns, `7` on G, hammer to `9`, then `12` on B with vibrato:
 
@@ -216,14 +243,15 @@ Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 | `b` | Bend the current note. Digits typed next set the bend target, not the fret. |
 | `~` | Vibrato on the current note |
 | `Backspace` `Delete` | Clear the cell. Neither moves the cursor. |
-| `←` `→` | Previous / next column, crossing bar boundaries |
-| `↑` `↓` | String up / down. Below the lowest string is the column's chord field; `↑` out of it returns to that column's lowest string. |
+| `←` `→` | Previous / next column, crossing bar and row boundaries |
+| `↑` `↓` | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
 | `Space` | Next column, identical to `→` |
 | `Home` `End` | First / last column of the current bar |
-| `Tab` `Shift+Tab` | Next / previous bar |
+| `Tab` `Shift+Tab` | Next / previous bar, crossing rows |
 | `Enter` | Append a bar after the current one and move into it |
-| `Shift+Enter` | Remove the current bar. Confirms first when it holds notes; never removes the only bar. |
+| `Shift+Enter` | Remove the current bar. Confirms first when it holds anything; never removes the only bar. |
 | `]` `[` | Add a column to the current bar / remove the last one (only when empty, never below 1) |
+| `}` `{` | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row. |
 
 No timing is involved: `digitPending` is cleared by actions, never by elapsed time, so `1` `0`
 on one cell is fret 10 however long you take between the two keys. A timeout would put a clock
@@ -251,25 +279,31 @@ keys from reaching the staff, which would otherwise read a chord name as a keyma
 A chord name is free text. Nothing parses or validates it, because a tab is positional (§2b) and
 the name is a note to the reader, not data the editor acts on.
 
-Removing a bar is gated the way a narrowing retune is (§2b): `removeBarDropsNotes` is pure and
+Removing a bar is gated the way a narrowing retune is (§2b): `removeBarDropsContent` is pure and
 lives in `core/`, and the UI confirms before dispatching when it returns true. Losing a bar of
 notes is unrecoverable for the same reasons — no undo (§6), and §5 autosaves immediately.
 
 ```ts
-removeBarDropsNotes(score, bar) => boolean   // true only when the removal would really happen
+removeBarDropsContent(score, { row, bar }) => boolean   // true only when the removal really happens
+removeRowDropsContent(score, row) => boolean            // same, for a whole row, heading included, heading included
 ```
 
 Clear is gated the same way. It resets the document to `emptyScore` — notes, chord names and
 bars all go — but keeps the current tuning, because the tuning is which instrument you are
 holding, not something you wrote. `scoreHasContent` decides whether to ask; empty bars are not
-work, so a score that holds no note and no chord name is cleared without a prompt.
+work, so a score that holds no note, no chord name and no row heading is cleared without a
+prompt.
 
 ```ts
-scoreHasContent(score) => boolean   // any note, mute or chord name anywhere
+scoreHasContent(score) => boolean   // any note, mute, chord name or row heading
 ```
 
-It folds in the last-bar guard deliberately, so the UI cannot prompt about a removal the
-reducer is going to refuse.
+All three answer the same question — _is there work here?_ — from one definition, so the Clear
+prompt and the delete prompts cannot drift apart about whether a chord name or a row heading
+is worth asking about. Both `removeBar`/`removeRow` predicates fold in their last-one guard
+deliberately, so the UI cannot prompt about a removal the reducer is going to refuse. `removeBarDropsContent` counts bars across the whole score, not within
+the row: the last bar of a row is removable — the row goes with it — while the last bar of the
+score is not.
 
 ```ts
 keyToAction(e: KeyboardEvent): Action | null   // pure
@@ -322,4 +356,5 @@ src/
 
 - **Keymap.** `[` / `]` for columns and `Enter` for a new bar are guesses. Worth retuning once
   it's under your fingers.
-- **Default line width.** 80, assumed rather than measured against anywhere it gets pasted.
+- **Row width.** Nothing warns when a row is too wide for the 80 columns a forum post tends to
+  want. The editor scrolling sideways is the only hint.

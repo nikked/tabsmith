@@ -27,13 +27,20 @@ export type Column = {
 
 export type Bar = { readonly columns: readonly Column[] }
 
+export type Row = {
+  readonly title?: string
+  readonly note?: string
+  readonly bars: readonly Bar[]
+}
+
 export type Score = {
   readonly tuning: Tuning
-  readonly bars: readonly Bar[]
+  readonly rows: readonly Row[]
   readonly defaultBarColumns: number
 }
 
 export type Cursor = {
+  readonly row: number
   readonly bar: number
   readonly column: number
   readonly slot: number
@@ -65,10 +72,12 @@ export const emptyBar = (columns: number, strings: number): Bar => ({
   columns: Array.from({ length: columns }, () => emptyColumn(strings)),
 })
 
+export const emptyRow = (bars: number, columns: number, strings: number): Row => ({
+  bars: Array.from({ length: bars }, () => emptyBar(columns, strings)),
+})
+
 export const emptyScore = (): Score => ({
   tuning: TUNINGS[0],
-  bars: Array.from({ length: 2 }, () =>
-    emptyBar(DEFAULT_BAR_COLUMNS, TUNINGS[0].strings.length),
-  ),
+  rows: [emptyRow(2, DEFAULT_BAR_COLUMNS, TUNINGS[0].strings.length)],
   defaultBarColumns: DEFAULT_BAR_COLUMNS,
 })

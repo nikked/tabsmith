@@ -28,6 +28,8 @@ const MOVES: Readonly<Record<string, Action>> = {
   Delete: { kind: 'clear' },
   ']': { kind: 'addColumn' },
   '[': { kind: 'removeColumn' },
+  '}': { kind: 'addRow' },
+  '{': { kind: 'removeRow' },
   x: { kind: 'mute' },
   b: { kind: 'bend' },
   '~': { kind: 'vibrato' },

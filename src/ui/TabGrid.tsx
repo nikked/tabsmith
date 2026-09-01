@@ -1,14 +1,15 @@
 import {
   Fragment,
-  useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
-  useState,
   type Dispatch,
   type KeyboardEvent,
 } from 'react'
-import { removeBarDropsNotes, type Action } from '../core/edit.ts'
+import {
+  removeBarDropsContent,
+  removeRowDropsContent,
+  type Action,
+} from '../core/edit.ts'
 import { keyToAction } from '../core/keymap.ts'
 import type { EditorState } from '../core/model.ts'
 import { cellText } from '../core/render.ts'
@@ -21,47 +22,36 @@ type Props = {
 export function TabGrid({ state, dispatch }: Props) {
   const { score, cursor } = state
   const staff = useRef<HTMLDivElement>(null)
-  const bars = useRef<(HTMLDivElement | null)[]>([])
+  const current = useRef<HTMLDivElement>(null)
   const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
-  const [startsRow, setStartsRow] = useState<readonly boolean[]>([])
+  const titleFields = useRef<Record<number, HTMLInputElement | null>>({})
 
   useEffect(() => {
     staff.current?.focus()
   }, [])
 
-  // Labels belong once per visual row, but only the browser knows where the
-  // bars wrapped. Every bar keeps its label gutter and the repeats are hidden
-  // rather than removed, so measuring can never change what it measures.
-  const measure = useCallback(() => {
-    const tops = bars.current
-      .slice(0, score.bars.length)
-      .map((bar) => bar?.offsetTop ?? 0)
-    const next = tops.map((top, index) => index === 0 || top !== tops[index - 1])
-    setStartsRow((previous) =>
-      previous.length === next.length &&
-      previous.every((value, index) => value === next[index])
-        ? previous
-        : next,
-    )
-  }, [score.bars.length])
-
-  useLayoutEffect(measure)
-
+  // A row wider than the window scrolls (§1), so the cell being edited has to
+  // drag the view along with it or you type into something you cannot see.
   useEffect(() => {
-    window.addEventListener('resize', measure)
-    return () => {
-      window.removeEventListener('resize', measure)
-    }
-  }, [measure])
+    current.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [cursor])
 
   const lowestString = score.tuning.strings.length - 1
+
+  // Vertically a row reads heading, strings, chord fields, and rows stack, so
+  // stepping off either end of that lands in the neighbouring row.
+  const enterRow = (row: number) => {
+    if (cursor.row !== row) {
+      dispatch({ kind: 'setCursor', cursor: { row, bar: 0, column: 0, slot: 0 } })
+    }
+    staff.current?.focus()
+  }
 
   // The staff's keydown handler would read a chord name as a keymap sequence,
   // so the field keeps its keys and hands focus back on the way out.
   const onChordKeyDown = (
     event: KeyboardEvent<HTMLInputElement>,
-    bar: number,
-    column: number,
+    at: { readonly row: number; readonly bar: number; readonly column: number },
   ) => {
     event.stopPropagation()
     if (event.key === 'Enter' || event.key === 'Escape') {
@@ -71,9 +61,47 @@ export function TabGrid({ state, dispatch }: Props) {
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault()
-      dispatch({ kind: 'setCursor', cursor: { bar, column, slot: lowestString } })
+      dispatch({ kind: 'setCursor', cursor: { ...at, slot: lowestString } })
       staff.current?.focus()
+      return
     }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      titleFields.current[at.row + 1]?.focus()
+    }
+  }
+
+  // Same reason as the chord field: these are text, not keymap sequences.
+  const onHeadingKeyDown = (event: KeyboardEvent<HTMLInputElement>, row: number) => {
+    event.stopPropagation()
+    if (event.key === 'Enter' || event.key === 'Escape') {
+      event.preventDefault()
+      staff.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      enterRow(row)
+      return
+    }
+    if (event.key === 'ArrowUp' && row > 0) {
+      event.preventDefault()
+      chordFields.current[`${row - 1}:0:0`]?.focus()
+    }
+  }
+
+  const confirmed = (action: Action): boolean => {
+    if (action.kind === 'removeBar' && removeBarDropsContent(score, cursor)) {
+      return window.confirm(
+        `Delete bar ${cursor.bar + 1} and everything in it? This cannot be undone.`,
+      )
+    }
+    if (action.kind === 'removeRow' && removeRowDropsContent(score, cursor.row)) {
+      return window.confirm(
+        `Delete row ${cursor.row + 1} and everything in it? This cannot be undone.`,
+      )
+    }
+    return true
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -88,89 +116,132 @@ export function TabGrid({ state, dispatch }: Props) {
       action.move === 'stringDown' &&
       cursor.slot === lowestString
     ) {
-      chordFields.current[`${cursor.bar}:${cursor.column}`]?.focus()
+      chordFields.current[`${cursor.row}:${cursor.bar}:${cursor.column}`]?.focus()
       return
     }
-    if (
-      action.kind === 'removeBar' &&
-      removeBarDropsNotes(score, cursor.bar) &&
-      !window.confirm(
-        `Delete bar ${cursor.bar + 1} and the notes in it? This cannot be undone.`,
-      )
-    ) {
+    if (action.kind === 'move' && action.move === 'stringUp' && cursor.slot === 0) {
+      titleFields.current[cursor.row]?.focus()
       return
     }
+    if (!confirmed(action)) return
     dispatch(action)
   }
 
   return (
     <div ref={staff} className="staff" tabIndex={0} onKeyDown={onKeyDown}>
-      {score.bars.map((bar, barIndex) => (
-        <div
-          key={barIndex}
-          ref={(node) => {
-            bars.current[barIndex] = node
-          }}
-          className="bar"
-          style={{
-            gridTemplateColumns: `repeat(${bar.columns.length + 2}, auto)`,
-          }}
-        >
-          {score.tuning.strings.map((label, slot) => (
-            <Fragment key={slot}>
-              <span
-                className={
-                  startsRow[barIndex] === false ? 'label repeated' : 'label'
-                }
-              >
-                {label}
-              </span>
-              {bar.columns.map((column, columnIndex) => {
-                const current =
-                  cursor.bar === barIndex &&
-                  cursor.column === columnIndex &&
-                  cursor.slot === slot
-                return (
-                  <div
-                    key={columnIndex}
-                    className={current ? 'cell current' : 'cell'}
-                    onClick={() =>
-                      dispatch({
-                        kind: 'setCursor',
-                        cursor: { bar: barIndex, column: columnIndex, slot },
-                      })
-                    }
-                  >
-                    {cellText(column.cells[slot]) || ' '}
-                  </div>
-                )
-              })}
-              <span className="barline">|</span>
-            </Fragment>
-          ))}
-          <span className="label" />
-          {bar.columns.map((column, columnIndex) => (
+      {score.rows.map((row, rowIndex) => (
+        <div key={rowIndex} className="row-group">
+          <div className="row-head">
             <input
-              key={columnIndex}
               ref={(node) => {
-                chordFields.current[`${barIndex}:${columnIndex}`] = node
+                titleFields.current[rowIndex] = node
               }}
-              className="chord"
-              size={1}
-              value={column.chord ?? ''}
-              aria-label={`Chord for bar ${barIndex + 1}, column ${columnIndex + 1}`}
+              className="row-title"
+              placeholder="Row title"
+              value={row.title ?? ''}
+              aria-label={`Title for row ${rowIndex + 1}`}
               onChange={(event) =>
                 dispatch({
-                  kind: 'setChord',
-                  bar: barIndex,
-                  column: columnIndex,
-                  chord: event.target.value,
+                  kind: 'setRowHeading',
+                  row: rowIndex,
+                  title: event.target.value,
+                  note: row.note ?? '',
                 })
               }
-              onKeyDown={(event) => onChordKeyDown(event, barIndex, columnIndex)}
+              onKeyDown={(event) => onHeadingKeyDown(event, rowIndex)}
             />
-          ))}
-          <span className="barline" />
+            <input
+              className="row-note"
+              placeholder="Note"
+              value={row.note ?? ''}
+              aria-label={`Note for row ${rowIndex + 1}`}
+              onChange={(event) =>
+                dispatch({
+                  kind: 'setRowHeading',
+                  row: rowIndex,
+                  title: row.title ?? '',
+                  note: event.target.value,
+                })
+              }
+              onKeyDown={(event) => onHeadingKeyDown(event, rowIndex)}
+            />
+          </div>
+          <div className="row">
+            {row.bars.map((bar, barIndex) => (
+              <div
+                key={barIndex}
+                className="bar"
+                style={{
+                  gridTemplateColumns: `repeat(${bar.columns.length + 2}, auto)`,
+                }}
+              >
+                {score.tuning.strings.map((label, slot) => (
+                  <Fragment key={slot}>
+                    <span className={barIndex === 0 ? 'label' : 'label repeated'}>
+                      {label}
+                    </span>
+                    {bar.columns.map((column, columnIndex) => {
+                      const isCursor =
+                        cursor.row === rowIndex &&
+                        cursor.bar === barIndex &&
+                        cursor.column === columnIndex &&
+                        cursor.slot === slot
+                      return (
+                        <div
+                          key={columnIndex}
+                          ref={isCursor ? current : null}
+                          className={isCursor ? 'cell current' : 'cell'}
+                          onClick={() =>
+                            dispatch({
+                              kind: 'setCursor',
+                              cursor: {
+                                row: rowIndex,
+                                bar: barIndex,
+                                column: columnIndex,
+                                slot,
+                              },
+                            })
+                          }
+                        >
+                          {cellText(column.cells[slot]) || ' '}
+                        </div>
+                      )
+                    })}
+                    <span className="barline">|</span>
+                  </Fragment>
+                ))}
+                <span className={barIndex === 0 ? 'label' : 'label repeated'} />
+                {bar.columns.map((column, columnIndex) => {
+                  const at = {
+                    row: rowIndex,
+                    bar: barIndex,
+                    column: columnIndex,
+                  }
+                  return (
+                    <input
+                      key={columnIndex}
+                      ref={(node) => {
+                        chordFields.current[
+                          `${rowIndex}:${barIndex}:${columnIndex}`
+                        ] = node
+                      }}
+                      className="chord"
+                      size={1}
+                      value={column.chord ?? ''}
+                      aria-label={`Chord for row ${rowIndex + 1}, bar ${
+                        barIndex + 1
+                      }, column ${columnIndex + 1}`}
+                      onChange={(event) =>
+                        dispatch({ kind: 'setChord', ...at, chord: event.target.value })
+                      }
+                      onKeyDown={(event) => onChordKeyDown(event, at)}
+                    />
+                  )
+                })}
+                <span className="barline" />
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>

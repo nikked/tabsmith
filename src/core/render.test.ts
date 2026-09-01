@@ -8,6 +8,7 @@ import {
   type Score,
   type Tuning,
 } from './model.ts'
+import type { Row } from './model.ts'
 import { renderScore } from './render.ts'
 
 type Placement = readonly [column: number, slot: number, cell: Cell]
@@ -31,9 +32,15 @@ const chords = (bar: Bar, ...named: readonly (readonly [number, string])[]): Bar
   }),
 })
 
-const scoreOf = (tuning: Tuning, ...bars: readonly Bar[]): Score => ({
+const rowOf = (...bars: readonly Bar[]): Row => ({ bars })
+
+/** Most cases are one row; the row-level ones use scoreOfRows. */
+const scoreOf = (tuning: Tuning, ...bars: readonly Bar[]): Score =>
+  scoreOfRows(tuning, rowOf(...bars))
+
+const scoreOfRows = (tuning: Tuning, ...rows: readonly Row[]): Score => ({
   tuning,
-  bars,
+  rows,
   defaultBarColumns: 8,
 })
 
@@ -43,7 +50,7 @@ const STANDARD = TUNINGS[0]
 const BASS = TUNINGS[2]
 
 describe('renderScore', () => {
-  it('renders the default score as two bars of padded columns', () => {
+  it('renders the default score as one row of two bars', () => {
     expect(renderScore(emptyScore())).toBe(
       lines(
         'e|-----------------------|-----------------------|',
@@ -139,26 +146,26 @@ describe('renderScore', () => {
     )
   })
 
-  it('counts the label prefix against maxWidth when packing bars', () => {
-    const score = scoreOf(STANDARD, emptyBar(8, 6), emptyBar(8, 6), emptyBar(8, 6))
-
-    const packedTwo = renderScore(score, { maxWidth: 34 })
-    expect(packedTwo.split('\n')[0]).toBe('e|---------------|---------------|')
-    expect(packedTwo.split('\n')[0]).toHaveLength(34)
-    expect(packedTwo.split('\n\n')).toHaveLength(2)
-
-    // 33 leaves room for one bar only; ignoring the 2-char prefix would fit two.
-    const packedOne = renderScore(score, { maxWidth: 33 })
-    expect(packedOne.split('\n')[0]).toBe('e|---------------|')
-    expect(packedOne.split('\n\n')).toHaveLength(3)
+  it('renders one system per row, separated by a blank line', () => {
+    const score = scoreOfRows(
+      STANDARD,
+      rowOf(emptyBar(2, 6), emptyBar(2, 6)),
+      rowOf(emptyBar(1, 6)),
+    )
+    const systems = renderScore(score).split('\n\n')
+    expect(systems).toHaveLength(2)
+    expect(systems[0]?.split('\n')[0]).toBe('e|---|---|')
+    expect(systems[1]?.split('\n')[0]).toBe('e|-|')
   })
 
-  it('gives a bar wider than maxWidth a system to itself', () => {
-    const score = scoreOf(STANDARD, emptyBar(8, 6), emptyBar(1, 6))
-    const systems = renderScore(score, { maxWidth: 5 }).split('\n\n')
-    expect(systems).toHaveLength(2)
-    expect(systems[0]?.split('\n')[0]).toBe('e|---------------|')
-    expect(systems[1]?.split('\n')[0]).toBe('e|-|')
+  it('lets a row be as wide as it likes', () => {
+    const wide = scoreOfRows(
+      STANDARD,
+      rowOf(...Array.from({ length: 6 }, () => emptyBar(8, 6))),
+    )
+    const [first] = renderScore(wide).split('\n')
+    expect(renderScore(wide).split('\n\n')).toHaveLength(1)
+    expect(first).toHaveLength(2 + 6 * 16)
   })
 })
 
@@ -250,7 +257,7 @@ describe('chord names', () => {
     expect(rendered[6]).toBe('  Am C')
   })
 
-  it('offsets a name by the bars before it in its own system', () => {
+  it('offsets a name by the bars before it in its own row', () => {
     const score = scoreOf(
       STANDARD,
       emptyBar(2, 6),
@@ -260,14 +267,68 @@ describe('chord names', () => {
     expect(renderScore(score).split('\n')[6]).toBe('        Am')
   })
 
-  it('gives every system its own chord line, or none at all', () => {
-    const score = scoreOf(
+  it('gives every row its own chord line, or none at all', () => {
+    const score = scoreOfRows(
       STANDARD,
-      emptyBar(8, 6),
-      chords(emptyBar(8, 6), [0, 'Am']),
+      rowOf(emptyBar(8, 6)),
+      rowOf(chords(emptyBar(8, 6), [0, 'Am'])),
     )
-    const [first, second] = renderScore(score, { maxWidth: 33 }).split('\n\n')
+    const [first, second] = renderScore(score).split('\n\n')
     expect(first?.split('\n')).toHaveLength(6)
     expect(second?.split('\n').at(-1)).toBe('  Am')
+  })
+})
+
+describe('row headings', () => {
+  const heading = (row: Row): readonly string[] =>
+    renderScore(scoreOfRows(STANDARD, row)).split('\n')
+
+  it('brackets the title and leaves the note as typed', () => {
+    const lines = heading({
+      title: 'Main Riff',
+      note: '(Let notes ring into each other)',
+      bars: [emptyBar(2, 6)],
+    })
+    expect(lines.slice(0, 3)).toEqual([
+      '[Main Riff]',
+      '(Let notes ring into each other)',
+      'e|---|',
+    ])
+  })
+
+  it('takes a note that is not a parenthetical', () => {
+    expect(heading({ note: 'slow, behind the beat', bars: [emptyBar(2, 6)] })[0]).toBe(
+      'slow, behind the beat',
+    )
+  })
+
+  it('writes either line on its own', () => {
+    expect(heading({ title: 'Main Riff', bars: [emptyBar(2, 6)] })[0]).toBe('[Main Riff]')
+    expect(heading({ note: 'let ring', bars: [emptyBar(2, 6)] })[0]).toBe('let ring')
+  })
+
+  it('leaves a row with neither exactly as it was', () => {
+    expect(heading({ bars: [emptyBar(2, 6)] })[0]).toBe('e|---|')
+    expect(heading({ title: '', note: '', bars: [emptyBar(2, 6)] })[0]).toBe('e|---|')
+  })
+
+  it('sits at the left margin, not indented to the staff', () => {
+    const bass = renderScore(
+      scoreOfRows(TUNINGS[2], { title: 'Main Riff', bars: [emptyBar(2, 4)] }),
+    ).split('\n')
+    expect(bass[0]).toBe('[Main Riff]')
+    expect(bass[1]).toBe('G|---|')
+  })
+
+  it('heads only its own row', () => {
+    const rendered = renderScore(
+      scoreOfRows(
+        STANDARD,
+        { title: 'Main Riff', bars: [emptyBar(2, 6)] },
+        { bars: [emptyBar(2, 6)] },
+      ),
+    ).split('\n\n')
+    expect(rendered[0]?.split('\n')).toHaveLength(7)
+    expect(rendered[1]?.split('\n')).toHaveLength(6)
   })
 })

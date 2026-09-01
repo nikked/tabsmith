@@ -2,6 +2,7 @@ import {
   emptyBar,
   emptyCells,
   emptyColumn,
+  emptyRow,
   emptyScore,
   type Bar,
   type Cell,
@@ -9,6 +10,7 @@ import {
   type Cursor,
   type EditorState,
   type Link,
+  type Row,
   type Score,
   type Tuning,
 } from './model.ts'
@@ -36,12 +38,21 @@ export type Action =
   | { readonly kind: 'setCursor'; readonly cursor: Cursor }
   | {
       readonly kind: 'setChord'
+      readonly row: number
       readonly bar: number
       readonly column: number
       readonly chord: string
     }
   | { readonly kind: 'addBar' }
   | { readonly kind: 'removeBar' }
+  | {
+      readonly kind: 'setRowHeading'
+      readonly row: number
+      readonly title: string
+      readonly note: string
+    }
+  | { readonly kind: 'addRow' }
+  | { readonly kind: 'removeRow' }
   | { readonly kind: 'addColumn' }
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
@@ -49,7 +60,7 @@ export type Action =
 
 export const initialState = (score: Score | null = null): EditorState => ({
   score: score ?? emptyScore(),
-  cursor: { bar: 0, column: 0, slot: 0 },
+  cursor: { row: 0, bar: 0, column: 0, slot: 0 },
   digitPending: false,
   digitTarget: 'fret',
 })
@@ -59,11 +70,40 @@ const clamp = (value: number, min: number, max: number): number =>
 
 const stringCount = (score: Score): number => score.tuning.strings.length
 
-const columnCount = (score: Score, bar: number): number =>
-  score.bars[bar]?.columns.length ?? 0
+type BarRef = { readonly row: number; readonly bar: number }
+
+const barAt = (score: Score, row: number, bar: number): Bar | undefined =>
+  score.rows[row]?.bars[bar]
+
+const allBars = (score: Score): readonly Bar[] =>
+  score.rows.flatMap((row) => row.bars)
+
+/**
+ * One definition of what counts as work, so the Clear prompt and the delete
+ * prompts cannot drift apart about it. A chord name is as much typing as a
+ * note, and a row's heading belongs to the row that carries it.
+ */
+const barHasContent = (bar: Bar): boolean =>
+  bar.columns.some(
+    (column) => column.chord !== undefined || column.cells.some((cell) => cell !== null),
+  )
+
+const rowHasHeading = (row: Row): boolean =>
+  row.title !== undefined || row.note !== undefined
+
+const rowHasContent = (row: Row): boolean =>
+  rowHasHeading(row) || row.bars.some(barHasContent)
+
+const barCount = (score: Score, row: number): number =>
+  score.rows[row]?.bars.length ?? 0
+
+const columnCount = (score: Score, row: number, bar: number): number =>
+  barAt(score, row, bar)?.columns.length ?? 0
 
 const cellAt = (score: Score, cursor: Cursor): Cell | null =>
-  score.bars[cursor.bar]?.columns[cursor.column]?.cells[cursor.slot] ?? null
+  barAt(score, cursor.row, cursor.bar)?.columns[cursor.column]?.cells[
+    cursor.slot
+  ] ?? null
 
 const fretCellAt = (
   score: Score,
@@ -73,13 +113,19 @@ const fretCellAt = (
   return cell !== null && cell.kind === 'fret' ? cell : null
 }
 
-const mapBar = (score: Score, index: number, f: (bar: Bar) => Bar): Score => ({
+const mapRow = (score: Score, index: number, f: (row: Row) => Row): Score => ({
   ...score,
-  bars: score.bars.map((bar, i) => (i === index ? f(bar) : bar)),
+  rows: score.rows.map((row, i) => (i === index ? f(row) : row)),
 })
 
+const mapBar = (score: Score, at: BarRef, f: (bar: Bar) => Bar): Score =>
+  mapRow(score, at.row, (row) => ({
+    ...row,
+    bars: row.bars.map((bar, i) => (i === at.bar ? f(bar) : bar)),
+  }))
+
 const setCell = (score: Score, cursor: Cursor, cell: Cell | null): Score =>
-  mapBar(score, cursor.bar, (bar) => ({
+  mapBar(score, cursor, (bar) => ({
     columns: bar.columns.map((column, c) =>
       c === cursor.column
         ? {
@@ -91,6 +137,13 @@ const setCell = (score: Score, cursor: Cursor, cell: Cell | null): Score =>
         : column,
     ),
   }))
+
+/** An emptied field leaves nothing behind, so it never reaches the ASCII. */
+const withHeading = (row: Row, title: string, note: string): Row => ({
+  ...(title === '' ? {} : { title }),
+  ...(note === '' ? {} : { note }),
+  bars: row.bars,
+})
 
 /** An emptied field leaves no chord behind, so it never reaches the ASCII. */
 const withChord = (column: Column, chord: string): Column =>
@@ -108,23 +161,42 @@ const extend = (current: number | undefined, digit: number): number => {
   return appended <= MAX_FRET ? appended : digit
 }
 
+/**
+ * Bars read left to right within a row and then on into the next one, so one
+ * step off either end of a row lands in its neighbour. Null at the two ends of
+ * the score, where there is nowhere to go.
+ */
+const stepBar = (score: Score, cursor: Cursor, delta: 1 | -1): Cursor | null => {
+  const bar = cursor.bar + delta
+  if (bar >= 0 && bar < barCount(score, cursor.row)) return { ...cursor, bar }
+  const row = cursor.row + delta
+  if (row < 0 || row >= score.rows.length) return null
+  return {
+    ...cursor,
+    row,
+    bar: delta === 1 ? 0 : Math.max(0, barCount(score, row) - 1),
+  }
+}
+
+const lastColumn = (score: Score, cursor: Cursor): Cursor => ({
+  ...cursor,
+  column: Math.max(0, columnCount(score, cursor.row, cursor.bar) - 1),
+})
+
 const moveCursor = (score: Score, cursor: Cursor, move: Move): Cursor => {
   switch (move) {
-    case 'prevColumn':
+    case 'prevColumn': {
       if (cursor.column > 0) return { ...cursor, column: cursor.column - 1 }
-      if (cursor.bar > 0) {
-        const bar = cursor.bar - 1
-        return { ...cursor, bar, column: Math.max(0, columnCount(score, bar) - 1) }
-      }
-      return cursor
-    case 'nextColumn':
-      if (cursor.column < columnCount(score, cursor.bar) - 1) {
+      const previous = stepBar(score, cursor, -1)
+      return previous === null ? cursor : lastColumn(score, previous)
+    }
+    case 'nextColumn': {
+      if (cursor.column < columnCount(score, cursor.row, cursor.bar) - 1) {
         return { ...cursor, column: cursor.column + 1 }
       }
-      if (cursor.bar < score.bars.length - 1) {
-        return { ...cursor, bar: cursor.bar + 1, column: 0 }
-      }
-      return cursor
+      const next = stepBar(score, cursor, 1)
+      return next === null ? cursor : { ...next, column: 0 }
+    }
     case 'stringUp':
       return { ...cursor, slot: Math.max(0, cursor.slot - 1) }
     case 'stringDown':
@@ -132,21 +204,25 @@ const moveCursor = (score: Score, cursor: Cursor, move: Move): Cursor => {
     case 'barStart':
       return { ...cursor, column: 0 }
     case 'barEnd':
-      return { ...cursor, column: Math.max(0, columnCount(score, cursor.bar) - 1) }
-    case 'prevBar':
-      return cursor.bar > 0 ? { ...cursor, bar: cursor.bar - 1, column: 0 } : cursor
-    case 'nextBar':
-      return cursor.bar < score.bars.length - 1
-        ? { ...cursor, bar: cursor.bar + 1, column: 0 }
-        : cursor
+      return lastColumn(score, cursor)
+    case 'prevBar': {
+      const previous = stepBar(score, cursor, -1)
+      return previous === null ? cursor : { ...previous, column: 0 }
+    }
+    case 'nextBar': {
+      const next = stepBar(score, cursor, 1)
+      return next === null ? cursor : { ...next, column: 0 }
+    }
   }
 }
 
 const clampCursor = (score: Score, cursor: Cursor): Cursor => {
-  const bar = clamp(cursor.bar, 0, score.bars.length - 1)
+  const row = clamp(cursor.row, 0, score.rows.length - 1)
+  const bar = clamp(cursor.bar, 0, barCount(score, row) - 1)
   return {
+    row,
     bar,
-    column: clamp(cursor.column, 0, columnCount(score, bar) - 1),
+    column: clamp(cursor.column, 0, columnCount(score, row, bar) - 1),
     slot: clamp(cursor.slot, 0, stringCount(score) - 1),
   }
 }
@@ -165,30 +241,37 @@ export const retune = (score: Score, tuning: Tuning): Score => {
   return {
     ...score,
     tuning,
-    bars: score.bars.map((bar) => ({ columns: bar.columns.map(resize) })),
+    rows: score.rows.map((row) => ({
+      ...row,
+      bars: row.bars.map((bar) => ({ columns: bar.columns.map(resize) })),
+    })),
   }
 }
 
 /** Empty bars are not work, so clearing a score that holds none loses nothing. */
-export const scoreHasContent = (score: Score): boolean =>
-  score.bars.some((bar) =>
-    bar.columns.some(
-      (column) =>
-        column.chord !== undefined || column.cells.some((cell) => cell !== null),
-    ),
-  )
+export const scoreHasContent = (score: Score): boolean => score.rows.some(rowHasContent)
 
-export const removeBarDropsNotes = (score: Score, bar: number): boolean =>
-  score.bars.length > 1 &&
-  (score.bars[bar]?.columns.some((column) =>
-    column.cells.some((cell) => cell !== null),
-  ) ??
-    false)
+/**
+ * The last bar of a row takes the row with it, and the row's heading goes too —
+ * so an empty bar is still worth asking about when it is the last one its row
+ * has. Only the score's last bar is safe, because the reducer refuses that one.
+ */
+export const removeBarDropsContent = (score: Score, at: BarRef): boolean => {
+  const row = score.rows[at.row]
+  const bar = row?.bars[at.bar]
+  if (allBars(score).length <= 1 || row === undefined || bar === undefined) return false
+  return barHasContent(bar) || (row.bars.length === 1 && rowHasHeading(row))
+}
+
+export const removeRowDropsContent = (score: Score, row: number): boolean => {
+  const target = score.rows[row]
+  return score.rows.length > 1 && target !== undefined && rowHasContent(target)
+}
 
 export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   const dropped = stringCount(score) - tuning.strings.length
   if (dropped <= 0) return false
-  return score.bars.some((bar) =>
+  return allBars(score).some((bar) =>
     bar.columns.some((column) =>
       column.cells.slice(0, dropped).some((cell) => cell !== null),
     ),
@@ -285,32 +368,76 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'setChord':
       return resetDigits({
         ...state,
-        score: mapBar(state.score, action.bar, (bar) => ({
+        score: mapBar(state.score, action, (bar) => ({
           columns: bar.columns.map((column, index) =>
             index === action.column ? withChord(column, action.chord) : column,
           ),
         })),
       })
 
-    case 'addBar': {
-      const bar = state.cursor.bar + 1
-      const bars = [
-        ...state.score.bars.slice(0, bar),
-        emptyBar(state.score.defaultBarColumns, stringCount(state.score)),
-        ...state.score.bars.slice(bar),
-      ]
+    case 'setRowHeading':
       return resetDigits({
         ...state,
-        score: { ...state.score, bars },
+        score: mapRow(state.score, action.row, (row) =>
+          withHeading(row, action.title, action.note),
+        ),
+      })
+
+    case 'addBar': {
+      const bar = state.cursor.bar + 1
+      return resetDigits({
+        ...state,
+        score: mapRow(state.score, state.cursor.row, (row) => ({
+          ...row,
+          bars: [
+            ...row.bars.slice(0, bar),
+            emptyBar(state.score.defaultBarColumns, stringCount(state.score)),
+            ...row.bars.slice(bar),
+          ],
+        })),
         cursor: { ...state.cursor, bar, column: 0 },
       })
     }
 
     case 'removeBar': {
-      if (state.score.bars.length <= 1) return resetDigits(state)
+      if (allBars(state.score).length <= 1) return resetDigits(state)
+      const { row, bar } = state.cursor
+      const bars = (state.score.rows[row]?.bars ?? []).filter(
+        (_, index) => index !== bar,
+      )
+      const score =
+        bars.length === 0
+          ? {
+              ...state.score,
+              rows: state.score.rows.filter((_, index) => index !== row),
+            }
+          : mapRow(state.score, row, (existing) => ({ ...existing, bars }))
+      return resetDigits({
+        ...state,
+        score,
+        cursor: clampCursor(score, state.cursor),
+      })
+    }
+
+    case 'addRow': {
+      const row = state.cursor.row + 1
+      const rows = [
+        ...state.score.rows.slice(0, row),
+        emptyRow(1, state.score.defaultBarColumns, stringCount(state.score)),
+        ...state.score.rows.slice(row),
+      ]
+      return resetDigits({
+        ...state,
+        score: { ...state.score, rows },
+        cursor: { ...state.cursor, row, bar: 0, column: 0 },
+      })
+    }
+
+    case 'removeRow': {
+      if (state.score.rows.length <= 1) return resetDigits(state)
       const score = {
         ...state.score,
-        bars: state.score.bars.filter((_, index) => index !== state.cursor.bar),
+        rows: state.score.rows.filter((_, index) => index !== state.cursor.row),
       }
       return resetDigits({
         ...state,
@@ -322,13 +449,13 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'addColumn':
       return resetDigits({
         ...state,
-        score: mapBar(state.score, state.cursor.bar, (bar) => ({
+        score: mapBar(state.score, state.cursor, (bar) => ({
           columns: [...bar.columns, emptyColumn(stringCount(state.score))],
         })),
       })
 
     case 'removeColumn': {
-      const bar = state.score.bars[state.cursor.bar]
+      const bar = barAt(state.score, state.cursor.row, state.cursor.bar)
       const last = bar?.columns.at(-1)
       if (bar === undefined || last === undefined || bar.columns.length <= 1) {
         return resetDigits(state)
@@ -337,7 +464,7 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       const columns = bar.columns.slice(0, -1)
       return resetDigits({
         ...state,
-        score: mapBar(state.score, state.cursor.bar, () => ({ columns })),
+        score: mapBar(state.score, state.cursor, () => ({ columns })),
         cursor: {
           ...state.cursor,
           column: Math.min(state.cursor.column, columns.length - 1),

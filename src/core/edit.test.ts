@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   apply,
   initialState,
-  removeBarDropsNotes,
+  removeBarDropsContent,
+  removeRowDropsContent,
   retune,
   retuneDropsNotes,
   scoreHasContent,
@@ -11,10 +12,15 @@ import {
 import {
   DEFAULT_BAR_COLUMNS,
   emptyBar,
+  emptyCells,
+  emptyRow,
   emptyScore,
   TUNINGS,
+  type Bar,
   type Cell,
   type EditorState,
+  type Row,
+  type Score,
 } from './model.ts'
 
 const [STANDARD, DROP_D, BASS] = TUNINGS
@@ -27,21 +33,28 @@ const digit = (value: number): Action => ({ kind: 'digit', digit: value })
 /** The default score has two bars; the last-bar guards need a score with one. */
 const oneBar = (): EditorState => ({
   ...initialState(),
-  score: { ...emptyScore(), bars: [emptyBar(DEFAULT_BAR_COLUMNS, 6)] },
+  score: { ...emptyScore(), rows: [emptyRow(1, DEFAULT_BAR_COLUMNS, 6)] },
 })
 
+const barsIn = (state: EditorState, row = 0): number =>
+  state.score.rows[row]?.bars.length ?? 0
+
+const columnsIn = (state: EditorState, row = 0, bar = 0): number =>
+  state.score.rows[row]?.bars[bar]?.columns.length ?? 0
+
 const currentCell = (state: EditorState): Cell | null | undefined =>
-  state.score.bars[state.cursor.bar]?.columns[state.cursor.column]?.cells[
-    state.cursor.slot
-  ]
+  state.score.rows[state.cursor.row]?.bars[state.cursor.bar]?.columns[
+    state.cursor.column
+  ]?.cells[state.cursor.slot]
 
 const cellAt = (
   state: EditorState,
   bar: number,
   column: number,
   slot: number,
+  row = 0,
 ): Cell | null | undefined =>
-  state.score.bars[bar]?.columns[column]?.cells[slot]
+  state.score.rows[row]?.bars[bar]?.columns[column]?.cells[slot]
 
 describe('digit entry', () => {
   it('appends a second digit when the result is in range', () => {
@@ -159,7 +172,7 @@ describe('cursor clamping at score edges', () => {
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
     )
-    expect(state.cursor).toEqual({ bar: 1, column: 11, slot: 5 })
+    expect(state.cursor).toEqual({ row: 0, bar: 1, column: 11, slot: 5 })
     expect(apply(state, { kind: 'move', move: 'nextColumn' }).cursor).toEqual(
       state.cursor,
     )
@@ -171,12 +184,27 @@ describe('cursor clamping at score edges', () => {
     )
   })
 
+  it('crosses row boundaries, bar by bar', () => {
+    const two = apply(initialState(), { kind: 'addRow' })
+    expect(two.cursor).toEqual({ row: 1, bar: 0, column: 0, slot: 0 })
+    const back = apply(two, { kind: 'move', move: 'prevBar' })
+    expect(back.cursor).toEqual({ row: 0, bar: 1, column: 0, slot: 0 })
+    expect(apply(back, { kind: 'move', move: 'nextBar' }).cursor.row).toBe(1)
+  })
+
+  it('steps left out of a row into the last column of the row above', () => {
+    const two = apply(initialState(), { kind: 'addRow' })
+    const back = apply(two, { kind: 'move', move: 'prevColumn' })
+    expect(back.cursor).toEqual({ row: 0, bar: 1, column: 11, slot: 0 })
+  })
+
   it('crosses bar boundaries in both directions', () => {
     const twoBars = run(initialState(), { kind: 'addBar' })
-    expect(twoBars.cursor).toEqual({ bar: 1, column: 0, slot: 0 })
+    expect(twoBars.cursor).toEqual({ row: 0, bar: 1, column: 0, slot: 0 })
     const back = apply(twoBars, { kind: 'move', move: 'prevColumn' })
-    expect(back.cursor).toEqual({ bar: 0, column: 11, slot: 0 })
+    expect(back.cursor).toEqual({ row: 0, bar: 0, column: 11, slot: 0 })
     expect(apply(back, { kind: 'move', move: 'nextColumn' }).cursor).toEqual({
+      row: 0,
       bar: 1,
       column: 0,
       slot: 0,
@@ -192,23 +220,89 @@ describe('removeColumn', () => {
       digit(5),
     )
     const after = apply(state, { kind: 'removeColumn' })
-    expect(after.score.bars[0]?.columns).toHaveLength(12)
+    expect(columnsIn(after)).toBe(12)
   })
 
   it('removes an empty last column and pulls the cursor back', () => {
     const state = run(initialState(), { kind: 'move', move: 'barEnd' })
     const after = apply(state, { kind: 'removeColumn' })
-    expect(after.score.bars[0]?.columns).toHaveLength(11)
+    expect(columnsIn(after)).toBe(11)
     expect(after.cursor.column).toBe(10)
   })
 
   it('refuses to take a bar below one column', () => {
     const state: EditorState = {
       ...initialState(),
-      score: { ...emptyScore(), bars: [emptyBar(1, 6)] },
+      score: { ...emptyScore(), rows: [emptyRow(1, 1, 6)] },
     }
     const after = apply(state, { kind: 'removeColumn' })
-    expect(after.score.bars[0]?.columns).toHaveLength(1)
+    expect(columnsIn(after)).toBe(1)
+  })
+})
+
+describe('addRow', () => {
+  it('adds a row below with one bar in it and moves into it', () => {
+    const after = apply(initialState(), { kind: 'addRow' })
+    expect(after.score.rows).toHaveLength(2)
+    expect(barsIn(after, 0)).toBe(2)
+    expect(barsIn(after, 1)).toBe(1)
+    expect(after.cursor).toEqual({ row: 1, bar: 0, column: 0, slot: 0 })
+  })
+
+  it('inserts after the row the cursor is in, not at the end', () => {
+    const three = run(
+      initialState(),
+      { kind: 'addRow' },
+      { kind: 'addRow' },
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 0, slot: 0 } },
+      digit(7),
+      { kind: 'addRow' },
+    )
+    expect(three.score.rows).toHaveLength(4)
+    expect(three.cursor.row).toBe(1)
+    expect(cellAt(three, 0, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+    expect(barsIn(three, 1)).toBe(1)
+  })
+
+  it('gives the new bar the score default width', () => {
+    const after = apply(initialState(), { kind: 'addRow' })
+    expect(columnsIn(after, 1, 0)).toBe(DEFAULT_BAR_COLUMNS)
+  })
+})
+
+describe('removeRow', () => {
+  const twoRows = (): EditorState => apply(initialState(), { kind: 'addRow' })
+
+  it('removes the row the cursor is in', () => {
+    const after = apply(run(twoRows(), digit(9)), { kind: 'removeRow' })
+    expect(after.score.rows).toHaveLength(1)
+    expect(barsIn(after, 0)).toBe(2)
+    expect(after.cursor.row).toBe(0)
+  })
+
+  it('refuses to remove the only row', () => {
+    const after = apply(run(initialState(), digit(7)), { kind: 'removeRow' })
+    expect(after.score.rows).toHaveLength(1)
+    expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+  })
+})
+
+describe('removeRowDropsContent', () => {
+  it('is false for an untouched row and for the only row', () => {
+    const two = apply(initialState(), { kind: 'addRow' })
+    expect(removeRowDropsContent(two.score, 1)).toBe(false)
+    expect(removeRowDropsContent(run(initialState(), digit(9)).score, 0)).toBe(false)
+  })
+
+  it('is true once the row holds a note', () => {
+    const two = run(initialState(), { kind: 'addRow' }, digit(9))
+    expect(removeRowDropsContent(two.score, 1)).toBe(true)
+    expect(removeRowDropsContent(two.score, 0)).toBe(false)
+  })
+
+  it('is false for a row index that does not exist', () => {
+    const two = run(initialState(), { kind: 'addRow' }, digit(9))
+    expect(removeRowDropsContent(two.score, 9)).toBe(false)
   })
 })
 
@@ -219,7 +313,7 @@ describe('removeBar', () => {
     const state = run(threeBars(), digit(9))
     expect(state.cursor.bar).toBe(1)
     const after = apply(state, { kind: 'removeBar' })
-    expect(after.score.bars).toHaveLength(2)
+    expect(barsIn(after)).toBe(2)
     expect(cellAt(after, 0, 0, 0)).toBeNull()
     expect(cellAt(after, 1, 0, 0)).toBeNull()
   })
@@ -238,79 +332,94 @@ describe('removeBar', () => {
       digit(5),
     )
     const after = apply(state, { kind: 'removeBar' })
-    expect(after.score.bars).toHaveLength(2)
+    expect(barsIn(after)).toBe(2)
     expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+  })
+
+  it('takes the row with it when it was the last bar in that row', () => {
+    const onNewRow = apply(initialState(), { kind: 'addRow' })
+    expect(barsIn(onNewRow, 1)).toBe(1)
+    const after = apply(onNewRow, { kind: 'removeBar' })
+    expect(after.score.rows).toHaveLength(1)
+    expect(after.cursor.row).toBe(0)
   })
 
   it('refuses to remove the only bar', () => {
     const state = run(oneBar(), digit(7))
     const after = apply(state, { kind: 'removeBar' })
-    expect(after.score.bars).toHaveLength(1)
+    expect(barsIn(after)).toBe(1)
     expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
   })
 })
 
-describe('removeBarDropsNotes', () => {
+describe('removeBarDropsContent', () => {
   const edited = (...actions: readonly Action[]): EditorState =>
     run(initialState(), ...actions)
 
   it('is false for an untouched bar', () => {
-    expect(removeBarDropsNotes(edited().score, 0)).toBe(false)
+    expect(removeBarDropsContent(edited().score, { row: 0, bar: 0 })).toBe(false)
   })
 
   it('is true once any cell in the bar is filled', () => {
-    expect(removeBarDropsNotes(edited(digit(0)).score, 0)).toBe(true)
-    expect(removeBarDropsNotes(edited({ kind: 'mute' }).score, 0)).toBe(true)
+    expect(removeBarDropsContent(edited(digit(0)).score, { row: 0, bar: 0 })).toBe(true)
+    expect(
+      removeBarDropsContent(edited({ kind: 'mute' }).score, { row: 0, bar: 0 }),
+    ).toBe(true)
   })
 
   it('is false for the only bar, however full it is', () => {
     const single = run(oneBar(), digit(9))
-    expect(removeBarDropsNotes(single.score, 0)).toBe(false)
-    expect(apply(single, { kind: 'removeBar' }).score.bars).toHaveLength(1)
+    expect(removeBarDropsContent(single.score, { row: 0, bar: 0 })).toBe(false)
+    expect(barsIn(apply(single, { kind: 'removeBar' }))).toBe(1)
   })
 
   it('is false for a bar index that does not exist', () => {
-    expect(removeBarDropsNotes(edited().score, 7)).toBe(false)
+    expect(removeBarDropsContent(edited().score, { row: 0, bar: 7 })).toBe(false)
+    expect(removeBarDropsContent(edited().score, { row: 9, bar: 0 })).toBe(false)
   })
 })
 
 describe('setChord', () => {
   const chordAt = (state: EditorState, column: number): string | undefined =>
-    state.score.bars[0]?.columns[column]?.chord
+    state.score.rows[0]?.bars[0]?.columns[column]?.chord
 
   it('names the column it is given, not the one under the cursor', () => {
     const state = apply(initialState(), {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 3,
       chord: 'Am',
     })
     expect(chordAt(state, 3)).toBe('Am')
     expect(chordAt(state, 0)).toBeUndefined()
-    expect(state.cursor).toEqual({ bar: 0, column: 0, slot: 0 })
+    expect(state.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
   })
 
   it('drops the chord when the field is emptied', () => {
     const named = apply(initialState(), {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: 'Am',
     })
     const cleared = apply(named, {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: '',
     })
-    expect(cleared.score.bars[0]?.columns[0]).toEqual(
-      initialState().score.bars[0]?.columns[0],
+    expect(cleared.score.rows[0]?.bars[0]?.columns[0]).toEqual(
+      initialState().score.rows[0]?.bars[0]?.columns[0],
     )
   })
 
   it('leaves the notes in the column alone', () => {
     const state = run(initialState(), digit(7), {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: 'Am',
@@ -322,28 +431,30 @@ describe('setChord', () => {
 
 describe('reset', () => {
   const chordAt = (state: EditorState, column: number): string | undefined =>
-    state.score.bars[0]?.columns[column]?.chord
+    state.score.rows[0]?.bars[0]?.columns[column]?.chord
 
-  it('drops notes, chord names and added bars, and rewinds the cursor', () => {
+  it('drops notes, chord names, added bars and rows, and rewinds the cursor', () => {
     const state = run(
       initialState(),
       digit(9),
-      { kind: 'setChord', bar: 0, column: 0, chord: 'Am' },
+      { kind: 'setChord', row: 0, bar: 0, column: 0, chord: 'Am' },
       { kind: 'addBar' },
       digit(7),
+      { kind: 'addRow' },
+      digit(3),
     )
     const after = apply(state, { kind: 'reset' })
     expect(after.score).toEqual(emptyScore())
     expect(cellAt(after, 0, 0, 0)).toBeNull()
     expect(chordAt(after, 0)).toBeUndefined()
-    expect(after.cursor).toEqual({ bar: 0, column: 0, slot: 0 })
+    expect(after.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
   })
 
   it('keeps the tuning, so clearing a bass tab leaves four strings', () => {
     const bass = apply(initialState(), { kind: 'retune', tuning: BASS })
     const after = apply(run(bass, digit(5)), { kind: 'reset' })
     expect(after.score.tuning).toBe(BASS)
-    expect(after.score.bars[0]?.columns[0]?.cells).toHaveLength(4)
+    expect(after.score.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
   })
 })
 
@@ -352,6 +463,7 @@ describe('scoreHasContent', () => {
     expect(scoreHasContent(emptyScore())).toBe(false)
     expect(scoreHasContent(oneBar().score)).toBe(false)
     expect(scoreHasContent(run(initialState(), { kind: 'addBar' }).score)).toBe(false)
+    expect(scoreHasContent(run(initialState(), { kind: 'addRow' }).score)).toBe(false)
   })
 
   it('is true for a note, a mute or a chord name', () => {
@@ -361,6 +473,7 @@ describe('scoreHasContent', () => {
       scoreHasContent(
         apply(initialState(), {
           kind: 'setChord',
+          row: 0,
           bar: 1,
           column: 3,
           chord: 'Am',
@@ -372,12 +485,14 @@ describe('scoreHasContent', () => {
   it('is false again once the name is cleared', () => {
     const named = apply(initialState(), {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: 'Am',
     })
     const cleared = apply(named, {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: '',
@@ -402,36 +517,37 @@ describe('retune', () => {
   it('carries chord names through a narrowing retune', () => {
     const named = apply(initialState(), {
       kind: 'setChord',
+      row: 0,
       bar: 0,
       column: 0,
       chord: 'Am',
     })
     const bass = retune(named.score, BASS)
-    expect(bass.bars[0]?.columns[0]?.chord).toBe('Am')
-    expect(bass.bars[0]?.columns[0]?.cells).toHaveLength(4)
+    expect(bass.rows[0]?.bars[0]?.columns[0]?.chord).toBe('Am')
+    expect(bass.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
   })
 
   it('relabels without touching notes at equal string count', () => {
     const before = withNotes(initialState()).score
     const after = retune(before, DROP_D)
-    expect(after.bars).toEqual(before.bars)
+    expect(after.rows).toEqual(before.rows)
     expect(after.tuning).toBe(DROP_D)
   })
 
   it('drops rows bottom-up when the new tuning is narrower', () => {
     const before = withNotes(initialState()).score
     const after = retune(before, BASS)
-    expect(after.bars[0]?.columns[0]?.cells).toHaveLength(4)
-    expect(after.bars[0]?.columns[0]?.cells[3]).toEqual({ kind: 'fret', fret: 7 })
-    expect(after.bars[0]?.columns[0]?.cells[0]).toBeNull()
+    expect(after.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
+    expect(after.rows[0]?.bars[0]?.columns[0]?.cells[3]).toEqual({ kind: 'fret', fret: 7 })
+    expect(after.rows[0]?.bars[0]?.columns[0]?.cells[0]).toBeNull()
   })
 
   it('prepends empty rows when the new tuning is wider', () => {
     const bass = retune(withNotes(initialState()).score, BASS)
     const back = retune(bass, STANDARD)
-    expect(back.bars[0]?.columns[0]?.cells).toHaveLength(6)
-    expect(back.bars[0]?.columns[0]?.cells[5]).toEqual({ kind: 'fret', fret: 7 })
-    expect(back.bars[0]?.columns[0]?.cells[0]).toBeNull()
+    expect(back.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(6)
+    expect(back.rows[0]?.bars[0]?.columns[0]?.cells[5]).toEqual({ kind: 'fret', fret: 7 })
+    expect(back.rows[0]?.bars[0]?.columns[0]?.cells[0]).toBeNull()
   })
 
   it('keeps the cursor on the same string across a narrowing retune', () => {
@@ -470,6 +586,112 @@ describe('retuneDropsNotes', () => {
 
     const dropped = retune(onTopString, BASS)
     const restored = retune(dropped, STANDARD)
-    expect(restored.bars[0]?.columns[0]?.cells[0]).toBeNull()
+    expect(restored.rows[0]?.bars[0]?.columns[0]?.cells[0]).toBeNull()
+  })
+})
+
+describe('row headings', () => {
+  const rowAt = (state: EditorState, index = 0) => state.score.rows[index]
+
+  const set = (state: EditorState, title: string, note: string, row = 0) =>
+    apply(state, { kind: 'setRowHeading', row, title, note })
+
+  it('keeps a title and a note on the row they were typed on', () => {
+    const state = set(run(initialState(), { kind: 'addRow' }), 'Main Riff', 'let ring', 1)
+    expect(rowAt(state, 1)?.title).toBe('Main Riff')
+    expect(rowAt(state, 1)?.note).toBe('let ring')
+    expect(rowAt(state, 0)?.title).toBeUndefined()
+  })
+
+  it('leaves no key behind when a field is emptied', () => {
+    const named = set(initialState(), 'Main Riff', 'let ring')
+    expect(rowAt(set(named, '', 'let ring'))).toEqual({
+      note: 'let ring',
+      bars: rowAt(named)?.bars,
+    })
+    expect(rowAt(set(named, '', ''))).toEqual({ bars: rowAt(named)?.bars })
+  })
+
+  it('survives every edit made to the bars under it', () => {
+    const state = run(
+      set(initialState(), 'Main Riff', 'let ring'),
+      digit(7),
+      { kind: 'addBar' },
+      { kind: 'addColumn' },
+      { kind: 'setChord', row: 0, bar: 0, column: 0, chord: 'Am' },
+      { kind: 'retune', tuning: BASS },
+    )
+    expect(rowAt(state)?.title).toBe('Main Riff')
+    expect(rowAt(state)?.note).toBe('let ring')
+  })
+
+  it('goes with the row when a bar removal takes the row with it', () => {
+    const two = set(run(initialState(), { kind: 'addRow' }), 'Main Riff', '', 1)
+    const state = run(two, { kind: 'setCursor', cursor: { row: 1, bar: 0, column: 0, slot: 0 } }, {
+      kind: 'removeBar',
+    })
+    expect(state.score.rows).toHaveLength(1)
+    expect(rowAt(state)?.title).toBeUndefined()
+  })
+
+  it('counts as content, so clearing it asks first', () => {
+    expect(scoreHasContent(set(initialState(), 'Main Riff', '').score)).toBe(true)
+    expect(scoreHasContent(set(initialState(), '', 'let ring').score)).toBe(true)
+    expect(scoreHasContent(set(initialState(), '', '').score)).toBe(false)
+  })
+})
+
+describe('what counts as content', () => {
+  const oneRow = (row: Row): Score => ({
+    ...emptyScore(),
+    rows: [row, emptyRow(1, 4, 6)],
+  })
+  const chorded = (chord: string): Bar => ({
+    columns: [{ cells: emptyCells(6), chord }],
+  })
+
+  it('warns before a bar of chord names goes', () => {
+    const score = oneRow({ bars: [chorded('Cmaj7')] })
+    expect(removeBarDropsContent(score, { row: 0, bar: 0 })).toBe(true)
+  })
+
+  it('warns before an empty last bar takes its row heading with it', () => {
+    const titled = oneRow({ title: 'Main Riff', bars: [emptyBar(4, 6)] })
+    expect(removeBarDropsContent(titled, { row: 0, bar: 0 })).toBe(true)
+    const noted = oneRow({ note: 'let ring', bars: [emptyBar(4, 6)] })
+    expect(removeBarDropsContent(noted, { row: 0, bar: 0 })).toBe(true)
+  })
+
+  it('stays quiet when the row has another bar to fall back on', () => {
+    const spare = oneRow({ title: 'Main Riff', bars: [emptyBar(4, 6), emptyBar(4, 6)] })
+    expect(removeBarDropsContent(spare, { row: 0, bar: 0 })).toBe(false)
+  })
+
+  it('warns before a titled row goes, even with nothing played in it', () => {
+    expect(
+      removeRowDropsContent(oneRow({ title: 'Main Riff', bars: [emptyBar(4, 6)] }), 0),
+    ).toBe(true)
+    expect(
+      removeRowDropsContent(oneRow({ note: 'let ring', bars: [emptyBar(4, 6)] }), 0),
+    ).toBe(true)
+  })
+
+  it('stays quiet for a bar and a row that hold nothing', () => {
+    const empty = oneRow({ bars: [emptyBar(4, 6)] })
+    expect(removeBarDropsContent(empty, { row: 0, bar: 0 })).toBe(false)
+    expect(removeRowDropsContent(empty, 0)).toBe(false)
+  })
+
+  it('agrees with the Clear prompt about every one of those', () => {
+    const cases: readonly Row[] = [
+      { bars: [chorded('Cmaj7')] },
+      { title: 'Main Riff', bars: [emptyBar(4, 6)] },
+      { note: 'let ring', bars: [emptyBar(4, 6)] },
+    ]
+    for (const row of cases) {
+      const score: Score = { ...emptyScore(), rows: [row] }
+      expect(scoreHasContent(score)).toBe(true)
+      expect(removeRowDropsContent(oneRow(row), 0)).toBe(true)
+    }
   })
 })
