@@ -1,19 +1,25 @@
+/* Catppuccin: Latte in the light, Macchiato in the dark. The names on the right
+   are the palette's, so a token can be re-picked without guessing at a hex. */
 :root {
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --muted: #8a8a8a;
-  --line: #d4d4d4;
-  --cursor: #ffe08a;
+  --bg: #eff1f5; /* base */
+  --fg: #4c4f69; /* text */
+  --muted: #8c8fa1; /* overlay1 */
+  --line: #bcc0cc; /* surface1 */
+  --cursor: #df8e1d; /* yellow */
+  --on-cursor: #eff1f5; /* base */
+  --alert: #d20f39; /* red */
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #16171d;
-    --fg: #e8e8e8;
-    --muted: #7a7a7a;
-    --line: #33353f;
-    --cursor: #5c4a12;
+    --bg: #24273a; /* base */
+    --fg: #cad3f5; /* text */
+    --muted: #8087a2; /* overlay1 */
+    --line: #494d64; /* surface1 */
+    --cursor: #eed49f; /* yellow */
+    --on-cursor: #24273a; /* base */
+    --alert: #ed8796; /* red */
   }
 }
 
@@ -138,6 +144,7 @@ h1 {
 
 .cell.current {
   background: var(--cursor);
+  color: var(--on-cursor);
   border-radius: 2px;
 }
 
@@ -146,6 +153,7 @@ h1 {
    highlights would claim the cursor is in two places. */
 .staff:has(.chord:focus, .row-title:focus, .row-note:focus) .cell.current {
   background: color-mix(in srgb, var(--cursor) 30%, transparent);
+  color: var(--fg);
 }
 
 .chord {
@@ -165,6 +173,7 @@ h1 {
 .chord:focus {
   outline: none;
   background: var(--cursor);
+  color: var(--on-cursor);
   border-bottom: 1px solid var(--fg);
   border-radius: 2px 2px 0 0;
 }
@@ -176,7 +185,7 @@ h1 {
   margin: 0;
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--fg);
+  border-left: 3px solid var(--alert);
   border-radius: 4px;
   background: color-mix(in srgb, var(--fg) 5%, transparent);
 }

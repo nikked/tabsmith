@@ -438,7 +438,8 @@ The immutable model makes undo/redo a history array if it turns out to be missed
 
 - Vite + React + TypeScript, `strict` on, no `any`.
 - Vitest for the core. No React Testing Library; the UI is verified by running it.
-- Plain CSS, one stylesheet. No UI framework, no styling library.
+- Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin for the palette:
+  Latte in the light, Macchiato in the dark.
 - zod, for validating documents at the edge (§5). The only runtime dependency besides React,
   and the only place it is used.
 
