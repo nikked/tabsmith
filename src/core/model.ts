@@ -20,7 +20,10 @@ export type Tuning = {
   readonly strings: readonly string[]
 }
 
-export type Column = readonly (Cell | null)[]
+export type Column = {
+  readonly cells: readonly (Cell | null)[]
+  readonly chord?: string
+}
 
 export type Bar = { readonly columns: readonly Column[] }
 
@@ -51,8 +54,12 @@ export const TUNINGS = [
 
 export const DEFAULT_BAR_COLUMNS = 8
 
-export const emptyColumn = (strings: number): Column =>
+export const emptyCells = (strings: number): readonly (Cell | null)[] =>
   Array.from({ length: strings }, () => null)
+
+export const emptyColumn = (strings: number): Column => ({
+  cells: emptyCells(strings),
+})
 
 export const emptyBar = (columns: number, strings: number): Bar => ({
   columns: Array.from({ length: columns }, () => emptyColumn(strings)),

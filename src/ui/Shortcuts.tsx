@@ -16,7 +16,10 @@ const SHORTCUTS: readonly Shortcut[] = [
   { keys: ['~'], does: 'Vibrato' },
   { keys: ['Backspace', 'Delete'], does: 'Clear the cell' },
   { keys: ['←', '→'], does: 'Previous / next column, crossing bars' },
-  { keys: ['↑', '↓'], does: 'String up / down' },
+  {
+    keys: ['↑', '↓'],
+    does: 'String up / down, and on into the chord field below the strings',
+  },
   { keys: ['Space'], does: 'Next column' },
   { keys: ['Home', 'End'], does: 'First / last column of the bar' },
   { keys: ['Tab', 'Shift+Tab'], does: 'Next / previous bar' },
@@ -27,6 +30,10 @@ const SHORTCUTS: readonly Shortcut[] = [
   },
   { keys: [']', '['], does: 'Add a column / remove the last empty one' },
   { keys: ['Click'], does: 'Move the cursor to a cell' },
+  {
+    keys: ['Enter', 'Esc', '↑'],
+    does: 'Leave a chord field and hand the keys back to the grid',
+  },
 ]
 
 export function Shortcuts() {

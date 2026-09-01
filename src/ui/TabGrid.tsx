@@ -22,6 +22,7 @@ export function TabGrid({ state, dispatch }: Props) {
   const { score, cursor } = state
   const staff = useRef<HTMLDivElement>(null)
   const bars = useRef<(HTMLDivElement | null)[]>([])
+  const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
   const [startsRow, setStartsRow] = useState<readonly boolean[]>([])
 
   useEffect(() => {
@@ -53,10 +54,43 @@ export function TabGrid({ state, dispatch }: Props) {
     }
   }, [measure])
 
+  const lowestString = score.tuning.strings.length - 1
+
+  // The staff's keydown handler would read a chord name as a keymap sequence,
+  // so the field keeps its keys and hands focus back on the way out.
+  const onChordKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    bar: number,
+    column: number,
+  ) => {
+    event.stopPropagation()
+    if (event.key === 'Enter' || event.key === 'Escape') {
+      event.preventDefault()
+      staff.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      dispatch({ kind: 'setCursor', cursor: { bar, column, slot: lowestString } })
+      staff.current?.focus()
+    }
+  }
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const action = keyToAction(event)
     if (action === null) return
     event.preventDefault()
+    // The chord field is the row under the lowest string, so that is where a
+    // further step down goes. It carries no cursor: the cursor stays put and
+    // ArrowUp comes back to it.
+    if (
+      action.kind === 'move' &&
+      action.move === 'stringDown' &&
+      cursor.slot === lowestString
+    ) {
+      chordFields.current[`${cursor.bar}:${cursor.column}`]?.focus()
+      return
+    }
     if (
       action.kind === 'removeBar' &&
       removeBarDropsNotes(score, cursor.bar) &&
@@ -107,13 +141,36 @@ export function TabGrid({ state, dispatch }: Props) {
                       })
                     }
                   >
-                    {cellText(column[slot]) || ' '}
+                    {cellText(column.cells[slot]) || ' '}
                   </div>
                 )
               })}
               <span className="barline">|</span>
             </Fragment>
           ))}
+          <span className="label" />
+          {bar.columns.map((column, columnIndex) => (
+            <input
+              key={columnIndex}
+              ref={(node) => {
+                chordFields.current[`${barIndex}:${columnIndex}`] = node
+              }}
+              className="chord"
+              size={1}
+              value={column.chord ?? ''}
+              aria-label={`Chord for bar ${barIndex + 1}, column ${columnIndex + 1}`}
+              onChange={(event) =>
+                dispatch({
+                  kind: 'setChord',
+                  bar: barIndex,
+                  column: columnIndex,
+                  chord: event.target.value,
+                })
+              }
+              onKeyDown={(event) => onChordKeyDown(event, barIndex, columnIndex)}
+            />
+          ))}
+          <span className="barline" />
         </div>
       ))}
     </div>

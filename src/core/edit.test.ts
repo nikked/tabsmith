@@ -17,7 +17,7 @@ const run = (state: EditorState, ...actions: readonly Action[]): EditorState =>
 const digit = (value: number): Action => ({ kind: 'digit', digit: value })
 
 const currentCell = (state: EditorState): Cell | null | undefined =>
-  state.score.bars[state.cursor.bar]?.columns[state.cursor.column]?.[
+  state.score.bars[state.cursor.bar]?.columns[state.cursor.column]?.cells[
     state.cursor.slot
   ]
 
@@ -26,7 +26,8 @@ const cellAt = (
   bar: number,
   column: number,
   slot: number,
-): Cell | null | undefined => state.score.bars[bar]?.columns[column]?.[slot]
+): Cell | null | undefined =>
+  state.score.bars[bar]?.columns[column]?.cells[slot]
 
 describe('digit entry', () => {
   it('appends a second digit when the result is in range', () => {
@@ -258,6 +259,52 @@ describe('removeBarDropsNotes', () => {
   })
 })
 
+describe('setChord', () => {
+  const chordAt = (state: EditorState, column: number): string | undefined =>
+    state.score.bars[0]?.columns[column]?.chord
+
+  it('names the column it is given, not the one under the cursor', () => {
+    const state = apply(initialState(), {
+      kind: 'setChord',
+      bar: 0,
+      column: 3,
+      chord: 'Am',
+    })
+    expect(chordAt(state, 3)).toBe('Am')
+    expect(chordAt(state, 0)).toBeUndefined()
+    expect(state.cursor).toEqual({ bar: 0, column: 0, slot: 0 })
+  })
+
+  it('drops the chord when the field is emptied', () => {
+    const named = apply(initialState(), {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: 'Am',
+    })
+    const cleared = apply(named, {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: '',
+    })
+    expect(cleared.score.bars[0]?.columns[0]).toEqual(
+      initialState().score.bars[0]?.columns[0],
+    )
+  })
+
+  it('leaves the notes in the column alone', () => {
+    const state = run(initialState(), digit(7), {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: 'Am',
+    })
+    expect(cellAt(state, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+    expect(chordAt(state, 0)).toBe('Am')
+  })
+})
+
 describe('retune', () => {
   const withNotes = (state: EditorState): EditorState =>
     run(
@@ -271,6 +318,18 @@ describe('retune', () => {
       digit(7),
     )
 
+  it('carries chord names through a narrowing retune', () => {
+    const named = apply(initialState(), {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: 'Am',
+    })
+    const bass = retune(named.score, BASS)
+    expect(bass.bars[0]?.columns[0]?.chord).toBe('Am')
+    expect(bass.bars[0]?.columns[0]?.cells).toHaveLength(4)
+  })
+
   it('relabels without touching notes at equal string count', () => {
     const before = withNotes(initialState()).score
     const after = retune(before, DROP_D)
@@ -281,17 +340,17 @@ describe('retune', () => {
   it('drops rows bottom-up when the new tuning is narrower', () => {
     const before = withNotes(initialState()).score
     const after = retune(before, BASS)
-    expect(after.bars[0]?.columns[0]).toHaveLength(4)
-    expect(after.bars[0]?.columns[0]?.[3]).toEqual({ kind: 'fret', fret: 7 })
-    expect(after.bars[0]?.columns[0]?.[0]).toBeNull()
+    expect(after.bars[0]?.columns[0]?.cells).toHaveLength(4)
+    expect(after.bars[0]?.columns[0]?.cells[3]).toEqual({ kind: 'fret', fret: 7 })
+    expect(after.bars[0]?.columns[0]?.cells[0]).toBeNull()
   })
 
   it('prepends empty rows when the new tuning is wider', () => {
     const bass = retune(withNotes(initialState()).score, BASS)
     const back = retune(bass, STANDARD)
-    expect(back.bars[0]?.columns[0]).toHaveLength(6)
-    expect(back.bars[0]?.columns[0]?.[5]).toEqual({ kind: 'fret', fret: 7 })
-    expect(back.bars[0]?.columns[0]?.[0]).toBeNull()
+    expect(back.bars[0]?.columns[0]?.cells).toHaveLength(6)
+    expect(back.bars[0]?.columns[0]?.cells[5]).toEqual({ kind: 'fret', fret: 7 })
+    expect(back.bars[0]?.columns[0]?.cells[0]).toBeNull()
   })
 
   it('keeps the cursor on the same string across a narrowing retune', () => {
@@ -330,6 +389,6 @@ describe('retuneDropsNotes', () => {
 
     const dropped = retune(onTopString, BASS)
     const restored = retune(dropped, STANDARD)
-    expect(restored.bars[0]?.columns[0]?.[0]).toBeNull()
+    expect(restored.bars[0]?.columns[0]?.cells[0]).toBeNull()
   })
 })

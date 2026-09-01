@@ -44,7 +44,10 @@ type Tuning = {
   readonly strings: readonly string[]   // row labels, top to bottom
 }
 
-type Column = readonly (Cell | null)[]  // one entry per string, top to bottom
+type Column = {
+  readonly cells: readonly (Cell | null)[]  // one entry per string, top to bottom
+  readonly chord?: string                   // chord name, written under the column
+}
 type Bar = { readonly columns: readonly Column[] }
 
 type Score = {
@@ -72,6 +75,9 @@ Notes on the model:
 - **Chords are free.** A column may hold a cell on every string at once; that is a chord, and
   it needs no representation of its own. Column width is the max across the whole column, so a
   chord stays aligned even when one of its notes carries a technique.
+- **A chord name belongs to a column**, not to a bar or a beat: it is the annotation of the
+  moment the column is. Absent and empty are the same thing, so an emptied field leaves no
+  `chord` key behind and never reaches the ASCII.
 - **Bars own their columns.** Default 8, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
 - `Link` is a *prefix* on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
@@ -154,6 +160,13 @@ makes the gap disappear.
 Each cell is left-aligned and padded to its column width with `-`. This is what keeps multi-digit
 frets and techniques aligned without a global width.
 
+**The chord line** is one line under the staff per system, present only when that system has a
+name on it. Each name is written at its column's offset. A name never widens a column — the
+widths carry timing, and stretching the staff to fit `Cmaj7` would move notes apart that are not
+apart — so a name longer than its column runs on into the space after it, and a following name is
+pushed right just far enough to keep one space between the two. That is the only case where a
+name loses its column, and it is preferable to truncating it.
+
 **A bar row** is its columns concatenated, followed by `|`. **A line** is the tuning label
 padded to the width of the longest label, `|`, then the bars. One line per string, labelled
 from `tuning.strings`.
@@ -191,7 +204,7 @@ Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 | `~` | Vibrato on the current note |
 | `Backspace` `Delete` | Clear the cell. Neither moves the cursor. |
 | `←` `→` | Previous / next column, crossing bar boundaries |
-| `↑` `↓` | String up / down, clamped to the string count |
+| `↑` `↓` | String up / down. Below the lowest string is the column's chord field; `↑` out of it returns to that column's lowest string. |
 | `Space` | Next column, identical to `→` |
 | `Home` `End` | First / last column of the current bar |
 | `Tab` `Shift+Tab` | Next / previous bar |
@@ -212,7 +225,18 @@ A link or decoration key on a cell that holds no fret — empty or muted — is 
 returns the state unchanged. Modifiers are always typed after the fret, so `9` then `h` gives
 `h9`.
 
-Clicking a grid cell sets the cursor. That is the only mouse interaction: no drag, no selection.
+Clicking a grid cell sets the cursor. Under each column sits a text field for its chord name,
+reached by `↓` from the lowest string or by clicking it, and left by `Enter`, `Escape` or `↑`.
+Those are the only mouse interactions: no drag, no selection.
+
+The field holds *focus*, not the cursor. It is a DOM concern and stays one: `Cursor` keeps
+meaning a cell, the reducer never has to describe a position that holds no note, and the cursor
+sits waiting on the lowest string for the `↑` that comes back to it. The field also stops its
+keys from reaching the staff, which would otherwise read a chord name as a keymap sequence —
+`Am` is a mute and a no-op link.
+
+A chord name is free text. Nothing parses or validates it, because a tab is positional (§2b) and
+the name is a note to the reader, not data the editor acts on.
 
 Removing a bar is gated the way a narrowing retune is (§2b): `removeBarDropsNotes` is pure and
 lives in `core/`, and the UI confirms before dispatching when it returns true. Losing a bar of
@@ -242,8 +266,8 @@ side effect, and it lives in `Output.tsx`.
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
 multiple documents,
-import or parsing of existing ASCII, rhythm and time signatures, playback, chord names and
-annotation lines above the staff, printing, sharing.
+import or parsing of existing ASCII, rhythm and time signatures, playback, annotation
+lines above the staff, printing, sharing.
 
 The immutable model makes undo/redo a history array later if it turns out to be missed.
 

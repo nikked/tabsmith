@@ -93,6 +93,35 @@ h1 {
   border-radius: 2px;
 }
 
+/* Keys go to the chord field, so the cell it will come back to is dimmed
+   rather than lit: two full highlights would claim the cursor is in two
+   places. */
+.staff:has(.chord:focus) .cell.current {
+  background: color-mix(in srgb, var(--cursor) 30%, transparent);
+}
+
+.chord {
+  font: inherit;
+  font-size: 0.85em;
+  width: 100%;
+  min-width: 2.5rem;
+  box-sizing: border-box;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.15rem;
+  text-align: center;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+}
+
+.chord:focus {
+  outline: none;
+  background: var(--cursor);
+  border-bottom: 1px solid var(--fg);
+  border-radius: 2px 2px 0 0;
+}
+
 .output {
   display: flex;
   flex-direction: column;

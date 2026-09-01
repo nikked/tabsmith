@@ -16,11 +16,20 @@ const place = (bar: Bar, ...placements: readonly Placement[]): Bar =>
   placements.reduce<Bar>(
     (acc, [column, slot, cell]) => ({
       columns: acc.columns.map((col, c) =>
-        c === column ? col.map((existing, s) => (s === slot ? cell : existing)) : col,
+        c === column
+          ? { ...col, cells: col.cells.map((existing, s) => (s === slot ? cell : existing)) }
+          : col,
       ),
     }),
     bar,
   )
+
+const chords = (bar: Bar, ...named: readonly (readonly [number, string])[]): Bar => ({
+  columns: bar.columns.map((column, index) => {
+    const match = named.find(([at]) => at === index)
+    return match === undefined ? column : { ...column, chord: match[1] }
+  }),
+})
 
 const scoreOf = (tuning: Tuning, ...bars: readonly Bar[]): Score => ({
   tuning,
@@ -208,5 +217,57 @@ describe('column spacing', () => {
     expect(renderScore(score)).toBe(
       lines('e|-|-|', 'B|-|-|', 'G|2|2|', 'D|-|-|', 'A|-|-|', 'E|-|-|'),
     )
+  })
+})
+
+describe('chord names', () => {
+  it('renders them on a line below the staff at their column offsets', () => {
+    const score = scoreOf(STANDARD, chords(emptyBar(8, 6), [0, 'Am'], [4, 'C']))
+    expect(renderScore(score)).toBe(
+      lines(
+        'e|---------------|',
+        'B|---------------|',
+        'G|---------------|',
+        'D|---------------|',
+        'A|---------------|',
+        'E|---------------|',
+        '  Am      C',
+      ),
+    )
+  })
+
+  it('lets a long name run past its column instead of widening the staff', () => {
+    const bar = chords(emptyBar(3, 6), [0, 'Cmaj7'], [1, 'G'])
+    const rendered = renderScore(scoreOf(STANDARD, bar)).split('\n')
+    expect(rendered[0]).toBe('e|-----|')
+    expect(rendered[6]).toBe('  Cmaj7 G')
+  })
+
+  it('keeps a space between two names that would otherwise collide', () => {
+    const bar = chords(emptyBar(4, 6), [0, 'Am'], [1, 'C'])
+    const rendered = renderScore(scoreOf(STANDARD, bar)).split('\n')
+    expect(rendered[0]).toBe('e|-------|')
+    expect(rendered[6]).toBe('  Am C')
+  })
+
+  it('offsets a name by the bars before it in its own system', () => {
+    const score = scoreOf(
+      STANDARD,
+      emptyBar(2, 6),
+      chords(emptyBar(2, 6), [1, 'Am']),
+    )
+    expect(renderScore(score).split('\n')[0]).toBe('e|---|---|')
+    expect(renderScore(score).split('\n')[6]).toBe('        Am')
+  })
+
+  it('gives every system its own chord line, or none at all', () => {
+    const score = scoreOf(
+      STANDARD,
+      emptyBar(8, 6),
+      chords(emptyBar(8, 6), [0, 'Am']),
+    )
+    const [first, second] = renderScore(score, { maxWidth: 33 }).split('\n\n')
+    expect(first?.split('\n')).toHaveLength(6)
+    expect(second?.split('\n').at(-1)).toBe('  Am')
   })
 })

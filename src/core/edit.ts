@@ -1,5 +1,6 @@
 import {
   emptyBar,
+  emptyCells,
   emptyColumn,
   emptyScore,
   type Bar,
@@ -33,6 +34,12 @@ export type Action =
   | { readonly kind: 'clear' }
   | { readonly kind: 'move'; readonly move: Move }
   | { readonly kind: 'setCursor'; readonly cursor: Cursor }
+  | {
+      readonly kind: 'setChord'
+      readonly bar: number
+      readonly column: number
+      readonly chord: string
+    }
   | { readonly kind: 'addBar' }
   | { readonly kind: 'removeBar' }
   | { readonly kind: 'addColumn' }
@@ -55,7 +62,7 @@ const columnCount = (score: Score, bar: number): number =>
   score.bars[bar]?.columns.length ?? 0
 
 const cellAt = (score: Score, cursor: Cursor): Cell | null =>
-  score.bars[cursor.bar]?.columns[cursor.column]?.[cursor.slot] ?? null
+  score.bars[cursor.bar]?.columns[cursor.column]?.cells[cursor.slot] ?? null
 
 const fretCellAt = (
   score: Score,
@@ -74,10 +81,19 @@ const setCell = (score: Score, cursor: Cursor, cell: Cell | null): Score =>
   mapBar(score, cursor.bar, (bar) => ({
     columns: bar.columns.map((column, c) =>
       c === cursor.column
-        ? column.map((existing, s) => (s === cursor.slot ? cell : existing))
+        ? {
+            ...column,
+            cells: column.cells.map((existing, s) =>
+              s === cursor.slot ? cell : existing,
+            ),
+          }
         : column,
     ),
   }))
+
+/** An emptied field leaves no chord behind, so it never reaches the ASCII. */
+const withChord = (column: Column, chord: string): Column =>
+  chord === '' ? { cells: column.cells } : { ...column, chord }
 
 const resetDigits = (state: EditorState): EditorState => ({
   ...state,
@@ -138,8 +154,13 @@ export const retune = (score: Score, tuning: Tuning): Score => {
   const from = stringCount(score)
   const to = tuning.strings.length
   if (from === to) return { ...score, tuning }
-  const resize = (column: Column): Column =>
-    to < from ? column.slice(from - to) : [...emptyColumn(to - from), ...column]
+  const resize = (column: Column): Column => ({
+    ...column,
+    cells:
+      to < from
+        ? column.cells.slice(from - to)
+        : [...emptyCells(to - from), ...column.cells],
+  })
   return {
     ...score,
     tuning,
@@ -150,7 +171,7 @@ export const retune = (score: Score, tuning: Tuning): Score => {
 export const removeBarDropsNotes = (score: Score, bar: number): boolean =>
   score.bars.length > 1 &&
   (score.bars[bar]?.columns.some((column) =>
-    column.some((cell) => cell !== null),
+    column.cells.some((cell) => cell !== null),
   ) ??
     false)
 
@@ -159,7 +180,7 @@ export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   if (dropped <= 0) return false
   return score.bars.some((bar) =>
     bar.columns.some((column) =>
-      column.slice(0, dropped).some((cell) => cell !== null),
+      column.cells.slice(0, dropped).some((cell) => cell !== null),
     ),
   )
 }
@@ -251,6 +272,16 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'setCursor':
       return resetDigits({ ...state, cursor: clampCursor(state.score, action.cursor) })
 
+    case 'setChord':
+      return resetDigits({
+        ...state,
+        score: mapBar(state.score, action.bar, (bar) => ({
+          columns: bar.columns.map((column, index) =>
+            index === action.column ? withChord(column, action.chord) : column,
+          ),
+        })),
+      })
+
     case 'addBar': {
       const bar = state.cursor.bar + 1
       const bars = [
@@ -292,7 +323,7 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       if (bar === undefined || last === undefined || bar.columns.length <= 1) {
         return resetDigits(state)
       }
-      if (last.some((cell) => cell !== null)) return resetDigits(state)
+      if (last.cells.some((cell) => cell !== null)) return resetDigits(state)
       const columns = bar.columns.slice(0, -1)
       return resetDigits({
         ...state,

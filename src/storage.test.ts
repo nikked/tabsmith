@@ -8,8 +8,8 @@ const withCells = (): Score => ({
   ...emptyScore(),
   bars: [
     {
-      columns: emptyBar(3, 6).columns.map((column, index) =>
-        column.map((cell, slot) => {
+      columns: emptyBar(3, 6).columns.map((column, index) => ({
+        cells: column.cells.map((cell, slot) => {
           if (index === 0 && slot === 2) return { kind: 'fret' as const, fret: 12 }
           if (index === 1 && slot === 2) {
             return {
@@ -22,12 +22,12 @@ const withCells = (): Score => ({
           if (index === 2 && slot === 5) return { kind: 'mute' as const }
           return cell
         }),
-      ),
+      })),
     },
   ],
 })
 
-const versioned = (score: unknown, version: unknown = 1): string =>
+const versioned = (score: unknown, version: unknown = 2): string =>
   JSON.stringify({ version, score })
 
 describe('encode / decode', () => {
@@ -37,6 +37,20 @@ describe('encode / decode', () => {
 
   it('round-trips frets, links, bends and mutes', () => {
     const score = withCells()
+    expect(decode(encode(score))).toEqual(score)
+  })
+
+  it('round-trips chord names', () => {
+    const score: Score = {
+      ...emptyScore(),
+      bars: [
+        {
+          columns: emptyBar(3, 6).columns.map((column, index) =>
+            index === 1 ? { ...column, chord: 'Cmaj7' } : column,
+          ),
+        },
+      ],
+    }
     expect(decode(encode(score))).toEqual(score)
   })
 
@@ -63,8 +77,8 @@ describe('decode rejects', () => {
   })
 
   it('a different schema version', () => {
-    expect(decode(versioned(emptyScore(), 2))).toBeNull()
-    expect(decode(versioned(emptyScore(), '1'))).toBeNull()
+    expect(decode(versioned(emptyScore(), 1))).toBeNull()
+    expect(decode(versioned(emptyScore(), '2'))).toBeNull()
     expect(decode(JSON.stringify({ score: emptyScore() }))).toBeNull()
   })
 
@@ -100,10 +114,26 @@ describe('decode rejects', () => {
     expect(decode(versioned({ ...emptyScore(), bars: [{ columns: [] }] }))).toBeNull()
   })
 
+  it('a chord name that is not a string', () => {
+    const broken = {
+      ...emptyScore(),
+      bars: [
+        {
+          columns: [
+            { cells: [null, null, null, null, null, null], chord: 7 },
+          ],
+        },
+      ],
+    }
+    expect(decode(versioned(broken))).toBeNull()
+  })
+
   it('a cell that is neither a fret nor a mute', () => {
     const broken = {
       ...emptyScore(),
-      bars: [{ columns: [[{ kind: 'wat' }, null, null, null, null, null]] }],
+      bars: [
+        { columns: [{ cells: [{ kind: 'wat' }, null, null, null, null, null] }] },
+      ],
     }
     expect(decode(versioned(broken))).toBeNull()
   })

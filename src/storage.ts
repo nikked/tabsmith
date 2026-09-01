@@ -1,7 +1,7 @@
 import type { Cell, Column, Score, Tuning } from './core/model.ts'
 
 const KEY = 'tabsmith'
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -24,7 +24,11 @@ const isTuning = (value: unknown): value is Tuning =>
   value.strings.every((label) => typeof label === 'string')
 
 const isColumn = (value: unknown, strings: number): value is Column =>
-  isArray(value) && value.length === strings && value.every(isCell)
+  isRecord(value) &&
+  isArray(value.cells) &&
+  value.cells.length === strings &&
+  value.cells.every(isCell) &&
+  (value.chord === undefined || typeof value.chord === 'string')
 
 const isScore = (value: unknown): value is Score => {
   if (!isRecord(value)) return false
