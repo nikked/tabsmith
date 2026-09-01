@@ -66,7 +66,7 @@ describe('renderScore', () => {
     )
   })
 
-  it('sizes columns to links and decorations (SPEC.md §3 worked example)', () => {
+  it('sizes columns to links and decorations (README.md §3 worked example)', () => {
     const score = scoreOf(
       STANDARD,
       place(

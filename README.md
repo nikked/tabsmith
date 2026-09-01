@@ -1,9 +1,19 @@
-# tabsmith — spec
+# tabsmith
 
 A keyboard-driven web editor for guitar and bass tabs. The output is plain ASCII, copied
 to the clipboard and pasted anywhere.
 
 Single user, single document, no backend.
+
+## Running it
+
+```sh
+pnpm install
+pnpm dev      # http://localhost:5173
+pnpm test     # vitest
+pnpm build    # tsc -b && vite build
+pnpm lint     # oxlint
+```
 
 ## 1. Shape of the thing
 
@@ -99,7 +109,7 @@ Notes on the model:
 A tab is positional: a fret number means the same thing whatever the instrument is tuned to.
 So a tuning is nothing but **the row labels and the row count** — it never touches note data.
 
-v1 ships three presets, picked from a dropdown:
+Three presets, picked from a dropdown:
 
 ```ts
 const TUNINGS = [
@@ -263,19 +273,18 @@ version-mismatched blob is discarded in favour of an empty score. It is the app'
 persistence I/O and lives in one module; the Copy button's clipboard write is the only other
 side effect, and it lives in `Output.tsx`.
 
-## 6. Out of scope for v1
+## 6. Deliberately absent
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
-multiple documents,
-import or parsing of existing ASCII, rhythm and time signatures, playback, annotation
-lines above the staff, printing, sharing.
+multiple documents, import or parsing of existing ASCII, rhythm and time signatures, playback,
+annotation lines above the staff, printing, sharing.
 
-The immutable model makes undo/redo a history array later if it turns out to be missed.
+The immutable model makes undo/redo a history array if it turns out to be missed.
 
 ## 7. Stack
 
 - Vite + React + TypeScript, `strict` on, no `any`.
-- Vitest for the core. No React Testing Library unless the UI tests earn it.
+- Vitest for the core. No React Testing Library; the UI is verified by running it.
 - Plain CSS, one stylesheet. No UI framework, no styling library.
 - No runtime dependencies beyond React.
 
@@ -298,34 +307,8 @@ src/
 
 `core/` has no React import and no I/O.
 
-## 9. Build plan
-
-1. **Scaffold** — Vite React-TS, strict tsconfig, Vitest wired.
-   *Verify:* `pnpm dev` serves a blank page, `pnpm test` runs.
-2. **Model + render** — `model.ts`, `render.ts`.
-   *Verify:* unit tests on fixtures — empty score, multi-digit alignment, link/decoration
-   widths, a bend with and without a target, a chord column with a technique on one of its
-   notes, bar packing at a width boundary with the label width counted in, an over-wide bar, a
-   4-string bass score.
-3. **Edit + keymap** — `edit.ts`, `keymap.ts`.
-   *Verify:* unit tests per transition (`1` `0` appending to 10, `2` `5` replacing to 5 because
-   25 is out of range, digits after `b` filling the
-   bend target rather than the fret and `digitTarget` resetting on any other action, cursor
-   clamping at score edges,
-   `removeColumn` refusing a non-empty column and refusing to go below 1, a link or decoration
-   key no-opping on an empty and on a muted cell, `retune` relabelling without touching notes at
-   equal width and dropping bottom-up when narrower, `retuneDropsNotes` agreeing with what
-   `retune` actually drops) plus two integration tests: a key sequence for a real riff applied
-   to an empty score asserted against expected ASCII, and a Standard → Drop D switch rendering
-   identical output apart from the low row's label.
-4. **UI** — grid, cursor, tuning dropdown with the retune confirm, output pane, copy button.
-   *Verify:* run it, type a riff, paste it into a text file and eyeball it; switch to Bass with a
-   note on the top two strings and get the confirm, cancel it and keep the notes.
-5. **Persistence** — `storage.ts` + autosave.
-   *Verify:* type, refresh, still there; corrupt the blob by hand, get an empty score.
-
-## 10. Open questions
+## 9. Open questions
 
 - **Keymap.** `[` / `]` for columns and `Enter` for a new bar are guesses. Worth retuning once
   it's under your fingers.
-- **Default line width.** 80 assumed.
+- **Default line width.** 80, assumed rather than measured against anywhere it gets pasted.
