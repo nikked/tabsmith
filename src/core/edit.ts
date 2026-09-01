@@ -4,6 +4,8 @@ import {
   emptyColumn,
   emptyRow,
   emptyScore,
+  emptySection,
+  emptySong,
   type Bar,
   type Cell,
   type Column,
@@ -12,6 +14,8 @@ import {
   type Link,
   type Row,
   type Score,
+  type Section,
+  type Song,
   type Tuning,
 } from './model.ts'
 
@@ -57,9 +61,19 @@ export type Action =
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
   | { readonly kind: 'reset' }
+  | { readonly kind: 'setTitle'; readonly title: string }
+  | { readonly kind: 'setTempo'; readonly tempo: string }
+  | { readonly kind: 'addSection'; readonly after: number }
+  | { readonly kind: 'removeSection'; readonly index: number }
+  | {
+      readonly kind: 'setSection'
+      readonly index: number
+      readonly section: Section
+    }
+  | { readonly kind: 'setTabFirst'; readonly tabFirst: boolean }
 
-export const initialState = (score: Score | null = null): EditorState => ({
-  score: score ?? emptyScore(),
+export const initialState = (song: Song | null = null): EditorState => ({
+  song: song ?? emptySong(),
   cursor: { row: 0, bar: 0, column: 0, slot: 0 },
   digitPending: false,
   digitTarget: 'fret',
@@ -268,6 +282,17 @@ export const removeRowDropsContent = (score: Score, row: number): boolean => {
   return score.rows.length > 1 && target !== undefined && rowHasContent(target)
 }
 
+/**
+ * Tab steps between bars, which means the staff swallows the key. At either end
+ * of the score there is no bar to step to, so the UI can let the browser have
+ * it back and focus can leave the tab the way it leaves anything else.
+ */
+export const atFirstBar = (score: Score, cursor: Cursor): boolean =>
+  stepBar(score, cursor, -1) === null
+
+export const atLastBar = (score: Score, cursor: Cursor): boolean =>
+  stepBar(score, cursor, 1) === null
+
 export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   const dropped = stringCount(score) - tuning.strings.length
   if (dropped <= 0) return false
@@ -278,29 +303,67 @@ export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   )
 }
 
+
+const defaultChart = (chart: readonly Section[]): boolean => {
+  const blank = emptySong().chart
+  return (
+    chart.length === blank.length &&
+    chart.every(
+      (section, i) =>
+        section.name === blank[i]?.name &&
+        section.body === '' &&
+        section.repeat === undefined,
+    )
+  )
+}
+
+/** Untouched headings are not work, so clearing a song that holds none loses nothing. */
+export const songHasContent = (song: Song): boolean =>
+  song.title !== '' ||
+  song.tempo !== '' ||
+  !defaultChart(song.chart) ||
+  scoreHasContent(song.tab)
+
+const withTab = (state: EditorState, tab: Score): EditorState => ({
+  ...state,
+  song: { ...state.song, tab },
+})
+
+const withChart = (
+  state: EditorState,
+  chart: readonly Section[],
+): EditorState => ({
+  ...state,
+  song: { ...state.song, chart },
+})
+
 const applyDigit = (state: EditorState, digit: number): EditorState => {
-  const cell = fretCellAt(state.score, state.cursor)
+  const cell = fretCellAt(state.song.tab, state.cursor)
   const decoration = cell?.decoration
 
   if (state.digitTarget === 'bend' && cell !== null && decoration?.kind === 'b') {
     const to = extend(state.digitPending ? decoration.to : undefined, digit)
     return {
-      ...state,
-      score: setCell(state.score, state.cursor, {
-        ...cell,
-        decoration: { kind: 'b', to },
-      }),
+      ...withTab(
+        state,
+        setCell(state.song.tab, state.cursor, {
+          ...cell,
+          decoration: { kind: 'b', to },
+        }),
+      ),
       digitPending: true,
     }
   }
 
   const fret = extend(state.digitPending && cell !== null ? cell.fret : undefined, digit)
   return {
-    ...state,
-    score: setCell(
-      state.score,
-      state.cursor,
-      cell === null ? { kind: 'fret', fret } : { ...cell, fret },
+    ...withTab(
+      state,
+      setCell(
+        state.song.tab,
+        state.cursor,
+        cell === null ? { kind: 'fret', fret } : { ...cell, fret },
+      ),
     ),
     digitPending: true,
     digitTarget: 'fret',
@@ -313,108 +376,120 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       return applyDigit(state, action.digit)
 
     case 'mute':
-      return resetDigits({
-        ...state,
-        score: setCell(state.score, state.cursor, { kind: 'mute' }),
-      })
+      return resetDigits(
+        withTab(state, setCell(state.song.tab, state.cursor, { kind: 'mute' })),
+      )
 
     case 'link': {
-      const cell = fretCellAt(state.score, state.cursor)
+      const cell = fretCellAt(state.song.tab, state.cursor)
       if (cell === null) return state
-      return resetDigits({
-        ...state,
-        score: setCell(state.score, state.cursor, { ...cell, link: action.link }),
-      })
+      return resetDigits(
+        withTab(
+          state,
+          setCell(state.song.tab, state.cursor, { ...cell, link: action.link }),
+        ),
+      )
     }
 
     case 'bend': {
-      const cell = fretCellAt(state.score, state.cursor)
+      const cell = fretCellAt(state.song.tab, state.cursor)
       if (cell === null) return state
       return {
-        ...state,
-        score: setCell(state.score, state.cursor, {
-          ...cell,
-          decoration: { kind: 'b' },
-        }),
+        ...withTab(
+          state,
+          setCell(state.song.tab, state.cursor, {
+            ...cell,
+            decoration: { kind: 'b' },
+          }),
+        ),
         digitPending: false,
         digitTarget: 'bend',
       }
     }
 
     case 'vibrato': {
-      const cell = fretCellAt(state.score, state.cursor)
+      const cell = fretCellAt(state.song.tab, state.cursor)
       if (cell === null) return state
-      return resetDigits({
-        ...state,
-        score: setCell(state.score, state.cursor, {
-          ...cell,
-          decoration: { kind: '~' },
-        }),
-      })
+      return resetDigits(
+        withTab(
+          state,
+          setCell(state.song.tab, state.cursor, {
+            ...cell,
+            decoration: { kind: '~' },
+          }),
+        ),
+      )
     }
 
     case 'clear':
-      return resetDigits({ ...state, score: setCell(state.score, state.cursor, null) })
+      return resetDigits(
+        withTab(state, setCell(state.song.tab, state.cursor, null)),
+      )
 
     case 'move':
       return resetDigits({
         ...state,
-        cursor: moveCursor(state.score, state.cursor, action.move),
+        cursor: moveCursor(state.song.tab, state.cursor, action.move),
       })
 
     case 'setCursor':
-      return resetDigits({ ...state, cursor: clampCursor(state.score, action.cursor) })
+      return resetDigits({ ...state, cursor: clampCursor(state.song.tab, action.cursor) })
 
     case 'setChord':
-      return resetDigits({
-        ...state,
-        score: mapBar(state.score, action, (bar) => ({
-          columns: bar.columns.map((column, index) =>
-            index === action.column ? withChord(column, action.chord) : column,
-          ),
-        })),
-      })
+      return resetDigits(
+        withTab(
+          state,
+          mapBar(state.song.tab, action, (bar) => ({
+            columns: bar.columns.map((column, index) =>
+              index === action.column ? withChord(column, action.chord) : column,
+            ),
+          })),
+        ),
+      )
 
     case 'setRowHeading':
-      return resetDigits({
-        ...state,
-        score: mapRow(state.score, action.row, (row) =>
-          withHeading(row, action.title, action.note),
+      return resetDigits(
+        withTab(
+          state,
+          mapRow(state.song.tab, action.row, (row) =>
+            withHeading(row, action.title, action.note),
+          ),
         ),
-      })
+      )
 
     case 'addBar': {
       const bar = state.cursor.bar + 1
       return resetDigits({
-        ...state,
-        score: mapRow(state.score, state.cursor.row, (row) => ({
-          ...row,
-          bars: [
-            ...row.bars.slice(0, bar),
-            emptyBar(state.score.defaultBarColumns, stringCount(state.score)),
-            ...row.bars.slice(bar),
-          ],
-        })),
+        ...withTab(
+          state,
+          mapRow(state.song.tab, state.cursor.row, (row) => ({
+            ...row,
+            bars: [
+              ...row.bars.slice(0, bar),
+              emptyBar(state.song.tab.defaultBarColumns, stringCount(state.song.tab)),
+              ...row.bars.slice(bar),
+            ],
+          })),
+        ),
         cursor: { ...state.cursor, bar, column: 0 },
       })
     }
 
     case 'removeBar': {
-      if (allBars(state.score).length <= 1) return resetDigits(state)
+      if (allBars(state.song.tab).length <= 1) return resetDigits(state)
       const { row, bar } = state.cursor
-      const bars = (state.score.rows[row]?.bars ?? []).filter(
+      const bars = (state.song.tab.rows[row]?.bars ?? []).filter(
         (_, index) => index !== bar,
       )
       const score =
         bars.length === 0
           ? {
-              ...state.score,
-              rows: state.score.rows.filter((_, index) => index !== row),
+              ...state.song.tab,
+              rows: state.song.tab.rows.filter((_, index) => index !== row),
             }
-          : mapRow(state.score, row, (existing) => ({ ...existing, bars }))
+          : mapRow(state.song.tab, row, (existing) => ({ ...existing, bars }))
       return resetDigits({
-        ...state,
-        score,
+        ...withTab(state, score),
         cursor: clampCursor(score, state.cursor),
       })
     }
@@ -422,40 +497,40 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'addRow': {
       const row = state.cursor.row + 1
       const rows = [
-        ...state.score.rows.slice(0, row),
-        emptyRow(1, state.score.defaultBarColumns, stringCount(state.score)),
-        ...state.score.rows.slice(row),
+        ...state.song.tab.rows.slice(0, row),
+        emptyRow(1, state.song.tab.defaultBarColumns, stringCount(state.song.tab)),
+        ...state.song.tab.rows.slice(row),
       ]
       return resetDigits({
-        ...state,
-        score: { ...state.score, rows },
+        ...withTab(state, { ...state.song.tab, rows }),
         cursor: { ...state.cursor, row, bar: 0, column: 0 },
       })
     }
 
     case 'removeRow': {
-      if (state.score.rows.length <= 1) return resetDigits(state)
+      if (state.song.tab.rows.length <= 1) return resetDigits(state)
       const score = {
-        ...state.score,
-        rows: state.score.rows.filter((_, index) => index !== state.cursor.row),
+        ...state.song.tab,
+        rows: state.song.tab.rows.filter((_, index) => index !== state.cursor.row),
       }
       return resetDigits({
-        ...state,
-        score,
+        ...withTab(state, score),
         cursor: clampCursor(score, state.cursor),
       })
     }
 
     case 'addColumn':
-      return resetDigits({
-        ...state,
-        score: mapBar(state.score, state.cursor, (bar) => ({
-          columns: [...bar.columns, emptyColumn(stringCount(state.score))],
-        })),
-      })
+      return resetDigits(
+        withTab(
+          state,
+          mapBar(state.song.tab, state.cursor, (bar) => ({
+            columns: [...bar.columns, emptyColumn(stringCount(state.song.tab))],
+          })),
+        ),
+      )
 
     case 'removeColumn': {
-      const bar = barAt(state.score, state.cursor.row, state.cursor.bar)
+      const bar = barAt(state.song.tab, state.cursor.row, state.cursor.bar)
       const last = bar?.columns.at(-1)
       if (bar === undefined || last === undefined || bar.columns.length <= 1) {
         return resetDigits(state)
@@ -463,8 +538,10 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       if (last.cells.some((cell) => cell !== null)) return resetDigits(state)
       const columns = bar.columns.slice(0, -1)
       return resetDigits({
-        ...state,
-        score: mapBar(state.score, state.cursor, () => ({ columns })),
+        ...withTab(
+          state,
+          mapBar(state.song.tab, state.cursor, () => ({ columns })),
+        ),
         cursor: {
           ...state.cursor,
           column: Math.min(state.cursor.column, columns.length - 1),
@@ -473,19 +550,55 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     }
 
     case 'reset':
-      return initialState(retune(emptyScore(), state.score.tuning))
+      return initialState({
+        ...emptySong(),
+        tab: retune(emptyScore(), state.song.tab.tuning),
+      })
 
     case 'retune': {
-      const shift = stringCount(state.score) - action.tuning.strings.length
-      const score = retune(state.score, action.tuning)
+      const shift = stringCount(state.song.tab) - action.tuning.strings.length
+      const score = retune(state.song.tab, action.tuning)
       return resetDigits({
-        ...state,
-        score,
+        ...withTab(state, score),
         cursor: clampCursor(score, {
           ...state.cursor,
           slot: state.cursor.slot - shift,
         }),
       })
     }
+
+    case 'setTitle':
+      return { ...state, song: { ...state.song, title: action.title } }
+
+    case 'setTempo':
+      return { ...state, song: { ...state.song, tempo: action.tempo } }
+
+    case 'setTabFirst':
+      return { ...state, song: { ...state.song, tabFirst: action.tabFirst } }
+
+    case 'addSection': {
+      const at = action.after + 1
+      return withChart(state, [
+        ...state.song.chart.slice(0, at),
+        emptySection(''),
+        ...state.song.chart.slice(at),
+      ])
+    }
+
+    case 'removeSection':
+      return state.song.chart.length <= 1
+        ? state
+        : withChart(
+            state,
+            state.song.chart.filter((_, index) => index !== action.index),
+          )
+
+    case 'setSection':
+      return withChart(
+        state,
+        state.song.chart.map((section, index) =>
+          index === action.index ? action.section : section,
+        ),
+      )
   }
 }

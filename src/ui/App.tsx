@@ -3,10 +3,11 @@ import {
   apply,
   initialState,
   retuneDropsNotes,
-  scoreHasContent,
+  songHasContent,
 } from '../core/edit.ts'
 import { TUNINGS } from '../core/model.ts'
 import { load, save } from '../storage.ts'
+import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
 import { TabGrid } from './TabGrid.tsx'
@@ -16,15 +17,15 @@ export default function App() {
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
 
   useEffect(() => {
-    save(state.score)
-  }, [state.score])
+    save(state.song)
+  }, [state.song])
 
   const selectTuning = (name: string) => {
     const tuning = TUNINGS.find((candidate) => candidate.name === name)
     if (tuning === undefined) return
-    const dropped = state.score.tuning.strings.length - tuning.strings.length
+    const dropped = state.song.tab.tuning.strings.length - tuning.strings.length
     if (
-      retuneDropsNotes(state.score, tuning) &&
+      retuneDropsNotes(state.song.tab, tuning) &&
       !window.confirm(
         `Switching to ${tuning.name} drops the top ${dropped} string${
           dropped === 1 ? '' : 's'
@@ -38,8 +39,8 @@ export default function App() {
 
   const clear = () => {
     if (
-      scoreHasContent(state.score) &&
-      !window.confirm('Clear the tab and everything in it? This cannot be undone.')
+      songHasContent(state.song) &&
+      !window.confirm('Clear the song and everything in it? This cannot be undone.')
     ) {
       return
     }
@@ -51,7 +52,7 @@ export default function App() {
       <header>
         <h1>tabsmith</h1>
         <select
-          value={state.score.tuning.name}
+          value={state.song.tab.tuning.name}
           onChange={(event) => selectTuning(event.target.value)}
         >
           {TUNINGS.map((tuning) => (
@@ -60,6 +61,12 @@ export default function App() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => dispatch({ kind: 'setTabFirst', tabFirst: !state.song.tabFirst })}
+        >
+          {state.song.tabFirst ? 'Tab first' : 'Tab last'}
+        </button>
         <button type="button" onClick={clear}>
           Clear
         </button>
@@ -82,11 +89,13 @@ export default function App() {
       </header>
       {mode === 'edit' ? (
         <>
-          <TabGrid state={state} dispatch={dispatch} />
+          {state.song.tabFirst && <TabGrid state={state} dispatch={dispatch} />}
+          <Chart song={state.song} dispatch={dispatch} />
+          {!state.song.tabFirst && <TabGrid state={state} dispatch={dispatch} />}
           <Shortcuts />
         </>
       ) : (
-        <Output score={state.score} />
+        <Output song={state.song} />
       )}
     </main>
   )

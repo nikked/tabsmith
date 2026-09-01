@@ -39,6 +39,20 @@ export type Score = {
   readonly defaultBarColumns: number
 }
 
+export type Section = {
+  readonly name: string
+  readonly repeat?: number
+  readonly body: string
+}
+
+export type Song = {
+  readonly title: string
+  readonly tempo: string
+  readonly chart: readonly Section[]
+  readonly tab: Score
+  readonly tabFirst: boolean
+}
+
 export type Cursor = {
   readonly row: number
   readonly bar: number
@@ -47,7 +61,7 @@ export type Cursor = {
 }
 
 export type EditorState = {
-  readonly score: Score
+  readonly song: Song
   readonly cursor: Cursor
   readonly digitPending: boolean
   readonly digitTarget: 'fret' | 'bend'
@@ -80,4 +94,14 @@ export const emptyScore = (): Score => ({
   tuning: TUNINGS[0],
   rows: [emptyRow(2, DEFAULT_BAR_COLUMNS, TUNINGS[0].strings.length)],
   defaultBarColumns: DEFAULT_BAR_COLUMNS,
+})
+
+export const emptySection = (name: string): Section => ({ name, body: '' })
+
+export const emptySong = (): Song => ({
+  title: '',
+  tempo: '',
+  chart: [emptySection('Verse 1')],
+  tab: emptyScore(),
+  tabFirst: false,
 })

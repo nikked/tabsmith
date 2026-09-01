@@ -1,9 +1,10 @@
 # tabsmith
 
-A keyboard-driven web editor for guitar and bass tabs. The output is plain ASCII, copied
-to the clipboard and pasted anywhere.
+A keyboard-driven web editor for songs: a chord chart you can take to band practice, and a
+guitar or bass tab beside it for the parts you need written out. The output is plain ASCII,
+printed to paper or a PDF, and copied to the clipboard when it needs to go somewhere else.
 
-Single user, single document, no backend.
+Single user, single song, no backend.
 
 ## Running it
 
@@ -24,9 +25,13 @@ leave with, not something you watch while typing.
   grouped into rows. Fixed-width boxes, current cell highlighted. This is *not* ASCII; it's a
   grid of boxes, so alignment is free. Below it sits the §4 keymap, because a keyboard-driven
   editor has to make its bindings discoverable without this document.
-- **ASCII** — the rendered output, read-only, with a Copy button.
+- **ASCII** — the rendered song, read-only, with Copy and Print buttons.
 
-The header carries the tuning dropdown, a Clear button and the mode toggle.
+Edit mode shows the chart and the tab, in the order they will be rendered. The chart is the
+part you read on stage; the tab is there for the parts you have to look up.
+
+The header carries the tuning dropdown, the tab-placement toggle, a Clear button and the mode
+toggle.
 
 Neither mode wraps. Rows are part of the document (§2), so how the tab is broken up is a
 decision you make once and both modes obey: the same bars sit together in the grid and in the
@@ -34,8 +39,9 @@ ASCII. Nothing reflows when the window changes size, which is the point — a ro
 stays arranged.
 
 The cost is that a row with more bars than the window is wide scrolls sideways. That is the
-honest failure: the row really is that wide, and it will be that wide wherever it is pasted.
-Wrapping it would hide the one thing you need to see.
+honest failure: the row really is that wide, and it will be that wide on the printed page too.
+Wrapping it would hide the one thing you need to see. Nothing warns about width — the page is
+as wide as you made it, and paper is the only thing that has an opinion.
 
 The ASCII is a pure function of the document. It is never edited directly and never parsed
 back. That's the single most important constraint in the design: alignment cannot break,
@@ -77,6 +83,20 @@ type Score = {
   readonly defaultBarColumns: number    // new bars start at this width; default 12
 }
 
+type Section = {
+  readonly name: string                 // 'Verse 1'; renders as [Verse 1]
+  readonly repeat?: number              // 4 renders as (x4)
+  readonly body: string                 // chords, and lyrics under them, exactly as typed
+}
+
+type Song = {
+  readonly title: string
+  readonly tempo: string                // free text: '70 bpm', 'slow 6/8'
+  readonly chart: readonly Section[]
+  readonly tab: Score
+  readonly tabFirst: boolean            // tab before the chart, or after it
+}
+
 type Cursor = {
   readonly row: number
   readonly bar: number
@@ -85,7 +105,7 @@ type Cursor = {
 }
 
 type EditorState = {
-  readonly score: Score
+  readonly song: Song
   readonly cursor: Cursor
   readonly digitPending: boolean        // next digit appends to the current value vs replaces
   readonly digitTarget: 'fret' | 'bend' // which value the next digit edits
@@ -121,6 +141,17 @@ Notes on the model:
   `7b9`. So `b` is useful on its own keystroke and the target is something you add, never an
   invalid half-typed state. Nothing requires `to > fret`; a nonsensical target is your problem,
   not the model's.
+- **A section body is free text, not a structure.** A chord sits above its word because of the
+  spaces the writer typed, and nothing else knows which word that is. Parsing the body into
+  chords and lyrics would let the app reflow or re-space it, which is exactly how the one thing
+  holding the chart together gets destroyed. So the body is stored and rendered verbatim, and
+  the editor shows it monospaced and never soft-wrapped.
+- **A nameless section is a block of chords**, and renders with no empty brackets. A section
+  with a name and no body renders as a bare heading — a `[Chorus 2]` that repeats an earlier
+  one is worth marking even when there is nothing new to write under it.
+- **The tab is an appendix, not part of the structure.** It sits before or after the whole
+  chart, never inside a section: it is a memory aid for a riff, while the chart is what gets
+  read while playing. `tabFirst` is the whole of that choice.
 - `tuning` lives on the score so `render` is a pure function of the score alone.
 - `Fret`'s `0..24` bound is enforced in `keymap.ts`, at the edge: a digit that would take the
   cell out of range replaces instead of appending (§4), and a single digit is always in range,
@@ -176,7 +207,21 @@ clamps it into the new row count, so the cursor stays on the string it was on.
 
 ```
 renderScore(score) => string
+renderSystems(score) => readonly string[]
+renderSong(song) => string
+songBlocks(song) => readonly string[]
 ```
+
+`songBlocks` is the song as the blocks a blank line separates — the header lines, each section,
+and each system of the tab — and `renderSong` is those joined back up. The ASCII view renders
+one element per block so a page break can fall between them: a staff split down the middle is
+unreadable, and a single block of text gives the browser nowhere safe to break.
+
+**A song** is its title, its tempo, each section, and the tab, joined by blank lines — the tab
+first or last per `tabFirst`. A blank title or tempo contributes no line. Everything but the
+tab is written out as typed; the chart is never reflowed, re-spaced or trimmed (§2).
+
+The rest of this section is the tab.
 
 **Cell text** — `mute` → `x`; `fret` → `(link ?? '') + fret + decorationText(decoration)`; empty
 → `''`. `decorationText` is `''` when absent, `~` for vibrato, and `b` or `b${to}` for a bend.
@@ -233,6 +278,9 @@ characters wide. Every string line is that same length.
 
 ## 4. Keymap
 
+This is the tab grid. The chart is ordinary text fields, and the browser's own editing is
+already the right keymap for it.
+
 Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 
 | Key | Action |
@@ -247,7 +295,7 @@ Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 | `↑` `↓` | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
 | `Space` | Next column, identical to `→` |
 | `Home` `End` | First / last column of the current bar |
-| `Tab` `Shift+Tab` | Next / previous bar, crossing rows |
+| `Tab` `Shift+Tab` | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it. |
 | `Enter` | Append a bar after the current one and move into it |
 | `Shift+Enter` | Remove the current bar. Confirms first when it holds anything; never removes the only bar. |
 | `]` `[` | Add a column to the current bar / remove the last one (only when empty, never below 1) |
@@ -288,13 +336,14 @@ removeBarDropsContent(score, { row, bar }) => boolean   // true only when the re
 removeRowDropsContent(score, row) => boolean            // same, for a whole row, heading included, heading included
 ```
 
-Clear is gated the same way. It resets the document to `emptyScore` — notes, chord names and
-bars all go — but keeps the current tuning, because the tuning is which instrument you are
-holding, not something you wrote. `scoreHasContent` decides whether to ask; empty bars are not
-work, so a score that holds no note, no chord name and no row heading is cleared without a
-prompt.
+Clear is gated the same way. It resets the document to `emptySong` — title, tempo, sections,
+notes, chord names and bars all go — but keeps the current tuning, because the tuning is which
+instrument you are holding, not something you wrote. `songHasContent` decides whether to ask;
+empty bars and untouched headings are not work, so a song nothing has been typed into is
+cleared without a prompt.
 
 ```ts
+songHasContent(song) => boolean     // anything typed: title, tempo, chart or tab
 scoreHasContent(score) => boolean   // any note, mute, chord name or row heading
 ```
 
@@ -312,17 +361,26 @@ apply(state: EditorState, action: Action): EditorState   // pure
 
 ## 5. Persistence
 
-`localStorage`, one document, autosaved on change and loaded on mount. Serialization is
-`JSON.stringify` of the `Score` plus a schema version integer; an unreadable or
-version-mismatched blob is discarded in favour of an empty score. It is the app's only
+`localStorage`, one song, autosaved on change and loaded on mount. Serialization is
+`JSON.stringify` of the `Song` plus a schema version integer; an unreadable or
+version-mismatched blob is discarded in favour of an empty song. It is the app's only
 persistence I/O and lives in one module; the Copy button's clipboard write is the only other
 side effect, and it lives in `Output.tsx`.
 
 ## 6. Deliberately absent
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
-multiple documents, import or parsing of existing ASCII, rhythm and time signatures, playback,
-annotation lines above the staff, printing, sharing.
+multiple songs, import or parsing of existing ASCII, rhythm and time signatures, playback,
+annotation lines above the staff, sharing, reordering sections.
+
+Printing is the browser's: the ASCII view has a Print button and a `@media print` block that
+strips the chrome and puts black text on white paper. Saving a PDF is the browser's print
+dialog, not a feature here.
+
+Lyrics are supported the only way they need to be — typed into a section body under their
+chords. Nothing helps keep a chord above its word as the words change, and nothing needs to:
+the ASCII view shows exactly what will print, and nudging a chord a space over is easy once
+you can see it.
 
 The immutable model makes undo/redo a history array if it turns out to be missed.
 
@@ -338,23 +396,17 @@ The immutable model makes undo/redo a history array if it turns out to be missed
 ```
 src/
   core/
-    model.ts      types, emptyScore, emptyBar, emptyColumn
+    model.ts      types, emptySong, emptyScore, emptyBar, emptyColumn
     edit.ts       Action, apply — every state transition
     keymap.ts     keyToAction
-    render.ts     renderScore and its helpers
+    render.ts     renderSong, renderScore and their helpers
   ui/
     App.tsx
+    Chart.tsx     title, tempo and the sections
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
-    Output.tsx    <pre> of ASCII + copy
+    Output.tsx    <pre> of the rendered song + copy and print
     Shortcuts.tsx the §4 keymap as a list
   storage.ts      load/save
 ```
 
 `core/` has no React import and no I/O.
-
-## 9. Open questions
-
-- **Keymap.** `[` / `]` for columns and `Enter` for a new bar are guesses. Worth retuning once
-  it's under your fingers.
-- **Row width.** Nothing warns when a row is too wide for the 80 columns a forum post tends to
-  want. The editor scrolling sideways is the only hint.

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   apply,
+  atFirstBar,
+  atLastBar,
   initialState,
   removeBarDropsContent,
   removeRowDropsContent,
   retune,
   retuneDropsNotes,
   scoreHasContent,
+  songHasContent,
   type Action,
 } from './edit.ts'
 import {
@@ -15,6 +18,7 @@ import {
   emptyCells,
   emptyRow,
   emptyScore,
+  emptySong,
   TUNINGS,
   type Bar,
   type Cell,
@@ -33,17 +37,17 @@ const digit = (value: number): Action => ({ kind: 'digit', digit: value })
 /** The default score has two bars; the last-bar guards need a score with one. */
 const oneBar = (): EditorState => ({
   ...initialState(),
-  score: { ...emptyScore(), rows: [emptyRow(1, DEFAULT_BAR_COLUMNS, 6)] },
+  song: { ...emptySong(), tab: { ...emptyScore(), rows: [emptyRow(1, DEFAULT_BAR_COLUMNS, 6)] } },
 })
 
 const barsIn = (state: EditorState, row = 0): number =>
-  state.score.rows[row]?.bars.length ?? 0
+  state.song.tab.rows[row]?.bars.length ?? 0
 
 const columnsIn = (state: EditorState, row = 0, bar = 0): number =>
-  state.score.rows[row]?.bars[bar]?.columns.length ?? 0
+  state.song.tab.rows[row]?.bars[bar]?.columns.length ?? 0
 
 const currentCell = (state: EditorState): Cell | null | undefined =>
-  state.score.rows[state.cursor.row]?.bars[state.cursor.bar]?.columns[
+  state.song.tab.rows[state.cursor.row]?.bars[state.cursor.bar]?.columns[
     state.cursor.column
   ]?.cells[state.cursor.slot]
 
@@ -54,7 +58,7 @@ const cellAt = (
   slot: number,
   row = 0,
 ): Cell | null | undefined =>
-  state.score.rows[row]?.bars[bar]?.columns[column]?.cells[slot]
+  state.song.tab.rows[row]?.bars[bar]?.columns[column]?.cells[slot]
 
 describe('digit entry', () => {
   it('appends a second digit when the result is in range', () => {
@@ -233,7 +237,7 @@ describe('removeColumn', () => {
   it('refuses to take a bar below one column', () => {
     const state: EditorState = {
       ...initialState(),
-      score: { ...emptyScore(), rows: [emptyRow(1, 1, 6)] },
+      song: { ...emptySong(), tab: { ...emptyScore(), rows: [emptyRow(1, 1, 6)] } },
     }
     const after = apply(state, { kind: 'removeColumn' })
     expect(columnsIn(after)).toBe(1)
@@ -243,7 +247,7 @@ describe('removeColumn', () => {
 describe('addRow', () => {
   it('adds a row below with one bar in it and moves into it', () => {
     const after = apply(initialState(), { kind: 'addRow' })
-    expect(after.score.rows).toHaveLength(2)
+    expect(after.song.tab.rows).toHaveLength(2)
     expect(barsIn(after, 0)).toBe(2)
     expect(barsIn(after, 1)).toBe(1)
     expect(after.cursor).toEqual({ row: 1, bar: 0, column: 0, slot: 0 })
@@ -258,7 +262,7 @@ describe('addRow', () => {
       digit(7),
       { kind: 'addRow' },
     )
-    expect(three.score.rows).toHaveLength(4)
+    expect(three.song.tab.rows).toHaveLength(4)
     expect(three.cursor.row).toBe(1)
     expect(cellAt(three, 0, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
     expect(barsIn(three, 1)).toBe(1)
@@ -275,14 +279,14 @@ describe('removeRow', () => {
 
   it('removes the row the cursor is in', () => {
     const after = apply(run(twoRows(), digit(9)), { kind: 'removeRow' })
-    expect(after.score.rows).toHaveLength(1)
+    expect(after.song.tab.rows).toHaveLength(1)
     expect(barsIn(after, 0)).toBe(2)
     expect(after.cursor.row).toBe(0)
   })
 
   it('refuses to remove the only row', () => {
     const after = apply(run(initialState(), digit(7)), { kind: 'removeRow' })
-    expect(after.score.rows).toHaveLength(1)
+    expect(after.song.tab.rows).toHaveLength(1)
     expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
   })
 })
@@ -290,19 +294,19 @@ describe('removeRow', () => {
 describe('removeRowDropsContent', () => {
   it('is false for an untouched row and for the only row', () => {
     const two = apply(initialState(), { kind: 'addRow' })
-    expect(removeRowDropsContent(two.score, 1)).toBe(false)
-    expect(removeRowDropsContent(run(initialState(), digit(9)).score, 0)).toBe(false)
+    expect(removeRowDropsContent(two.song.tab, 1)).toBe(false)
+    expect(removeRowDropsContent(run(initialState(), digit(9)).song.tab, 0)).toBe(false)
   })
 
   it('is true once the row holds a note', () => {
     const two = run(initialState(), { kind: 'addRow' }, digit(9))
-    expect(removeRowDropsContent(two.score, 1)).toBe(true)
-    expect(removeRowDropsContent(two.score, 0)).toBe(false)
+    expect(removeRowDropsContent(two.song.tab, 1)).toBe(true)
+    expect(removeRowDropsContent(two.song.tab, 0)).toBe(false)
   })
 
   it('is false for a row index that does not exist', () => {
     const two = run(initialState(), { kind: 'addRow' }, digit(9))
-    expect(removeRowDropsContent(two.score, 9)).toBe(false)
+    expect(removeRowDropsContent(two.song.tab, 9)).toBe(false)
   })
 })
 
@@ -340,7 +344,7 @@ describe('removeBar', () => {
     const onNewRow = apply(initialState(), { kind: 'addRow' })
     expect(barsIn(onNewRow, 1)).toBe(1)
     const after = apply(onNewRow, { kind: 'removeBar' })
-    expect(after.score.rows).toHaveLength(1)
+    expect(after.song.tab.rows).toHaveLength(1)
     expect(after.cursor.row).toBe(0)
   })
 
@@ -357,31 +361,31 @@ describe('removeBarDropsContent', () => {
     run(initialState(), ...actions)
 
   it('is false for an untouched bar', () => {
-    expect(removeBarDropsContent(edited().score, { row: 0, bar: 0 })).toBe(false)
+    expect(removeBarDropsContent(edited().song.tab, { row: 0, bar: 0 })).toBe(false)
   })
 
   it('is true once any cell in the bar is filled', () => {
-    expect(removeBarDropsContent(edited(digit(0)).score, { row: 0, bar: 0 })).toBe(true)
+    expect(removeBarDropsContent(edited(digit(0)).song.tab, { row: 0, bar: 0 })).toBe(true)
     expect(
-      removeBarDropsContent(edited({ kind: 'mute' }).score, { row: 0, bar: 0 }),
+      removeBarDropsContent(edited({ kind: 'mute' }).song.tab, { row: 0, bar: 0 }),
     ).toBe(true)
   })
 
   it('is false for the only bar, however full it is', () => {
     const single = run(oneBar(), digit(9))
-    expect(removeBarDropsContent(single.score, { row: 0, bar: 0 })).toBe(false)
+    expect(removeBarDropsContent(single.song.tab, { row: 0, bar: 0 })).toBe(false)
     expect(barsIn(apply(single, { kind: 'removeBar' }))).toBe(1)
   })
 
   it('is false for a bar index that does not exist', () => {
-    expect(removeBarDropsContent(edited().score, { row: 0, bar: 7 })).toBe(false)
-    expect(removeBarDropsContent(edited().score, { row: 9, bar: 0 })).toBe(false)
+    expect(removeBarDropsContent(edited().song.tab, { row: 0, bar: 7 })).toBe(false)
+    expect(removeBarDropsContent(edited().song.tab, { row: 9, bar: 0 })).toBe(false)
   })
 })
 
 describe('setChord', () => {
   const chordAt = (state: EditorState, column: number): string | undefined =>
-    state.score.rows[0]?.bars[0]?.columns[column]?.chord
+    state.song.tab.rows[0]?.bars[0]?.columns[column]?.chord
 
   it('names the column it is given, not the one under the cursor', () => {
     const state = apply(initialState(), {
@@ -411,8 +415,8 @@ describe('setChord', () => {
       column: 0,
       chord: '',
     })
-    expect(cleared.score.rows[0]?.bars[0]?.columns[0]).toEqual(
-      initialState().score.rows[0]?.bars[0]?.columns[0],
+    expect(cleared.song.tab.rows[0]?.bars[0]?.columns[0]).toEqual(
+      initialState().song.tab.rows[0]?.bars[0]?.columns[0],
     )
   })
 
@@ -431,7 +435,7 @@ describe('setChord', () => {
 
 describe('reset', () => {
   const chordAt = (state: EditorState, column: number): string | undefined =>
-    state.score.rows[0]?.bars[0]?.columns[column]?.chord
+    state.song.tab.rows[0]?.bars[0]?.columns[column]?.chord
 
   it('drops notes, chord names, added bars and rows, and rewinds the cursor', () => {
     const state = run(
@@ -444,7 +448,7 @@ describe('reset', () => {
       digit(3),
     )
     const after = apply(state, { kind: 'reset' })
-    expect(after.score).toEqual(emptyScore())
+    expect(after.song.tab).toEqual(emptyScore())
     expect(cellAt(after, 0, 0, 0)).toBeNull()
     expect(chordAt(after, 0)).toBeUndefined()
     expect(after.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
@@ -453,22 +457,22 @@ describe('reset', () => {
   it('keeps the tuning, so clearing a bass tab leaves four strings', () => {
     const bass = apply(initialState(), { kind: 'retune', tuning: BASS })
     const after = apply(run(bass, digit(5)), { kind: 'reset' })
-    expect(after.score.tuning).toBe(BASS)
-    expect(after.score.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
+    expect(after.song.tab.tuning).toBe(BASS)
+    expect(after.song.tab.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
   })
 })
 
 describe('scoreHasContent', () => {
   it('is false for a fresh score, whatever its shape', () => {
     expect(scoreHasContent(emptyScore())).toBe(false)
-    expect(scoreHasContent(oneBar().score)).toBe(false)
-    expect(scoreHasContent(run(initialState(), { kind: 'addBar' }).score)).toBe(false)
-    expect(scoreHasContent(run(initialState(), { kind: 'addRow' }).score)).toBe(false)
+    expect(scoreHasContent(oneBar().song.tab)).toBe(false)
+    expect(scoreHasContent(run(initialState(), { kind: 'addBar' }).song.tab)).toBe(false)
+    expect(scoreHasContent(run(initialState(), { kind: 'addRow' }).song.tab)).toBe(false)
   })
 
   it('is true for a note, a mute or a chord name', () => {
-    expect(scoreHasContent(run(initialState(), digit(0)).score)).toBe(true)
-    expect(scoreHasContent(run(initialState(), { kind: 'mute' }).score)).toBe(true)
+    expect(scoreHasContent(run(initialState(), digit(0)).song.tab)).toBe(true)
+    expect(scoreHasContent(run(initialState(), { kind: 'mute' }).song.tab)).toBe(true)
     expect(
       scoreHasContent(
         apply(initialState(), {
@@ -477,7 +481,7 @@ describe('scoreHasContent', () => {
           bar: 1,
           column: 3,
           chord: 'Am',
-        }).score,
+        }).song.tab,
       ),
     ).toBe(true)
   })
@@ -497,7 +501,7 @@ describe('scoreHasContent', () => {
       column: 0,
       chord: '',
     })
-    expect(scoreHasContent(cleared.score)).toBe(false)
+    expect(scoreHasContent(cleared.song.tab)).toBe(false)
   })
 })
 
@@ -522,20 +526,20 @@ describe('retune', () => {
       column: 0,
       chord: 'Am',
     })
-    const bass = retune(named.score, BASS)
+    const bass = retune(named.song.tab, BASS)
     expect(bass.rows[0]?.bars[0]?.columns[0]?.chord).toBe('Am')
     expect(bass.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
   })
 
   it('relabels without touching notes at equal string count', () => {
-    const before = withNotes(initialState()).score
+    const before = withNotes(initialState()).song.tab
     const after = retune(before, DROP_D)
     expect(after.rows).toEqual(before.rows)
     expect(after.tuning).toBe(DROP_D)
   })
 
   it('drops rows bottom-up when the new tuning is narrower', () => {
-    const before = withNotes(initialState()).score
+    const before = withNotes(initialState()).song.tab
     const after = retune(before, BASS)
     expect(after.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
     expect(after.rows[0]?.bars[0]?.columns[0]?.cells[3]).toEqual({ kind: 'fret', fret: 7 })
@@ -543,7 +547,7 @@ describe('retune', () => {
   })
 
   it('prepends empty rows when the new tuning is wider', () => {
-    const bass = retune(withNotes(initialState()).score, BASS)
+    const bass = retune(withNotes(initialState()).song.tab, BASS)
     const back = retune(bass, STANDARD)
     expect(back.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(6)
     expect(back.rows[0]?.bars[0]?.columns[0]?.cells[5]).toEqual({ kind: 'fret', fret: 7 })
@@ -581,7 +585,7 @@ describe('retuneDropsNotes', () => {
   })
 
   it('agrees with what retune actually drops', () => {
-    const onTopString = run(initialState(), digit(3)).score
+    const onTopString = run(initialState(), digit(3)).song.tab
     expect(retuneDropsNotes(onTopString, BASS)).toBe(true)
 
     const dropped = retune(onTopString, BASS)
@@ -590,8 +594,37 @@ describe('retuneDropsNotes', () => {
   })
 })
 
+describe('the ends of the score', () => {
+  const two = () => run(initialState(), { kind: 'addRow' })
+
+  it('knows when there is no bar to step back to', () => {
+    const state = two()
+    expect(atFirstBar(state.song.tab, { row: 0, bar: 0, column: 0, slot: 0 })).toBe(true)
+    expect(atFirstBar(state.song.tab, { row: 0, bar: 1, column: 0, slot: 0 })).toBe(false)
+    expect(atFirstBar(state.song.tab, { row: 1, bar: 0, column: 0, slot: 0 })).toBe(false)
+  })
+
+  it('knows when there is no bar to step on to', () => {
+    const state = two()
+    expect(atLastBar(state.song.tab, { row: 1, bar: 0, column: 0, slot: 0 })).toBe(true)
+    expect(atLastBar(state.song.tab, { row: 0, bar: 1, column: 0, slot: 0 })).toBe(false)
+    expect(atLastBar(state.song.tab, { row: 0, bar: 0, column: 0, slot: 0 })).toBe(false)
+  })
+
+  it('agrees with the cursor actually refusing to move', () => {
+    const state = two()
+    const first = { row: 0, bar: 0, column: 0, slot: 0 }
+    const stuck = run(
+      state,
+      { kind: 'setCursor', cursor: first },
+      { kind: 'move', move: 'prevBar' },
+    )
+    expect(stuck.cursor).toEqual(first)
+  })
+})
+
 describe('row headings', () => {
-  const rowAt = (state: EditorState, index = 0) => state.score.rows[index]
+  const rowAt = (state: EditorState, index = 0) => state.song.tab.rows[index]
 
   const set = (state: EditorState, title: string, note: string, row = 0) =>
     apply(state, { kind: 'setRowHeading', row, title, note })
@@ -630,14 +663,110 @@ describe('row headings', () => {
     const state = run(two, { kind: 'setCursor', cursor: { row: 1, bar: 0, column: 0, slot: 0 } }, {
       kind: 'removeBar',
     })
-    expect(state.score.rows).toHaveLength(1)
+    expect(state.song.tab.rows).toHaveLength(1)
     expect(rowAt(state)?.title).toBeUndefined()
   })
 
   it('counts as content, so clearing it asks first', () => {
-    expect(scoreHasContent(set(initialState(), 'Main Riff', '').score)).toBe(true)
-    expect(scoreHasContent(set(initialState(), '', 'let ring').score)).toBe(true)
-    expect(scoreHasContent(set(initialState(), '', '').score)).toBe(false)
+    expect(songHasContent(set(initialState(), 'Main Riff', '').song)).toBe(true)
+    expect(songHasContent(set(initialState(), '', 'let ring').song)).toBe(true)
+    expect(songHasContent(set(initialState(), '', '').song)).toBe(false)
+  })
+})
+
+describe('the chart', () => {
+  const chartOf = (state: EditorState) => state.song.chart
+
+  it('starts as one empty section', () => {
+    expect(chartOf(initialState())).toEqual([{ name: 'Verse 1', body: '' }])
+  })
+
+  it('takes a title and a tempo', () => {
+    const state = run(
+      initialState(),
+      { kind: 'setTitle', title: 'Endless Skies' },
+      { kind: 'setTempo', tempo: '70 bpm' },
+    )
+    expect(state.song.title).toBe('Endless Skies')
+    expect(state.song.tempo).toBe('70 bpm')
+  })
+
+  it('inserts a new section directly below the one asked for', () => {
+    const state = run(
+      initialState(),
+      { kind: 'addSection', after: 0 },
+      { kind: 'setSection', index: 1, section: { name: 'Chorus 1', body: 'Cmaj7' } },
+      { kind: 'addSection', after: 0 },
+    )
+    expect(chartOf(state).map((section) => section.name)).toEqual([
+      'Verse 1',
+      '',
+      'Chorus 1',
+    ])
+  })
+
+  it('removes a section, but never the last one', () => {
+    const two = run(initialState(), { kind: 'addSection', after: 0 })
+    expect(chartOf(apply(two, { kind: 'removeSection', index: 0 }))).toHaveLength(1)
+    const one = apply(two, { kind: 'removeSection', index: 0 })
+    expect(chartOf(apply(one, { kind: 'removeSection', index: 0 }))).toHaveLength(1)
+  })
+
+  it('keeps the body exactly as typed', () => {
+    const body = 'Em      D\nWe sail through  '
+    const state = apply(initialState(), {
+      kind: 'setSection',
+      index: 0,
+      section: { name: 'Verse 1', body },
+    })
+    expect(chartOf(state)[0]?.body).toBe(body)
+  })
+
+  it('moves the tab ahead of the chart and back', () => {
+    const first = apply(initialState(), { kind: 'setTabFirst', tabFirst: true })
+    expect(first.song.tabFirst).toBe(true)
+    expect(apply(first, { kind: 'setTabFirst', tabFirst: false }).song.tabFirst).toBe(false)
+  })
+
+  it('survives edits to the tab, and leaves the tab alone', () => {
+    const state = run(
+      initialState(),
+      { kind: 'setTitle', title: 'Endless Skies' },
+      digit(7),
+    )
+    expect(state.song.title).toBe('Endless Skies')
+    expect(currentCell(state)).toEqual({ kind: 'fret', fret: 7 })
+  })
+})
+
+describe('songHasContent', () => {
+  it('is false for an untouched song', () => {
+    expect(songHasContent(initialState().song)).toBe(false)
+    expect(songHasContent(run(initialState(), { kind: 'addBar' }).song)).toBe(false)
+  })
+
+  it('is true once anything is typed', () => {
+    const typed = (...actions: readonly Action[]): boolean =>
+      songHasContent(run(initialState(), ...actions).song)
+    expect(typed({ kind: 'setTitle', title: 'x' })).toBe(true)
+    expect(typed({ kind: 'setTempo', tempo: '70 bpm' })).toBe(true)
+    expect(typed({ kind: 'addSection', after: 0 })).toBe(true)
+    expect(
+      typed({ kind: 'setSection', index: 0, section: { name: 'Verse 1', body: 'Am' } }),
+    ).toBe(true)
+    expect(typed(digit(3))).toBe(true)
+  })
+
+  it('resets the whole song but keeps the tuning', () => {
+    const state = run(
+      initialState(),
+      { kind: 'retune', tuning: BASS },
+      { kind: 'setTitle', title: 'Endless Skies' },
+      digit(3),
+      { kind: 'reset' },
+    )
+    expect(songHasContent(state.song)).toBe(false)
+    expect(state.song.tab.tuning).toEqual(BASS)
   })
 })
 

@@ -22,7 +22,10 @@ const SHORTCUTS: readonly Shortcut[] = [
   },
   { keys: ['Space'], does: 'Next column' },
   { keys: ['Home', 'End'], does: 'First / last column of the bar' },
-  { keys: ['Tab', 'Shift+Tab'], does: 'Next / previous bar' },
+  {
+    keys: ['Tab', 'Shift+Tab'],
+    does: 'Next / previous bar. At either end, focus leaves the tab.',
+  },
   { keys: ['Enter'], does: 'Add a bar after this one' },
   {
     keys: ['Shift+Enter'],

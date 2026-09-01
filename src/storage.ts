@@ -1,7 +1,7 @@
-import type { Cell, Column, Score, Tuning } from './core/model.ts'
+import type { Cell, Column, Score, Section, Song, Tuning } from './core/model.ts'
 
 const KEY = 'tabsmith'
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -57,11 +57,27 @@ const isScore = (value: unknown): value is Score => {
   )
 }
 
-export const encode = (score: Score): string =>
-  JSON.stringify({ version: SCHEMA_VERSION, score })
+const isSection = (value: unknown): value is Section =>
+  isRecord(value) &&
+  typeof value.name === 'string' &&
+  typeof value.body === 'string' &&
+  (value.repeat === undefined || typeof value.repeat === 'number')
+
+const isSong = (value: unknown): value is Song =>
+  isRecord(value) &&
+  typeof value.title === 'string' &&
+  typeof value.tempo === 'string' &&
+  typeof value.tabFirst === 'boolean' &&
+  isArray(value.chart) &&
+  value.chart.length > 0 &&
+  value.chart.every(isSection) &&
+  isScore(value.tab)
+
+export const encode = (song: Song): string =>
+  JSON.stringify({ version: SCHEMA_VERSION, song })
 
 /** Anything unreadable, versioned differently, or structurally wrong is discarded. */
-export const decode = (raw: string | null): Score | null => {
+export const decode = (raw: string | null): Song | null => {
   if (raw === null) return null
   let parsed: unknown
   try {
@@ -70,11 +86,11 @@ export const decode = (raw: string | null): Score | null => {
     return null
   }
   if (!isRecord(parsed) || parsed.version !== SCHEMA_VERSION) return null
-  return isScore(parsed.score) ? parsed.score : null
+  return isSong(parsed.song) ? parsed.song : null
 }
 
-export const save = (score: Score): void => {
-  localStorage.setItem(KEY, encode(score))
+export const save = (song: Song): void => {
+  localStorage.setItem(KEY, encode(song))
 }
 
-export const load = (): Score | null => decode(localStorage.getItem(KEY))
+export const load = (): Song | null => decode(localStorage.getItem(KEY))

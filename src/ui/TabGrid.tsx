@@ -6,6 +6,8 @@ import {
   type KeyboardEvent,
 } from 'react'
 import {
+  atFirstBar,
+  atLastBar,
   removeBarDropsContent,
   removeRowDropsContent,
   type Action,
@@ -20,7 +22,8 @@ type Props = {
 }
 
 export function TabGrid({ state, dispatch }: Props) {
-  const { score, cursor } = state
+  const { cursor } = state
+  const score = state.song.tab
   const staff = useRef<HTMLDivElement>(null)
   const current = useRef<HTMLDivElement>(null)
   const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
@@ -107,6 +110,15 @@ export function TabGrid({ state, dispatch }: Props) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const action = keyToAction(event)
     if (action === null) return
+    // Tab off either end of the score is not a bar step, so it is left to the
+    // browser and focus leaves the tab instead of being trapped here.
+    if (
+      action.kind === 'move' &&
+      ((action.move === 'prevBar' && atFirstBar(score, cursor)) ||
+        (action.move === 'nextBar' && atLastBar(score, cursor)))
+    ) {
+      return
+    }
     event.preventDefault()
     // The chord field is the row under the lowest string, so that is where a
     // further step down goes. It carries no cursor: the cursor stays put and

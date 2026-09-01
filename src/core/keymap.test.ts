@@ -82,7 +82,7 @@ describe('typing a riff', () => {
       'ArrowUp', '5', ' ', '7', 'h', ' ',
       'ArrowUp', 'ArrowUp', '1', '2', 'b', '1', '4',
     )
-    expect(renderScore(state.score)).toBe(
+    expect(renderScore(state.song.tab)).toBe(
       [
         'e|----------------------------|-----------------------|',
         'B|----------------------------|-----------------------|',
@@ -102,9 +102,9 @@ describe('switching Standard to Drop D', () => {
       'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown',
       '1', '2', ' ', '5', 'h', ' ', '7',
     )
-    const before = renderScore(state.score).split('\n')
+    const before = renderScore(state.song.tab).split('\n')
     const after = renderScore(
-      apply(state, { kind: 'retune', tuning: DROP_D }).score,
+      apply(state, { kind: 'retune', tuning: DROP_D }).song.tab,
     ).split('\n')
 
     expect(after.slice(0, -1)).toEqual(before.slice(0, -1))

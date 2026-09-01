@@ -1,4 +1,13 @@
-import type { Bar, Cell, Column, Decoration, Row, Score } from './model.ts'
+import type {
+  Bar,
+  Cell,
+  Column,
+  Decoration,
+  Row,
+  Score,
+  Section,
+  Song,
+} from './model.ts'
 
 const PAD = '-'
 
@@ -76,26 +85,65 @@ const rowHeading = (row: Row): readonly string[] =>
     row.note ?? '',
   ].filter((line) => line !== '')
 
-export const renderScore = (score: Score): string => {
+/**
+ * One string per system. A system is the unit that must not be broken across a
+ * page, so the caller needs them apart before it can say so.
+ */
+export const renderSystems = (score: Score): readonly string[] => {
   const { strings } = score.tuning
   const labelWidth = Math.max(0, ...strings.map((label) => label.length))
-  return score.rows
-    .map((row) => {
-      const system: readonly MeasuredBar[] = row.bars.map((bar) => ({
-        sized: sizeColumns(bar),
-      }))
-      const staff = strings.map(
-        (label, slot) =>
-          `${label.padEnd(labelWidth)}|${system
-            .map(({ sized }) => barRow(sized, slot))
-            .join('')}`,
-      )
-      const chords = chordRow(system)
-      return [
-        ...rowHeading(row),
-        ...staff,
-        ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
-      ].join('\n')
-    })
-    .join('\n\n')
+  return score.rows.map((row) => {
+    const system: readonly MeasuredBar[] = row.bars.map((bar) => ({
+      sized: sizeColumns(bar),
+    }))
+    const staff = strings.map(
+      (label, slot) =>
+        `${label.padEnd(labelWidth)}|${system
+          .map(({ sized }) => barRow(sized, slot))
+          .join('')}`,
+    )
+    const chords = chordRow(system)
+    return [
+      ...rowHeading(row),
+      ...staff,
+      ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
+    ].join('\n')
+  })
 }
+
+export const renderScore = (score: Score): string => renderSystems(score).join('\n\n')
+
+/**
+ * An unnamed section is just a block of chords, so it gets no empty brackets,
+ * and playing something once is not a repeat.
+ */
+const sectionText = (section: Section): string => {
+  const repeat =
+    section.repeat === undefined || section.repeat < 2 ? '' : ` (x${section.repeat})`
+  const heading = section.name === '' ? '' : `[${section.name}]${repeat}`
+  return [heading, section.body].filter((line) => line !== '').join('\n')
+}
+
+/**
+ * Everything but the tab is written out as typed. The chart carries chords over
+ * lyrics by the spaces the writer put there, so reflowing or trimming it would
+ * destroy the only thing holding a chord above its word.
+ */
+/**
+ * The song as the blocks a blank line separates: the header lines, each section,
+ * and each system of the tab. Printing needs them apart, because a staff split
+ * down the middle by a page break is unreadable; everything else joins them
+ * back up.
+ */
+export const songBlocks = (song: Song): readonly string[] => {
+  const header = [song.title, song.tempo]
+  const chart = song.chart.map(sectionText)
+  const tab = renderSystems(song.tab)
+  const parts = song.tabFirst
+    ? [...header, ...tab, ...chart]
+    : [...header, ...chart, ...tab]
+  // A section with neither a name nor a body would otherwise print as a gap.
+  return parts.filter((part) => part !== '')
+}
+
+export const renderSong = (song: Song): string => songBlocks(song).join('\n\n')

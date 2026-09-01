@@ -3,8 +3,10 @@ import {
   emptyBar,
   emptyRow,
   emptyScore,
+  emptySong,
   TUNINGS,
   type Score,
+  type Song,
 } from './core/model.ts'
 import { decode, encode } from './storage.ts'
 
@@ -39,17 +41,20 @@ const withCells = (): Score => ({
   ],
 })
 
-const versioned = (score: unknown, version: unknown = 3): string =>
-  JSON.stringify({ version, score })
+const songOf = (tab: Score): Song => ({ ...emptySong(), tab })
+
+/** The tab is the only part with a shape worth breaking, so cases vary just that. */
+const versioned = (tab: unknown, version: unknown = 4): string =>
+  JSON.stringify({ version, song: { ...emptySong(), tab } })
 
 describe('encode / decode', () => {
   it('round-trips an empty score', () => {
-    expect(decode(encode(emptyScore()))).toEqual(emptyScore())
+    expect(decode(encode(emptySong()))).toEqual(emptySong())
   })
 
   it('round-trips frets, links, bends and mutes', () => {
-    const score = withCells()
-    expect(decode(encode(score))).toEqual(score)
+    const song = songOf(withCells())
+    expect(decode(encode(song))).toEqual(song)
   })
 
   it('round-trips chord names', () => {
@@ -67,22 +72,22 @@ describe('encode / decode', () => {
         },
       ],
     }
-    expect(decode(encode(score))).toEqual(score)
+    expect(decode(encode(songOf(score)))).toEqual(songOf(score))
   })
 
   it('round-trips row titles and notes', () => {
-    const score: Score = {
+    const song = songOf({
       ...emptyScore(),
       rows: [
         { title: 'Main Riff', note: '(let ring)', bars: emptyRow(1, 4, 6).bars },
         emptyRow(1, 4, 6),
       ],
-    }
-    expect(decode(encode(score))).toEqual(score)
+    })
+    expect(decode(encode(song))).toEqual(song)
   })
 
-  it('reads back a score saved before rows could be titled', () => {
-    expect(decode(encode(emptyScore()))?.rows[0]?.title).toBeUndefined()
+  it('reads back a song saved before rows could be titled', () => {
+    expect(decode(encode(emptySong()))?.tab.rows[0]?.title).toBeUndefined()
   })
 
   it('round-trips several rows of several bars', () => {
@@ -90,7 +95,7 @@ describe('encode / decode', () => {
       ...emptyScore(),
       rows: [emptyRow(3, 4, 6), emptyRow(1, 8, 6)],
     }
-    expect(decode(encode(score))).toEqual(score)
+    expect(decode(encode(songOf(score)))).toEqual(songOf(score))
   })
 
   it('round-trips a four-string bass score', () => {
@@ -99,7 +104,7 @@ describe('encode / decode', () => {
       tuning: BASS,
       rows: [emptyRow(1, 4, 4)],
     }
-    expect(decode(encode(score))).toEqual(score)
+    expect(decode(encode(songOf(score)))).toEqual(songOf(score))
   })
 })
 
@@ -120,9 +125,26 @@ describe('decode rejects', () => {
   })
 
   it('a different schema version', () => {
-    expect(decode(versioned(emptyScore(), 2))).toBeNull()
-    expect(decode(versioned(emptyScore(), '3'))).toBeNull()
-    expect(decode(JSON.stringify({ score: emptyScore() }))).toBeNull()
+    expect(decode(versioned(emptyScore(), 3))).toBeNull()
+    expect(decode(versioned(emptyScore(), '4'))).toBeNull()
+    expect(decode(JSON.stringify({ song: emptySong() }))).toBeNull()
+  })
+
+  it('a song missing its parts', () => {
+    const stored = (song: unknown): string => JSON.stringify({ version: 4, song })
+    expect(decode(stored({ ...emptySong(), title: undefined }))).toBeNull()
+    expect(decode(stored({ ...emptySong(), tempo: 70 }))).toBeNull()
+    expect(decode(stored({ ...emptySong(), tabFirst: 'yes' }))).toBeNull()
+    expect(decode(stored({ ...emptySong(), chart: [] }))).toBeNull()
+    expect(decode(stored({ ...emptySong(), tab: undefined }))).toBeNull()
+  })
+
+  it('a section missing its parts', () => {
+    const chart = (section: unknown): string =>
+      JSON.stringify({ version: 4, song: { ...emptySong(), chart: [section] } })
+    expect(decode(chart({ name: 'Verse 1' }))).toBeNull()
+    expect(decode(chart({ name: 1, body: '' }))).toBeNull()
+    expect(decode(chart({ name: 'Verse 1', body: '', repeat: 'x4' }))).toBeNull()
   })
 
   it('a score missing its parts', () => {
@@ -171,8 +193,9 @@ describe('decode rejects', () => {
   })
 
   it('a row title that is not a string', () => {
-    expect(decode(versioned({ ...emptyScore(), rows: [{ title: 7, bars: emptyScore().rows[0]?.bars }] }))).toBeNull()
-    expect(decode(versioned({ ...emptyScore(), rows: [{ note: 7, bars: emptyScore().rows[0]?.bars }] }))).toBeNull()
+    const rows = (heading: object) => [{ ...heading, bars: emptyScore().rows[0]?.bars }]
+    expect(decode(versioned({ ...emptyScore(), rows: rows({ title: 7 }) }))).toBeNull()
+    expect(decode(versioned({ ...emptyScore(), rows: rows({ note: 7 }) }))).toBeNull()
   })
 
   it('a chord name that is not a string', () => {
