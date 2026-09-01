@@ -45,6 +45,7 @@ export type Action =
   | { readonly kind: 'addColumn' }
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
+  | { readonly kind: 'reset' }
 
 export const initialState = (score: Score | null = null): EditorState => ({
   score: score ?? emptyScore(),
@@ -167,6 +168,15 @@ export const retune = (score: Score, tuning: Tuning): Score => {
     bars: score.bars.map((bar) => ({ columns: bar.columns.map(resize) })),
   }
 }
+
+/** Empty bars are not work, so clearing a score that holds none loses nothing. */
+export const scoreHasContent = (score: Score): boolean =>
+  score.bars.some((bar) =>
+    bar.columns.some(
+      (column) =>
+        column.chord !== undefined || column.cells.some((cell) => cell !== null),
+    ),
+  )
 
 export const removeBarDropsNotes = (score: Score, bar: number): boolean =>
   score.bars.length > 1 &&
@@ -334,6 +344,9 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         },
       })
     }
+
+    case 'reset':
+      return initialState(retune(emptyScore(), state.score.tuning))
 
     case 'retune': {
       const shift = stringCount(state.score) - action.tuning.strings.length

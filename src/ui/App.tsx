@@ -1,5 +1,10 @@
 import { useEffect, useReducer, useState } from 'react'
-import { apply, initialState, retuneDropsNotes } from '../core/edit.ts'
+import {
+  apply,
+  initialState,
+  retuneDropsNotes,
+  scoreHasContent,
+} from '../core/edit.ts'
 import { TUNINGS } from '../core/model.ts'
 import { load, save } from '../storage.ts'
 import { Output } from './Output.tsx'
@@ -31,6 +36,16 @@ export default function App() {
     dispatch({ kind: 'retune', tuning })
   }
 
+  const clear = () => {
+    if (
+      scoreHasContent(state.score) &&
+      !window.confirm('Clear the tab and everything in it? This cannot be undone.')
+    ) {
+      return
+    }
+    dispatch({ kind: 'reset' })
+  }
+
   return (
     <main>
       <header>
@@ -45,6 +60,9 @@ export default function App() {
             </option>
           ))}
         </select>
+        <button type="button" onClick={clear}>
+          Clear
+        </button>
         <div className="modes" role="group" aria-label="View">
           <button
             type="button"

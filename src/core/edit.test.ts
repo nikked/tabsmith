@@ -5,6 +5,7 @@ import {
   removeBarDropsNotes,
   retune,
   retuneDropsNotes,
+  scoreHasContent,
   type Action,
 } from './edit.ts'
 import {
@@ -316,6 +317,72 @@ describe('setChord', () => {
     })
     expect(cellAt(state, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
     expect(chordAt(state, 0)).toBe('Am')
+  })
+})
+
+describe('reset', () => {
+  const chordAt = (state: EditorState, column: number): string | undefined =>
+    state.score.bars[0]?.columns[column]?.chord
+
+  it('drops notes, chord names and added bars, and rewinds the cursor', () => {
+    const state = run(
+      initialState(),
+      digit(9),
+      { kind: 'setChord', bar: 0, column: 0, chord: 'Am' },
+      { kind: 'addBar' },
+      digit(7),
+    )
+    const after = apply(state, { kind: 'reset' })
+    expect(after.score).toEqual(emptyScore())
+    expect(cellAt(after, 0, 0, 0)).toBeNull()
+    expect(chordAt(after, 0)).toBeUndefined()
+    expect(after.cursor).toEqual({ bar: 0, column: 0, slot: 0 })
+  })
+
+  it('keeps the tuning, so clearing a bass tab leaves four strings', () => {
+    const bass = apply(initialState(), { kind: 'retune', tuning: BASS })
+    const after = apply(run(bass, digit(5)), { kind: 'reset' })
+    expect(after.score.tuning).toBe(BASS)
+    expect(after.score.bars[0]?.columns[0]?.cells).toHaveLength(4)
+  })
+})
+
+describe('scoreHasContent', () => {
+  it('is false for a fresh score, whatever its shape', () => {
+    expect(scoreHasContent(emptyScore())).toBe(false)
+    expect(scoreHasContent(oneBar().score)).toBe(false)
+    expect(scoreHasContent(run(initialState(), { kind: 'addBar' }).score)).toBe(false)
+  })
+
+  it('is true for a note, a mute or a chord name', () => {
+    expect(scoreHasContent(run(initialState(), digit(0)).score)).toBe(true)
+    expect(scoreHasContent(run(initialState(), { kind: 'mute' }).score)).toBe(true)
+    expect(
+      scoreHasContent(
+        apply(initialState(), {
+          kind: 'setChord',
+          bar: 1,
+          column: 3,
+          chord: 'Am',
+        }).score,
+      ),
+    ).toBe(true)
+  })
+
+  it('is false again once the name is cleared', () => {
+    const named = apply(initialState(), {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: 'Am',
+    })
+    const cleared = apply(named, {
+      kind: 'setChord',
+      bar: 0,
+      column: 0,
+      chord: '',
+    })
+    expect(scoreHasContent(cleared.score)).toBe(false)
   })
 })
 

@@ -27,6 +27,8 @@ leave with, not something you watch while typing.
   keyboard-driven editor has to make its bindings discoverable without this document.
 - **ASCII** — the rendered output, read-only, with a Copy button.
 
+The header carries the tuning dropdown, a Clear button and the mode toggle.
+
 Wrapping in the two modes is deliberately independent. The ASCII wraps on `maxWidth` characters
 (§3) because that is what the pasted text has to fit. The grid wraps on the actual width of the
 window, which no character count can predict.
@@ -255,6 +257,15 @@ notes is unrecoverable for the same reasons — no undo (§6), and §5 autosaves
 
 ```ts
 removeBarDropsNotes(score, bar) => boolean   // true only when the removal would really happen
+```
+
+Clear is gated the same way. It resets the document to `emptyScore` — notes, chord names and
+bars all go — but keeps the current tuning, because the tuning is which instrument you are
+holding, not something you wrote. `scoreHasContent` decides whether to ask; empty bars are not
+work, so a score that holds no note and no chord name is cleared without a prompt.
+
+```ts
+scoreHasContent(score) => boolean   // any note, mute or chord name anywhere
 ```
 
 It folds in the last-bar guard deliberately, so the UI cannot prompt about a removal the
