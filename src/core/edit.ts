@@ -19,7 +19,7 @@ import {
   type Tuning,
 } from './model.ts'
 
-const MAX_FRET = 24
+export const MAX_FRET = 24
 
 export type Move =
   | 'prevColumn'
@@ -61,6 +61,7 @@ export type Action =
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
   | { readonly kind: 'reset' }
+  | { readonly kind: 'load'; readonly song: Song }
   | { readonly kind: 'setTitle'; readonly title: string }
   | { readonly kind: 'setTempo'; readonly tempo: string }
   | { readonly kind: 'addSection'; readonly after: number }
@@ -548,6 +549,9 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         },
       })
     }
+
+    case 'load':
+      return initialState(action.song)
 
     case 'reset':
       return initialState({

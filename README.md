@@ -30,8 +30,8 @@ leave with, not something you watch while typing.
 Edit mode shows the chart and the tab, in the order they will be rendered. The chart is the
 part you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the tuning dropdown, the tab-placement toggle, a Clear button and the mode
-toggle.
+The header carries the tuning dropdown, the tab-placement toggle, Save and Load, a Clear button
+and the mode toggle.
 
 Neither mode wraps. Rows are part of the document (§2), so how the tab is broken up is a
 decision you make once and both modes obey: the same bars sit together in the grid and in the
@@ -361,17 +361,67 @@ apply(state: EditorState, action: Action): EditorState   // pure
 
 ## 5. Persistence
 
-`localStorage`, one song, autosaved on change and loaded on mount. Serialization is
-`JSON.stringify` of the `Song` plus a schema version integer; an unreadable or
-version-mismatched blob is discarded in favour of an empty song. It is the app's only
-persistence I/O and lives in one module; the Copy button's clipboard write is the only other
-side effect, and it lives in `Output.tsx`.
+`localStorage`, one song, autosaved on change and loaded on mount. Save and Load in the header
+write and read the same bytes as a file on disk, so the format is defined once and `storage.ts`
+is the only module that knows it. The Copy button's clipboard write is the only other side
+effect, and it lives in `Output.tsx`.
+
+The document is `JSON.stringify` of the `Song` plus a schema version integer, indented — a file
+you might open in an editor. A saved file is named after the title, slugged behind the app name
+so a folder of them says what wrote them: *Endless Skies* becomes `tabsmith-endless-skies.json`,
+and an untitled song becomes `tabsmith.json`.
+
+Saving asks where to put the file. That is the File System Access API, which only Chromium
+implements — Firefox and Safari have no equivalent, and a page cannot open a save dialog in
+them at all. So the capability is read once and the button says what it will actually do:
+`Save as…` where a dialog will open, `Download` where the file can only land in the download
+folder. Promising a dialog that never appears would be the worse failure. A dismissed dialog is
+a decision, not a failure, and says nothing.
+
+```ts
+encode(song) => string
+decode(raw) => { ok: true; song } | { ok: false; error }
+filenameFor(song) => string
+```
+
+Loading is not a merge: it replaces the open song, and is confirmed the same way Clear is,
+by `songHasContent`. A file that will not decode leaves the editor alone and says why, in a
+dismissible line under the header — `localStorage` can discard a bad blob silently because
+nobody chose it, but a file is something you picked on purpose.
+
+### Old files still open
+
+Validation is a zod schema of the current `Song`, and it is the *only* thing that decides
+whether a document is valid. Versions before it are handled by a chain of migrations, one per
+version, each reshaping the document into the next version's shape and validating nothing —
+so an old version's rules never have to be restated, and a v1 file opens today:
+
+| From | Was | Migration |
+| --- | --- | --- |
+| 1 | bars in a flat list, no chord names | none needed; chord names arrived optional |
+| 2 | chord names on columns | wrap the bars in a single row |
+| 3 | rows, no song around them | wrap the score in an empty song |
+
+A column is checked against the tuning: one cell per string, refused rather than repaired,
+because a short column would otherwise draw as a half-empty staff and look like a document
+rather than a broken one. A version below 1 is refused too — there is no chain to migrate it
+along.
+
+Two rules keep this cheap as the schema keeps changing:
+
+- **A new field gets a `.default()`**, so a file written before it existed still parses and
+  needs no migration. Only a field that *changes shape* needs one.
+- **Unknown fields are dropped, not refused**, so a file written by a build one field ahead of
+  this one still opens. A version integer higher than this build's is refused outright and says
+  so — past that point guessing is worse than stopping.
 
 ## 6. Deliberately absent
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
-multiple songs, import or parsing of existing ASCII, rhythm and time signatures, playback,
-annotation lines above the staff, sharing, reordering sections.
+multiple songs open at once, import or parsing of existing ASCII, rhythm and time signatures,
+playback, annotation lines above the staff, sharing, reordering sections.
+
+A library of songs is the filesystem's job (§5): one song is open, the rest are files.
 
 Printing is the browser's: the ASCII view has a Print button and a `@media print` block that
 strips the chrome and puts black text on white paper. Saving a PDF is the browser's print
@@ -389,7 +439,8 @@ The immutable model makes undo/redo a history array if it turns out to be missed
 - Vite + React + TypeScript, `strict` on, no `any`.
 - Vitest for the core. No React Testing Library; the UI is verified by running it.
 - Plain CSS, one stylesheet. No UI framework, no styling library.
-- No runtime dependencies beyond React.
+- zod, for validating documents at the edge (§5). The only runtime dependency besides React,
+  and the only place it is used.
 
 ## 8. Layout
 
@@ -406,7 +457,7 @@ src/
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Output.tsx    <pre> of the rendered song + copy and print
     Shortcuts.tsx the §4 keymap as a list
-  storage.ts      load/save
+  storage.ts      the document format: encode, decode, migrations, load/save
 ```
 
 `core/` has no React import and no I/O.

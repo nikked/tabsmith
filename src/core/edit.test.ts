@@ -757,6 +757,22 @@ describe('songHasContent', () => {
     expect(typed(digit(3))).toBe(true)
   })
 
+  it('takes a loaded song whole, cursor and all', () => {
+    const loaded = {
+      ...initialState().song,
+      title: 'Endless Skies',
+      chart: [{ name: 'Intro', body: 'Am' }] as const,
+    }
+    const state = run(
+      initialState(),
+      digit(9),
+      { kind: 'move', move: 'nextColumn' },
+      { kind: 'load', song: loaded },
+    )
+    expect(state.song).toEqual(loaded)
+    expect(state.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
+  })
+
   it('resets the whole song but keeps the tuning', () => {
     const state = run(
       initialState(),
