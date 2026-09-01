@@ -53,7 +53,7 @@ type Bar = { readonly columns: readonly Column[] }
 type Score = {
   readonly tuning: Tuning
   readonly bars: readonly Bar[]
-  readonly defaultBarColumns: number    // new bars start at this width; default 8
+  readonly defaultBarColumns: number    // new bars start at this width; default 12
 }
 
 type Cursor = { readonly bar: number; readonly column: number; readonly slot: number }
@@ -78,7 +78,7 @@ Notes on the model:
 - **A chord name belongs to a column**, not to a bar or a beat: it is the annotation of the
   moment the column is. Absent and empty are the same thing, so an emptied field leaves no
   `chord` key behind and never reaches the ASCII.
-- **Bars own their columns.** Default 8, add/remove per bar freely. Bars may have different
+- **Bars own their columns.** Default 12, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
 - `Link` is a *prefix* on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
   suffix (`7~`). The union makes `{ kind: 'mute' }` structurally unable to carry either.
@@ -90,8 +90,9 @@ Notes on the model:
 - `Fret`'s `0..24` bound is enforced in `keymap.ts`, at the edge: a digit that would take the
   cell out of range replaces instead of appending (§4), and a single digit is always in range,
   so an out-of-range fret is unconstructible. The type stays a plain `number`.
-- `emptyScore` is Standard tuning, one bar of `defaultBarColumns` columns, cursor at bar 0 /
-  column 0 / the top string.
+- `emptyScore` is Standard tuning, two bars of `defaultBarColumns` columns, cursor at bar 0 /
+  column 0 / the top string. Two because one bar reads as a fragment, and the second is the
+  cheapest way to show that bars are the unit you work in.
 
 ## 2b. Tunings
 

@@ -52,7 +52,7 @@ export const TUNINGS = [
   { name: 'Bass', strings: ['G', 'D', 'A', 'E'] },
 ] as const satisfies readonly Tuning[]
 
-export const DEFAULT_BAR_COLUMNS = 8
+export const DEFAULT_BAR_COLUMNS = 12
 
 export const emptyCells = (strings: number): readonly (Cell | null)[] =>
   Array.from({ length: strings }, () => null)
@@ -67,6 +67,8 @@ export const emptyBar = (columns: number, strings: number): Bar => ({
 
 export const emptyScore = (): Score => ({
   tuning: TUNINGS[0],
-  bars: [emptyBar(DEFAULT_BAR_COLUMNS, TUNINGS[0].strings.length)],
+  bars: Array.from({ length: 2 }, () =>
+    emptyBar(DEFAULT_BAR_COLUMNS, TUNINGS[0].strings.length),
+  ),
   defaultBarColumns: DEFAULT_BAR_COLUMNS,
 })

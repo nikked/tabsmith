@@ -51,6 +51,7 @@ h1 {
   align-items: start;
   gap: 2.25rem 1.1rem;
   font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
   padding: 0.6rem;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -80,7 +81,7 @@ h1 {
 }
 
 .cell {
-  min-width: 1.5rem;
+  min-width: 1.5em;
   padding: 0.1rem 0.15rem;
   text-align: center;
   white-space: pre;
@@ -102,9 +103,8 @@ h1 {
 
 .chord {
   font: inherit;
-  font-size: 0.85em;
   width: 100%;
-  min-width: 2.5rem;
+  min-width: 2.5em;
   box-sizing: border-box;
   margin-top: 0.3rem;
   padding: 0.1rem 0.15rem;

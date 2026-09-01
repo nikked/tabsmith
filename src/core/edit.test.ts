@@ -7,7 +7,14 @@ import {
   retuneDropsNotes,
   type Action,
 } from './edit.ts'
-import { emptyBar, emptyScore, TUNINGS, type Cell, type EditorState } from './model.ts'
+import {
+  DEFAULT_BAR_COLUMNS,
+  emptyBar,
+  emptyScore,
+  TUNINGS,
+  type Cell,
+  type EditorState,
+} from './model.ts'
 
 const [STANDARD, DROP_D, BASS] = TUNINGS
 
@@ -15,6 +22,12 @@ const run = (state: EditorState, ...actions: readonly Action[]): EditorState =>
   actions.reduce(apply, state)
 
 const digit = (value: number): Action => ({ kind: 'digit', digit: value })
+
+/** The default score has two bars; the last-bar guards need a score with one. */
+const oneBar = (): EditorState => ({
+  ...initialState(),
+  score: { ...emptyScore(), bars: [emptyBar(DEFAULT_BAR_COLUMNS, 6)] },
+})
 
 const currentCell = (state: EditorState): Cell | null | undefined =>
   state.score.bars[state.cursor.bar]?.columns[state.cursor.column]?.cells[
@@ -137,6 +150,7 @@ describe('cursor clamping at score edges', () => {
   it('stays put at the last column of the last bar', () => {
     const state = run(
       initialState(),
+      { kind: 'move', move: 'nextBar' },
       { kind: 'move', move: 'barEnd' },
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
@@ -144,7 +158,7 @@ describe('cursor clamping at score edges', () => {
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
     )
-    expect(state.cursor).toEqual({ bar: 0, column: 7, slot: 5 })
+    expect(state.cursor).toEqual({ bar: 1, column: 11, slot: 5 })
     expect(apply(state, { kind: 'move', move: 'nextColumn' }).cursor).toEqual(
       state.cursor,
     )
@@ -160,7 +174,7 @@ describe('cursor clamping at score edges', () => {
     const twoBars = run(initialState(), { kind: 'addBar' })
     expect(twoBars.cursor).toEqual({ bar: 1, column: 0, slot: 0 })
     const back = apply(twoBars, { kind: 'move', move: 'prevColumn' })
-    expect(back.cursor).toEqual({ bar: 0, column: 7, slot: 0 })
+    expect(back.cursor).toEqual({ bar: 0, column: 11, slot: 0 })
     expect(apply(back, { kind: 'move', move: 'nextColumn' }).cursor).toEqual({
       bar: 1,
       column: 0,
@@ -177,14 +191,14 @@ describe('removeColumn', () => {
       digit(5),
     )
     const after = apply(state, { kind: 'removeColumn' })
-    expect(after.score.bars[0]?.columns).toHaveLength(8)
+    expect(after.score.bars[0]?.columns).toHaveLength(12)
   })
 
   it('removes an empty last column and pulls the cursor back', () => {
     const state = run(initialState(), { kind: 'move', move: 'barEnd' })
     const after = apply(state, { kind: 'removeColumn' })
-    expect(after.score.bars[0]?.columns).toHaveLength(7)
-    expect(after.cursor.column).toBe(6)
+    expect(after.score.bars[0]?.columns).toHaveLength(11)
+    expect(after.cursor.column).toBe(10)
   })
 
   it('refuses to take a bar below one column', () => {
@@ -198,12 +212,11 @@ describe('removeColumn', () => {
 })
 
 describe('removeBar', () => {
-  const threeBars = (): EditorState =>
-    run(initialState(), { kind: 'addBar' }, { kind: 'addBar' })
+  const threeBars = (): EditorState => run(initialState(), { kind: 'addBar' })
 
   it('removes the bar the cursor is in', () => {
     const state = run(threeBars(), digit(9))
-    expect(state.cursor.bar).toBe(2)
+    expect(state.cursor.bar).toBe(1)
     const after = apply(state, { kind: 'removeBar' })
     expect(after.score.bars).toHaveLength(2)
     expect(cellAt(after, 0, 0, 0)).toBeNull()
@@ -211,8 +224,9 @@ describe('removeBar', () => {
   })
 
   it('pulls the cursor back when the last bar goes', () => {
-    const after = apply(threeBars(), { kind: 'removeBar' })
-    expect(after.cursor.bar).toBe(1)
+    const onLastBar = run(threeBars(), { kind: 'move', move: 'nextBar' })
+    expect(onLastBar.cursor.bar).toBe(2)
+    expect(apply(onLastBar, { kind: 'removeBar' }).cursor.bar).toBe(1)
   })
 
   it('leaves earlier bars and their notes alone', () => {
@@ -223,12 +237,12 @@ describe('removeBar', () => {
       digit(5),
     )
     const after = apply(state, { kind: 'removeBar' })
-    expect(after.score.bars).toHaveLength(1)
+    expect(after.score.bars).toHaveLength(2)
     expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
   })
 
   it('refuses to remove the only bar', () => {
-    const state = run(initialState(), digit(7))
+    const state = run(oneBar(), digit(7))
     const after = apply(state, { kind: 'removeBar' })
     expect(after.score.bars).toHaveLength(1)
     expect(cellAt(after, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
@@ -236,26 +250,26 @@ describe('removeBar', () => {
 })
 
 describe('removeBarDropsNotes', () => {
-  const twoBars = (...actions: readonly Action[]): EditorState =>
-    run(initialState(), { kind: 'addBar' }, ...actions)
+  const edited = (...actions: readonly Action[]): EditorState =>
+    run(initialState(), ...actions)
 
   it('is false for an untouched bar', () => {
-    expect(removeBarDropsNotes(twoBars().score, 0)).toBe(false)
+    expect(removeBarDropsNotes(edited().score, 0)).toBe(false)
   })
 
   it('is true once any cell in the bar is filled', () => {
-    expect(removeBarDropsNotes(twoBars(digit(0)).score, 1)).toBe(true)
-    expect(removeBarDropsNotes(twoBars({ kind: 'mute' }).score, 1)).toBe(true)
+    expect(removeBarDropsNotes(edited(digit(0)).score, 0)).toBe(true)
+    expect(removeBarDropsNotes(edited({ kind: 'mute' }).score, 0)).toBe(true)
   })
 
   it('is false for the only bar, however full it is', () => {
-    const single = run(initialState(), digit(9))
+    const single = run(oneBar(), digit(9))
     expect(removeBarDropsNotes(single.score, 0)).toBe(false)
     expect(apply(single, { kind: 'removeBar' }).score.bars).toHaveLength(1)
   })
 
   it('is false for a bar index that does not exist', () => {
-    expect(removeBarDropsNotes(twoBars().score, 7)).toBe(false)
+    expect(removeBarDropsNotes(edited().score, 7)).toBe(false)
   })
 })
 
