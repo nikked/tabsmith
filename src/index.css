@@ -327,16 +327,91 @@ kbd {
   white-space: nowrap;
 }
 
-.modes {
+/* Both choices stay on screen with the live one pressed, so the control never
+   has to be read as "what will happen" rather than "what is". */
+.segmented {
   display: flex;
   gap: 0.25rem;
-  margin-left: auto;
 }
 
-.modes button[aria-pressed='true'] {
+.segmented button[aria-pressed='true'] {
   background: var(--fg);
   color: var(--bg);
   border-color: var(--fg);
+}
+
+.files {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Clear destroys as much as Open does, so a gap keeps it off the end of the
+   file actions rather than sitting flush against them. */
+.quiet {
+  margin-left: 1rem;
+  color: var(--muted);
+}
+
+.quiet:hover {
+  color: var(--fg);
+  border-color: var(--muted);
+}
+
+.modes {
+  margin-left: auto;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* The chevron is drawn on the wrapper rather than shipped as an image, so it
+   takes its colour from the theme like everything else. */
+.select {
+  position: relative;
+  display: inline-flex;
+}
+
+.select select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 2rem 0.3rem 0.7rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.select select:hover {
+  border-color: var(--muted);
+}
+
+.select::after {
+  content: '';
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.tab-strip h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 /* Print strips the chrome: what is left on paper is the song itself. */

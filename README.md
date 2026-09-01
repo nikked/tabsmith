@@ -31,8 +31,10 @@ leave with, not something you watch while typing.
   editor has to make its bindings discoverable without this document.
 - **ASCII** — the rendered song, read-only, with Copy and Print buttons.
 
-Edit mode shows the chart and the tab, in the order they will be rendered. The chart is the
-part you read on stage; the tab is there for the parts you have to look up.
+Edit mode always shows the chart first and the tab below it, whatever the placement control
+says. Where the tab goes is a question about the finished page, not about editing, and moving
+the thing you are working on to answer it would be a strange way to ask. The chart is the part
+you read on stage; the tab is there for the parts you have to look up.
 
 The header carries the tuning dropdown, the tab-placement toggle, Save and Load, a Clear button
 and the mode toggle.
