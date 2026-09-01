@@ -25,7 +25,9 @@
 
 body {
   margin: 0;
-  font: 16px/1.4 system-ui, sans-serif;
+  font:
+    16px/1.4 system-ui,
+    sans-serif;
   background: var(--bg);
   color: var(--fg);
 }

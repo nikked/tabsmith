@@ -32,9 +32,15 @@ describe('keyToAction', () => {
     const right: Action = { kind: 'move', move: 'nextColumn' }
     expect(keyToAction({ key: 'ArrowRight' })).toEqual(right)
     expect(keyToAction({ key: ' ' })).toEqual(right)
-    expect(keyToAction({ key: 'ArrowLeft' })).toEqual({ kind: 'move', move: 'prevColumn' })
+    expect(keyToAction({ key: 'ArrowLeft' })).toEqual({
+      kind: 'move',
+      move: 'prevColumn',
+    })
     expect(keyToAction({ key: 'ArrowUp' })).toEqual({ kind: 'move', move: 'stringUp' })
-    expect(keyToAction({ key: 'ArrowDown' })).toEqual({ kind: 'move', move: 'stringDown' })
+    expect(keyToAction({ key: 'ArrowDown' })).toEqual({
+      kind: 'move',
+      move: 'stringDown',
+    })
     expect(keyToAction({ key: 'Home' })).toEqual({ kind: 'move', move: 'barStart' })
     expect(keyToAction({ key: 'End' })).toEqual({ kind: 'move', move: 'barEnd' })
   })
@@ -77,10 +83,32 @@ describe('typing a riff', () => {
   it('renders the ASCII the keys describe', () => {
     const state = type(
       initialState(),
-      'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown',
-      '0', ' ', '0', ' ', '3', ' ', 'x', ' ',
-      'ArrowUp', '5', ' ', '7', 'h', ' ',
-      'ArrowUp', 'ArrowUp', '1', '2', 'b', '1', '4',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      '0',
+      ' ',
+      '0',
+      ' ',
+      '3',
+      ' ',
+      'x',
+      ' ',
+      'ArrowUp',
+      '5',
+      ' ',
+      '7',
+      'h',
+      ' ',
+      'ArrowUp',
+      'ArrowUp',
+      '1',
+      '2',
+      'b',
+      '1',
+      '4',
     )
     expect(renderScore(state.song.tab)).toBe(
       [
@@ -99,8 +127,18 @@ describe('switching Standard to Drop D', () => {
   it('changes only the low row label', () => {
     const state = type(
       initialState(),
-      'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown',
-      '1', '2', ' ', '5', 'h', ' ', '7',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowDown',
+      '1',
+      '2',
+      ' ',
+      '5',
+      'h',
+      ' ',
+      '7',
     )
     const before = renderScore(state.song.tab).split('\n')
     const after = renderScore(

@@ -90,8 +90,7 @@ type BarRef = { readonly row: number; readonly bar: number }
 const barAt = (score: Score, row: number, bar: number): Bar | undefined =>
   score.rows[row]?.bars[bar]
 
-const allBars = (score: Score): readonly Bar[] =>
-  score.rows.flatMap((row) => row.bars)
+const allBars = (score: Score): readonly Bar[] => score.rows.flatMap((row) => row.bars)
 
 /**
  * One definition of what counts as work, so the Clear prompt and the delete
@@ -109,16 +108,13 @@ const rowHasHeading = (row: Row): boolean =>
 const rowHasContent = (row: Row): boolean =>
   rowHasHeading(row) || row.bars.some(barHasContent)
 
-const barCount = (score: Score, row: number): number =>
-  score.rows[row]?.bars.length ?? 0
+const barCount = (score: Score, row: number): number => score.rows[row]?.bars.length ?? 0
 
 const columnCount = (score: Score, row: number, bar: number): number =>
   barAt(score, row, bar)?.columns.length ?? 0
 
 const cellAt = (score: Score, cursor: Cursor): Cell | null =>
-  barAt(score, cursor.row, cursor.bar)?.columns[cursor.column]?.cells[
-    cursor.slot
-  ] ?? null
+  barAt(score, cursor.row, cursor.bar)?.columns[cursor.column]?.cells[cursor.slot] ?? null
 
 const fretCellAt = (
   score: Score,
@@ -304,7 +300,6 @@ export const retuneDropsNotes = (score: Score, tuning: Tuning): boolean => {
   )
 }
 
-
 const defaultChart = (chart: readonly Section[]): boolean => {
   const blank = emptySong().chart
   return (
@@ -330,10 +325,7 @@ const withTab = (state: EditorState, tab: Score): EditorState => ({
   song: { ...state.song, tab },
 })
 
-const withChart = (
-  state: EditorState,
-  chart: readonly Section[],
-): EditorState => ({
+const withChart = (state: EditorState, chart: readonly Section[]): EditorState => ({
   ...state,
   song: { ...state.song, chart },
 })
@@ -423,9 +415,7 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     }
 
     case 'clear':
-      return resetDigits(
-        withTab(state, setCell(state.song.tab, state.cursor, null)),
-      )
+      return resetDigits(withTab(state, setCell(state.song.tab, state.cursor, null)))
 
     case 'move':
       return resetDigits({

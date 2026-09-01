@@ -1,13 +1,4 @@
-import type {
-  Bar,
-  Cell,
-  Column,
-  Decoration,
-  Row,
-  Score,
-  Section,
-  Song,
-} from './model.ts'
+import type { Bar, Cell, Column, Decoration, Row, Score, Section, Song } from './model.ts'
 
 const PAD = '-'
 
@@ -19,8 +10,7 @@ const decorationText = (decoration: Decoration): string => {
 export const cellText = (cell: Cell | null | undefined): string => {
   if (cell === null || cell === undefined) return ''
   if (cell.kind === 'mute') return 'x'
-  const decoration =
-    cell.decoration === undefined ? '' : decorationText(cell.decoration)
+  const decoration = cell.decoration === undefined ? '' : decorationText(cell.decoration)
   return `${cell.link ?? ''}${cell.fret}${decoration}`
 }
 

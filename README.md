@@ -9,12 +9,16 @@ Single user, single song, no backend.
 ## Running it
 
 ```sh
-pnpm install
-pnpm dev      # http://localhost:5173
-pnpm test     # vitest
-pnpm build    # tsc -b && vite build
-pnpm lint     # oxlint
+make dev            # http://localhost:5173
+make test           # vitest
+make build          # tsc -b && vite build
+make lint           # oxlint, fixing what it can
+make format         # prettier --write
+make qa-check       # everything CI runs
 ```
+
+Every target installs first, so `make dev` on a fresh clone is the whole setup. CI runs `tc`,
+`test`, `lint-check` and `format-check` on every push.
 
 ## 1. Shape of the thing
 
@@ -22,7 +26,7 @@ Two modes, toggled in the header. Only one is on screen at a time — the ASCII 
 leave with, not something you watch while typing.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
-  grouped into rows. Fixed-width boxes, current cell highlighted. This is *not* ASCII; it's a
+  grouped into rows. Fixed-width boxes, current cell highlighted. This is _not_ ASCII; it's a
   grid of boxes, so alignment is free. Below it sits the §4 keymap, because a keyboard-driven
   editor has to make its bindings discoverable without this document.
 - **ASCII** — the rendered song, read-only, with Copy and Print buttons.
@@ -135,7 +139,7 @@ Notes on the model:
   on `Bar` is what makes a bar in two rows, or in none, unconstructible — the same reason a
   column holds its own cells. A row holds at least one bar and a score at least one row, so
   removing the last bar of a row removes the row with it.
-- `Link` is a *prefix* on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
+- `Link` is a _prefix_ on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
   suffix (`7~`). The union makes `{ kind: 'mute' }` structurally unable to carry either.
 - **A bend's target is optional.** `{ kind: 'b' }` renders `7b`, `{ kind: 'b', to: 9 }` renders
   `7b9`. So `b` is useful on its own keystroke and the target is something you add, never an
@@ -180,7 +184,7 @@ saved document survives edits to the preset list.
 
 ### Switching tuning
 
-A column has exactly one cell per string, so a grid row index *is* the index into the column —
+A column has exactly one cell per string, so a grid row index _is_ the index into the column —
 one index space, no translation anywhere.
 
 Between two tunings of the same string count (Standard ↔ Drop D) retuning is a pure relabel:
@@ -283,23 +287,23 @@ already the right keymap for it.
 
 Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 
-| Key | Action |
-| --- | --- |
-| `0`–`9` | Set fret. A second digit at the same cell appends when the result is ≤ 24, otherwise replaces. |
-| `x` | Mute |
-| `h` `p` `/` `\` | Set the link on the current note |
-| `b` | Bend the current note. Digits typed next set the bend target, not the fret. |
-| `~` | Vibrato on the current note |
-| `Backspace` `Delete` | Clear the cell. Neither moves the cursor. |
-| `←` `→` | Previous / next column, crossing bar and row boundaries |
-| `↑` `↓` | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
-| `Space` | Next column, identical to `→` |
-| `Home` `End` | First / last column of the current bar |
-| `Tab` `Shift+Tab` | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it. |
-| `Enter` | Append a bar after the current one and move into it |
-| `Shift+Enter` | Remove the current bar. Confirms first when it holds anything; never removes the only bar. |
-| `]` `[` | Add a column to the current bar / remove the last one (only when empty, never below 1) |
-| `}` `{` | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row. |
+| Key                  | Action                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`–`9`              | Set fret. A second digit at the same cell appends when the result is ≤ 24, otherwise replaces.                                                                                 |
+| `x`                  | Mute                                                                                                                                                                           |
+| `h` `p` `/` `\`      | Set the link on the current note                                                                                                                                               |
+| `b`                  | Bend the current note. Digits typed next set the bend target, not the fret.                                                                                                    |
+| `~`                  | Vibrato on the current note                                                                                                                                                    |
+| `Backspace` `Delete` | Clear the cell. Neither moves the cursor.                                                                                                                                      |
+| `←` `→`              | Previous / next column, crossing bar and row boundaries                                                                                                                        |
+| `↑` `↓`              | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
+| `Space`              | Next column, identical to `→`                                                                                                                                                  |
+| `Home` `End`         | First / last column of the current bar                                                                                                                                         |
+| `Tab` `Shift+Tab`    | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it.       |
+| `Enter`              | Append a bar after the current one and move into it                                                                                                                            |
+| `Shift+Enter`        | Remove the current bar. Confirms first when it holds anything; never removes the only bar.                                                                                     |
+| `]` `[`              | Add a column to the current bar / remove the last one (only when empty, never below 1)                                                                                         |
+| `}` `{`              | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row.         |
 
 No timing is involved: `digitPending` is cleared by actions, never by elapsed time, so `1` `0`
 on one cell is fret 10 however long you take between the two keys. A timeout would put a clock
@@ -318,7 +322,7 @@ Clicking a grid cell sets the cursor. Under each column sits a text field for it
 reached by `↓` from the lowest string or by clicking it, and left by `Enter`, `Escape` or `↑`.
 Those are the only mouse interactions: no drag, no selection.
 
-The field holds *focus*, not the cursor. It is a DOM concern and stays one: `Cursor` keeps
+The field holds _focus_, not the cursor. It is a DOM concern and stays one: `Cursor` keeps
 meaning a cell, the reducer never has to describe a position that holds no note, and the cursor
 sits waiting on the lowest string for the `↑` that comes back to it. The field also stops its
 keys from reaching the staff, which would otherwise read a chord name as a keymap sequence —
@@ -368,7 +372,7 @@ effect, and it lives in `Output.tsx`.
 
 The document is `JSON.stringify` of the `Song` plus a schema version integer, indented — a file
 you might open in an editor. A saved file is named after the title, slugged behind the app name
-so a folder of them says what wrote them: *Endless Skies* becomes `tabsmith-endless-skies.json`,
+so a folder of them says what wrote them: _Endless Skies_ becomes `tabsmith-endless-skies.json`,
 and an untitled song becomes `tabsmith.json`.
 
 Saving asks where to put the file. That is the File System Access API, which only Chromium
@@ -391,16 +395,16 @@ nobody chose it, but a file is something you picked on purpose.
 
 ### Old files still open
 
-Validation is a zod schema of the current `Song`, and it is the *only* thing that decides
+Validation is a zod schema of the current `Song`, and it is the _only_ thing that decides
 whether a document is valid. Versions before it are handled by a chain of migrations, one per
 version, each reshaping the document into the next version's shape and validating nothing —
 so an old version's rules never have to be restated, and a v1 file opens today:
 
-| From | Was | Migration |
-| --- | --- | --- |
-| 1 | bars in a flat list, no chord names | none needed; chord names arrived optional |
-| 2 | chord names on columns | wrap the bars in a single row |
-| 3 | rows, no song around them | wrap the score in an empty song |
+| From | Was                                 | Migration                                 |
+| ---- | ----------------------------------- | ----------------------------------------- |
+| 1    | bars in a flat list, no chord names | none needed; chord names arrived optional |
+| 2    | chord names on columns              | wrap the bars in a single row             |
+| 3    | rows, no song around them           | wrap the score in an empty song           |
 
 A column is checked against the tuning: one cell per string, refused rather than repaired,
 because a short column would otherwise draw as a half-empty staff and look like a document
@@ -410,7 +414,7 @@ along.
 Two rules keep this cheap as the schema keeps changing:
 
 - **A new field gets a `.default()`**, so a file written before it existed still parses and
-  needs no migration. Only a field that *changes shape* needs one.
+  needs no migration. Only a field that _changes shape_ needs one.
 - **Unknown fields are dropped, not refused**, so a file written by a build one field ahead of
   this one still opens. A version integer higher than this build's is refused outright and says
   so — past that point guessing is worse than stopping.
@@ -440,6 +444,7 @@ The immutable model makes undo/redo a history array if it turns out to be missed
 - Vitest for the core. No React Testing Library; the UI is verified by running it.
 - Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin for the palette:
   Latte in the light, Macchiato in the dark.
+- oxlint and prettier, driven by the Makefile so CI and a terminal run the same commands.
 - zod, for validating documents at the edge (§5). The only runtime dependency besides React,
   and the only place it is used.
 

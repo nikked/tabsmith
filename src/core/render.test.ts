@@ -21,7 +21,10 @@ const place = (bar: Bar, ...placements: readonly Placement[]): Bar =>
     (acc, [column, slot, cell]) => ({
       columns: acc.columns.map((col, c) =>
         c === column
-          ? { ...col, cells: col.cells.map((existing, s) => (s === slot ? cell : existing)) }
+          ? {
+              ...col,
+              cells: col.cells.map((existing, s) => (s === slot ? cell : existing)),
+            }
           : col,
       ),
     }),
@@ -261,11 +264,7 @@ describe('chord names', () => {
   })
 
   it('offsets a name by the bars before it in its own row', () => {
-    const score = scoreOf(
-      STANDARD,
-      emptyBar(2, 6),
-      chords(emptyBar(2, 6), [1, 'Am']),
-    )
+    const score = scoreOf(STANDARD, emptyBar(2, 6), chords(emptyBar(2, 6), [1, 'Am']))
     expect(renderScore(score).split('\n')[0]).toBe('e|---|---|')
     expect(renderScore(score).split('\n')[6]).toBe('        Am')
   })

@@ -237,19 +237,25 @@ describe('decode rejects', () => {
   })
 
   it('a tuning with no usable string labels', () => {
-    expect(rejects(stored({ ...emptyScore(), tuning: { name: 'x', strings: [] } }))).toBeTruthy()
+    expect(
+      rejects(stored({ ...emptyScore(), tuning: { name: 'x', strings: [] } })),
+    ).toBeTruthy()
     expect(
       rejects(stored({ ...emptyScore(), tuning: { name: 'x', strings: [1, 2] } })),
     ).toBeTruthy()
   })
 
   it('a bar with no columns, and a row with no bars', () => {
-    expect(rejects(stored({ ...emptyScore(), rows: [{ bars: [{ columns: [] }] }] }))).toBeTruthy()
+    expect(
+      rejects(stored({ ...emptyScore(), rows: [{ bars: [{ columns: [] }] }] })),
+    ).toBeTruthy()
     expect(rejects(stored({ ...emptyScore(), rows: [{ bars: [] }] }))).toBeTruthy()
   })
 
   it('bars that are not wrapped in a row', () => {
-    expect(rejects(stored({ ...emptyScore(), rows: emptyScore().rows[0]?.bars }))).toBeTruthy()
+    expect(
+      rejects(stored({ ...emptyScore(), rows: emptyScore().rows[0]?.bars })),
+    ).toBeTruthy()
   })
 
   it('a row title that is not a string', () => {
@@ -262,7 +268,11 @@ describe('decode rejects', () => {
     const broken = {
       ...emptyScore(),
       rows: [
-        { bars: [{ columns: [{ cells: [null, null, null, null, null, null], chord: 7 }] }] },
+        {
+          bars: [
+            { columns: [{ cells: [null, null, null, null, null, null], chord: 7 }] },
+          ],
+        },
       ],
     }
     expect(rejects(stored(broken))).toBeTruthy()
@@ -272,7 +282,11 @@ describe('decode rejects', () => {
     const broken = {
       ...emptyScore(),
       rows: [
-        { bars: [{ columns: [{ cells: [{ kind: 'wat' }, null, null, null, null, null] }] }] },
+        {
+          bars: [
+            { columns: [{ cells: [{ kind: 'wat' }, null, null, null, null, null] }] },
+          ],
+        },
       ],
     }
     expect(rejects(stored(broken))).toBeTruthy()
@@ -284,7 +298,10 @@ describe('older files still open', () => {
   const noted = {
     columns: bar.columns.map((column, index) =>
       index === 0
-        ? { ...column, cells: column.cells.map((c, s) => (s === 2 ? { kind: 'fret', fret: 7 } : c)) }
+        ? {
+            ...column,
+            cells: column.cells.map((c, s) => (s === 2 ? { kind: 'fret', fret: 7 } : c)),
+          }
         : column,
     ),
   }
@@ -320,7 +337,10 @@ describe('older files still open', () => {
 
   it('a v3 score, which had rows but no song around them', () => {
     const song = opened(
-      JSON.stringify({ version: 3, score: { ...emptyScore(), rows: [{ bars: [noted] }] } }),
+      JSON.stringify({
+        version: 3,
+        score: { ...emptyScore(), rows: [{ bars: [noted] }] },
+      }),
     )
     expect(song.tab.rows).toEqual([{ bars: [noted] }])
     expect(song.tabFirst).toBe(false)
@@ -340,9 +360,7 @@ describe('older files still open', () => {
   })
 
   it('drops a field it has never heard of rather than refusing the file', () => {
-    const song = opened(
-      JSON.stringify({ version: 4, song: { ...emptySong(), capo: 3 } }),
-    )
+    const song = opened(JSON.stringify({ version: 4, song: { ...emptySong(), capo: 3 } }))
     expect(song).toEqual(emptySong())
   })
 })

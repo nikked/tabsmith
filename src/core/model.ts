@@ -3,8 +3,7 @@ export type Fret = number
 export type Link = 'h' | 'p' | '/' | '\\'
 
 export type Decoration =
-  | { readonly kind: 'b'; readonly to?: Fret }
-  | { readonly kind: '~' }
+  { readonly kind: 'b'; readonly to?: Fret } | { readonly kind: '~' }
 
 export type Cell =
   | {

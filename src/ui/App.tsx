@@ -1,10 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import {
-  apply,
-  initialState,
-  retuneDropsNotes,
-  songHasContent,
-} from '../core/edit.ts'
+import { apply, initialState, retuneDropsNotes, songHasContent } from '../core/edit.ts'
 import { TUNINGS } from '../core/model.ts'
 import { decode, encode, filenameFor, load, save } from '../storage.ts'
 import { Chart } from './Chart.tsx'
@@ -121,7 +116,9 @@ export default function App() {
         </select>
         <button
           type="button"
-          onClick={() => dispatch({ kind: 'setTabFirst', tabFirst: !state.song.tabFirst })}
+          onClick={() =>
+            dispatch({ kind: 'setTabFirst', tabFirst: !state.song.tabFirst })
+          }
         >
           {state.song.tabFirst ? 'Tab first' : 'Tab last'}
         </button>

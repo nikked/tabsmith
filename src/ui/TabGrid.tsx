@@ -1,10 +1,4 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  type Dispatch,
-  type KeyboardEvent,
-} from 'react'
+import { Fragment, useEffect, useRef, type Dispatch, type KeyboardEvent } from 'react'
 import {
   atFirstBar,
   atLastBar,
@@ -233,9 +227,8 @@ export function TabGrid({ state, dispatch }: Props) {
                     <input
                       key={columnIndex}
                       ref={(node) => {
-                        chordFields.current[
-                          `${rowIndex}:${barIndex}:${columnIndex}`
-                        ] = node
+                        chordFields.current[`${rowIndex}:${barIndex}:${columnIndex}`] =
+                          node
                       }}
                       className="chord"
                       size={1}

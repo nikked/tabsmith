@@ -97,7 +97,11 @@ type Doc = Record<string, unknown>
 
 const MIGRATIONS: readonly ((doc: Doc) => Doc)[] = [
   (v1) => v1, // chord names arrived optional, so v1 is already a v2
-  (v2) => ({ tuning: v2.tuning, defaultBarColumns: v2.defaultBarColumns, rows: [{ bars: v2.bars }] }),
+  (v2) => ({
+    tuning: v2.tuning,
+    defaultBarColumns: v2.defaultBarColumns,
+    rows: [{ bars: v2.bars }],
+  }),
   (v3) => ({
     title: '',
     tempo: '',
