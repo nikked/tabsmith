@@ -25,6 +25,7 @@
 
 body {
   margin: 0;
+  -webkit-text-size-adjust: 100%;
   font:
     16px/1.4 system-ui,
     sans-serif;
@@ -46,7 +47,8 @@ main {
 header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
 }
 
 /**
@@ -119,11 +121,13 @@ h1 img {
 
 .row-title {
   width: 14em;
+  max-width: 40vw;
   font-weight: 600;
 }
 
 .row-note {
   width: 30em;
+  max-width: 55vw;
   color: var(--muted);
 }
 
@@ -693,5 +697,57 @@ kbd {
   /* A staff split down the middle by a page break is unreadable. */
   .output pre {
     break-inside: avoid;
+  }
+}
+
+/**
+ * A phone. iOS zooms the page whenever a field smaller than 16px takes focus,
+ * which leaves the app scrolled sideways and the caret somewhere off screen —
+ * so every field that can be tapped is 16px there, whatever the staff around it
+ * is set in. The tab still scrolls sideways, which is what it does anywhere.
+ */
+@media (max-width: 40rem) {
+  main {
+    padding: 0.9rem;
+    gap: 1.1rem;
+  }
+
+  .chart input,
+  .chart textarea,
+  .chord,
+  .row-title,
+  .row-note {
+    font-size: 16px;
+  }
+
+  .chart .title {
+    font-size: 1.25rem;
+  }
+
+  .row-title,
+  .row-note {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .row-head {
+    flex-wrap: wrap;
+    gap: 0.15rem 0.5rem;
+  }
+
+  /* Two columns of keys do not fit; the key and what it does stack instead. */
+  .guide {
+    padding: 1.1rem;
+  }
+
+  .guide dl,
+  .shortcuts dl {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .guide dd,
+  .shortcuts dd {
+    margin-bottom: 0.5rem;
   }
 }
