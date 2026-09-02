@@ -3,8 +3,11 @@ import { Fragment, type RefObject } from 'react'
 type Shortcut = {
   readonly keys: readonly string[]
   readonly does: string
-  /** Shown in the panel as well as the guide: the ones you cannot guess. */
-  readonly essential?: boolean
+  /**
+   * The few worth keeping on screen, and the word the footer names them by.
+   * The guide still shows the full sentence: one list, two readings of it.
+   */
+  readonly legend?: string
 }
 
 type Group = {
@@ -23,7 +26,7 @@ const GROUPS: readonly Group[] = [
       {
         keys: ['Tab', 'Shift+Tab'],
         does: 'Next / previous bar. At either end, focus leaves the tab.',
-        essential: true,
+        legend: 'next/prev bar',
       },
       { keys: ['Click'], does: 'Move the cursor to a cell' },
     ],
@@ -53,34 +56,28 @@ const GROUPS: readonly Group[] = [
       {
         keys: ['Enter', 'Shift+Enter'],
         does: 'Add a bar after this one / remove this bar. Asks when it holds anything.',
-        essential: true,
+        legend: 'add/remove bar',
       },
       {
         keys: [']', '['],
         does: 'Add a column / remove the last empty one',
-        essential: true,
+        legend: 'add/remove column',
       },
       {
         keys: ['}', '{'],
         does: 'Start a new row below / remove this row. Asks when it holds anything.',
-        essential: true,
+        legend: 'add/remove row',
       },
     ],
   },
 ]
 
-const ESSENTIALS: readonly Shortcut[] = GROUPS.flatMap((group) =>
-  group.shortcuts.filter((shortcut) => shortcut.essential === true),
+const LEGEND: readonly Shortcut[] = GROUPS.flatMap((group) =>
+  group.shortcuts.filter((shortcut) => shortcut.legend !== undefined),
 )
 
 function Keys({ keys }: { readonly keys: readonly string[] }) {
-  return (
-    <dt>
-      {keys.map((key) => (
-        <kbd key={key}>{key}</kbd>
-      ))}
-    </dt>
-  )
+  return keys.map((key) => <kbd key={key}>{key}</kbd>)
 }
 
 function List({ shortcuts }: { readonly shortcuts: readonly Shortcut[] }) {
@@ -88,7 +85,9 @@ function List({ shortcuts }: { readonly shortcuts: readonly Shortcut[] }) {
     <dl>
       {shortcuts.map(({ keys, does }) => (
         <Fragment key={keys.join(' ')}>
-          <Keys keys={keys} />
+          <dt>
+            <Keys keys={keys} />
+          </dt>
           <dd>{does}</dd>
         </Fragment>
       ))}
@@ -113,11 +112,20 @@ type Props = {
 export function Shortcuts({ guide, onShowKeys }: Props) {
   return (
     <section className="shortcuts">
-      <h2>Keys</h2>
-      <List shortcuts={ESSENTIALS} />
-      <button type="button" onClick={onShowKeys}>
-        All keys <kbd>?</kbd>
-      </button>
+      <p className="legend">
+        {LEGEND.map(({ keys, legend }) => (
+          <span key={keys.join(' ')}>
+            <Keys keys={keys} />
+            {legend}
+          </span>
+        ))}
+        <span>
+          <button type="button" className="askey" onClick={onShowKeys}>
+            ?
+          </button>
+          all keys
+        </span>
+      </p>
 
       <dialog ref={guide} className="guide">
         <h2>Keys</h2>

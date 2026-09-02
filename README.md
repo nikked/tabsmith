@@ -27,9 +27,9 @@ leave with, not something you watch while typing.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
   grouped into rows. Fixed-width boxes, current cell highlighted. This is _not_ ASCII; it's a
-  grid of boxes, so alignment is free. Below it sit the handful of §4 bindings you could not
-  guess, because a keyboard-driven editor has to be discoverable without this document; the
-  rest are a keypress away in a dialog rather than taking up permanent room.
+  grid of boxes, so alignment is free. Under it runs a quiet legend of the four §4 bindings you
+  could not guess, because a keyboard-driven editor has to be discoverable without this
+  document; the rest are a keypress away in a dialog rather than taking up permanent room.
 - **ASCII** — the rendered song, read-only, with Copy and Print buttons.
 
 Edit mode always shows the chart first and the tab below it, whatever the placement control
@@ -37,8 +37,16 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the tuning dropdown, the tab-placement toggle, Save and Load, a Clear button
-and the mode toggle.
+The header carries the file actions, Clear and the mode toggle. Nothing in it is loud except
+the mode toggle, which is the one control you reach for constantly.
+
+The editor is set like the page it prints rather than like a form. The song's title is the
+largest thing on it, section names are headings, and the fields have no boxes: an underline
+appears under the pointer to say the text is editable and firms up on focus to say it is being
+edited. What is machinery recedes — the tab's tuning and placement are a hairline caption, a
+section's controls wait until it is hovered or focused, and the keymap is a muted legend at the
+foot. A chord chart is prose and gets a measure to read at; the tab is as wide as its rows need
+and scrolls, so the two deliberately do not line up.
 
 Neither mode wraps. Rows are part of the document (§2), so how the tab is broken up is a
 decision you make once and both modes obey: the same bars sit together in the grid and in the

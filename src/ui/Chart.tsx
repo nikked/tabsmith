@@ -51,20 +51,23 @@ export function Chart({ song, dispatch }: Props) {
                 setSection(index, { ...section, name: event.target.value })
               }
             />
-            <input
-              className="section-repeat"
-              type="number"
-              min={1}
-              aria-label={`Section ${index + 1} repeat`}
-              placeholder="x"
-              value={section.repeat ?? ''}
-              onChange={(event) =>
-                setSection(index, {
-                  ...section,
-                  repeat: parseRepeat(event.target.value),
-                })
-              }
-            />
+            <label className="repeat">
+              ×
+              <input
+                className="section-repeat"
+                type="number"
+                min={1}
+                aria-label={`Section ${index + 1} repeat`}
+                placeholder="1"
+                value={section.repeat ?? ''}
+                onChange={(event) =>
+                  setSection(index, {
+                    ...section,
+                    repeat: parseRepeat(event.target.value),
+                  })
+                }
+              />
+            </label>
             <button
               type="button"
               title="Add a section below"
@@ -84,7 +87,7 @@ export function Chart({ song, dispatch }: Props) {
           <textarea
             aria-label={`Section ${index + 1} chords`}
             spellCheck={false}
-            rows={Math.max(3, section.body.split('\n').length + 1)}
+            rows={Math.max(2, section.body.split('\n').length + 1)}
             value={section.body}
             onChange={(event) =>
               setSection(index, { ...section, body: event.target.value })
