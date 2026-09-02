@@ -1,0 +1,50 @@
+name: pages
+run-name: pages
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# What deploy-pages needs to publish, and nothing else.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'pnpm'
+      - name: Build the site
+        run: |
+          make build
+      # Turns Pages on if it is not already, so a fresh clone of this repo
+      # deploys without anyone setting it up by hand first.
+      - uses: actions/configure-pages@v6
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  Deploy:
+    needs: Build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

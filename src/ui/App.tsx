@@ -122,7 +122,12 @@ export default function App() {
     <main>
       <header>
         <h1>
-          <img src="/favicon.svg" alt="" width="20" height="20" />
+          <img
+            src={`${import.meta.env.BASE_URL}favicon.svg`}
+            alt=""
+            width="20"
+            height="20"
+          />
           tabsmith
         </h1>
         <div className="files" role="group" aria-label="File">
