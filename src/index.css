@@ -207,6 +207,34 @@ h1 img {
   border-radius: 2px 2px 0 0;
 }
 
+/**
+ * A name longer than its field is fine to clip while you are not in it, but not
+ * while you are typing it. The focused field grows to what it holds, never
+ * below the width it already had, so nothing shrinks under the caret.
+ *
+ * field-sizing is Chromium-only for now. Elsewhere the value scrolls inside the
+ * field as it always has, which is what these did before.
+ */
+.chord:focus,
+.row-title:focus,
+.row-note:focus {
+  field-sizing: content;
+  /* An explicit width would win over field-sizing, so it has to go. */
+  width: auto;
+}
+
+.chord:focus {
+  min-width: 2.5em;
+}
+
+.row-title:focus {
+  min-width: 14em;
+}
+
+.row-note:focus {
+  min-width: 30em;
+}
+
 .error {
   display: flex;
   align-items: center;
