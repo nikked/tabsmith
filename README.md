@@ -27,8 +27,9 @@ leave with, not something you watch while typing.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
   grouped into rows. Fixed-width boxes, current cell highlighted. This is _not_ ASCII; it's a
-  grid of boxes, so alignment is free. Below it sits the §4 keymap, because a keyboard-driven
-  editor has to make its bindings discoverable without this document.
+  grid of boxes, so alignment is free. Below it sit the handful of §4 bindings you could not
+  guess, because a keyboard-driven editor has to be discoverable without this document; the
+  rest are a keypress away in a dialog rather than taking up permanent room.
 - **ASCII** — the rendered song, read-only, with Copy and Print buttons.
 
 Edit mode always shows the chart first and the tab below it, whatever the placement control
@@ -287,25 +288,33 @@ characters wide. Every string line is that same length.
 This is the tab grid. The chart is ordinary text fields, and the browser's own editing is
 already the right keymap for it.
 
+Only the bindings you could not guess are on the page: the ones that add and remove bars,
+columns and rows, and `Tab`, which does something other than move focus. Everything else lives
+in a dialog behind `?` and the _All keys_ button, grouped into moving around, writing notes,
+technique, and structure. A list long enough to hold all of it is a list nobody reads.
+
+The dialog is a native `<dialog>`, so Escape, the backdrop and the focus trap are the browser's
+rather than this app's. Whether it is open is the element's own business and is deliberately not
+mirrored in React state — two copies of one fact drift the moment the browser closes it without
+being asked.
+
 Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 
-| Key                  | Action                                                                                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `0`–`9`              | Set fret. A second digit at the same cell appends when the result is ≤ 24, otherwise replaces.                                                                                 |
-| `x`                  | Mute                                                                                                                                                                           |
-| `h` `p` `/` `\`      | Set the link on the current note                                                                                                                                               |
-| `b`                  | Bend the current note. Digits typed next set the bend target, not the fret.                                                                                                    |
-| `~`                  | Vibrato on the current note                                                                                                                                                    |
-| `Backspace` `Delete` | Clear the cell. Neither moves the cursor.                                                                                                                                      |
-| `←` `→`              | Previous / next column, crossing bar and row boundaries                                                                                                                        |
-| `↑` `↓`              | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
-| `Space`              | Next column, identical to `→`                                                                                                                                                  |
-| `Home` `End`         | First / last column of the current bar                                                                                                                                         |
-| `Tab` `Shift+Tab`    | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it.       |
-| `Enter`              | Append a bar after the current one and move into it                                                                                                                            |
-| `Shift+Enter`        | Remove the current bar. Confirms first when it holds anything; never removes the only bar.                                                                                     |
-| `]` `[`              | Add a column to the current bar / remove the last one (only when empty, never below 1)                                                                                         |
-| `}` `{`              | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row.         |
+| Key                   | Action                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`–`9`               | Set fret. A second digit at the same cell appends when the result is ≤ 24, otherwise replaces.                                                                                 |
+| `x`                   | Mute                                                                                                                                                                           |
+| `h` `p` `/` `\`       | Set the link on the current note                                                                                                                                               |
+| `b`                   | Bend the current note. Digits typed next set the bend target, not the fret.                                                                                                    |
+| `~`                   | Vibrato on the current note                                                                                                                                                    |
+| `Backspace` `Delete`  | Clear the cell. Neither moves the cursor.                                                                                                                                      |
+| `←` `→`               | Previous / next column, crossing bar and row boundaries                                                                                                                        |
+| `↑` `↓`               | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
+| `Tab` `Shift+Tab`     | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it.       |
+| `Enter` `Shift+Enter` | Append a bar after the current one and move into it / remove the current bar. Confirms when it holds anything; never removes the only bar.                                     |
+| `]` `[`               | Add a column to the current bar / remove the last one (only when empty, never below 1)                                                                                         |
+| `}` `{`               | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row.         |
+| `?`                   | Open the full keymap                                                                                                                                                           |
 
 No timing is involved: `digitPending` is cleared by actions, never by elapsed time, so `1` `0`
 on one cell is fret 10 however long you take between the two keys. A timeout would put a clock
@@ -321,7 +330,7 @@ returns the state unchanged. Modifiers are always typed after the fret, so `9` t
 `h9`.
 
 Clicking a grid cell sets the cursor. Under each column sits a text field for its chord name,
-reached by `↓` from the lowest string or by clicking it, and left by `Enter`, `Escape` or `↑`.
+reached by `↓` from the lowest string or by clicking it, and left by `↑` or `↓`.
 Those are the only mouse interactions: no drag, no selection.
 
 The field holds _focus_, not the cursor. It is a DOM concern and stays one: `Cursor` keeps
@@ -464,7 +473,7 @@ src/
     Chart.tsx     title, tempo and the sections
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Output.tsx    <pre> of the rendered song + copy and print
-    Shortcuts.tsx the §4 keymap as a list
+    Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
   storage.ts      the document format: encode, decode, migrations, load/save
 ```
 

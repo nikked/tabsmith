@@ -34,6 +34,12 @@ const run = (state: EditorState, ...actions: readonly Action[]): EditorState =>
 
 const digit = (value: number): Action => ({ kind: 'digit', digit: value })
 
+/** The cursor clamps, so an out-of-range column lands on the bar's last one. */
+const toLastColumn = (bar = 0): Action => ({
+  kind: 'setCursor',
+  cursor: { row: 0, bar, column: Number.MAX_SAFE_INTEGER, slot: 0 },
+})
+
 /** The default score has two bars; the last-bar guards need a score with one. */
 const oneBar = (): EditorState => ({
   ...initialState(),
@@ -161,8 +167,7 @@ describe('cursor clamping at score edges', () => {
   it('stays put at the last column of the last bar', () => {
     const state = run(
       initialState(),
-      { kind: 'move', move: 'nextBar' },
-      { kind: 'move', move: 'barEnd' },
+      toLastColumn(1),
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
@@ -209,13 +214,13 @@ describe('cursor clamping at score edges', () => {
 
 describe('removeColumn', () => {
   it('refuses when the last column is not empty', () => {
-    const state = run(initialState(), { kind: 'move', move: 'barEnd' }, digit(5))
+    const state = run(initialState(), toLastColumn(), digit(5))
     const after = apply(state, { kind: 'removeColumn' })
     expect(columnsIn(after)).toBe(12)
   })
 
   it('removes an empty last column and pulls the cursor back', () => {
-    const state = run(initialState(), { kind: 'move', move: 'barEnd' })
+    const state = run(initialState(), toLastColumn())
     const after = apply(state, { kind: 'removeColumn' })
     expect(columnsIn(after)).toBe(11)
     expect(after.cursor.column).toBe(10)

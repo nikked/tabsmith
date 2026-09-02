@@ -14,9 +14,10 @@ import { cellText } from '../core/render.ts'
 type Props = {
   readonly state: EditorState
   readonly dispatch: Dispatch<Action>
+  readonly onShowKeys: () => void
 }
 
-export function TabGrid({ state, dispatch }: Props) {
+export function TabGrid({ state, dispatch, onShowKeys }: Props) {
   const { cursor } = state
   const score = state.song.tab
   const staff = useRef<HTMLDivElement>(null)
@@ -46,17 +47,12 @@ export function TabGrid({ state, dispatch }: Props) {
   }
 
   // The staff's keydown handler would read a chord name as a keymap sequence,
-  // so the field keeps its keys and hands focus back on the way out.
+  // so the field keeps every key it is given. The arrows are the way out.
   const onChordKeyDown = (
     event: KeyboardEvent<HTMLInputElement>,
     at: { readonly row: number; readonly bar: number; readonly column: number },
   ) => {
     event.stopPropagation()
-    if (event.key === 'Enter' || event.key === 'Escape') {
-      event.preventDefault()
-      staff.current?.focus()
-      return
-    }
     if (event.key === 'ArrowUp') {
       event.preventDefault()
       dispatch({ kind: 'setCursor', cursor: { ...at, slot: lowestString } })
@@ -72,11 +68,6 @@ export function TabGrid({ state, dispatch }: Props) {
   // Same reason as the chord field: these are text, not keymap sequences.
   const onHeadingKeyDown = (event: KeyboardEvent<HTMLInputElement>, row: number) => {
     event.stopPropagation()
-    if (event.key === 'Enter' || event.key === 'Escape') {
-      event.preventDefault()
-      staff.current?.focus()
-      return
-    }
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       enterRow(row)
@@ -120,6 +111,11 @@ export function TabGrid({ state, dispatch }: Props) {
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === '?') {
+      event.preventDefault()
+      onShowKeys()
+      return
+    }
     const action = keyToAction(event)
     if (action === null) return
     // Tab off either end of the score is not a bar step, so it is left to the

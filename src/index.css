@@ -293,13 +293,54 @@ button {
   cursor: pointer;
 }
 
+/* The panel is a short list plus the way in to the rest; the guide is the same
+   list, grouped, in a native dialog so Escape and the focus trap are the
+   browser's job rather than this app's. */
+.shortcuts > button {
+  margin-top: 0.9rem;
+}
+
+.shortcuts > button kbd {
+  margin-left: 0.35rem;
+}
+
+.guide {
+  max-width: 44rem;
+  max-height: 80vh;
+  padding: 1.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.guide::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.guide section + section {
+  margin-top: 1.25rem;
+}
+
+.guide h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+
+.guide form {
+  margin-top: 1.5rem;
+}
+
 .shortcuts h2 {
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0 0 0.6rem;
 }
 
-.shortcuts dl {
+.shortcuts dl,
+.guide dl {
   display: grid;
   max-width: 48rem;
   grid-template-columns: max-content 1fr;
@@ -308,12 +349,20 @@ button {
   font-size: 0.9rem;
 }
 
-.shortcuts dt {
+/* One column width across every group, so the descriptions line up down the
+   whole guide rather than each list finding its own. */
+.guide dl {
+  grid-template-columns: 11rem 1fr;
+}
+
+.shortcuts dt,
+.guide dt {
   display: flex;
   gap: 0.25rem;
 }
 
-.shortcuts dd {
+.shortcuts dd,
+.guide dd {
   margin: 0;
   color: var(--muted);
 }

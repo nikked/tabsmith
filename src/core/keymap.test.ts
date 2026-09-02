@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apply, initialState, type Action } from './edit.ts'
+import { apply, initialState } from './edit.ts'
 import { keyToAction } from './keymap.ts'
 import { TUNINGS, type EditorState } from './model.ts'
 import { renderScore } from './render.ts'
@@ -28,10 +28,11 @@ describe('keyToAction', () => {
     expect(keyToAction({ key: '\\' })).toEqual({ kind: 'link', link: '\\' })
   })
 
-  it('maps movement, with Space matching ArrowRight', () => {
-    const right: Action = { kind: 'move', move: 'nextColumn' }
-    expect(keyToAction({ key: 'ArrowRight' })).toEqual(right)
-    expect(keyToAction({ key: ' ' })).toEqual(right)
+  it('maps the arrows, and nothing else, to movement', () => {
+    expect(keyToAction({ key: 'ArrowRight' })).toEqual({
+      kind: 'move',
+      move: 'nextColumn',
+    })
     expect(keyToAction({ key: 'ArrowLeft' })).toEqual({
       kind: 'move',
       move: 'prevColumn',
@@ -41,8 +42,12 @@ describe('keyToAction', () => {
       kind: 'move',
       move: 'stringDown',
     })
-    expect(keyToAction({ key: 'Home' })).toEqual({ kind: 'move', move: 'barStart' })
-    expect(keyToAction({ key: 'End' })).toEqual({ kind: 'move', move: 'barEnd' })
+  })
+
+  it('leaves the keys that used to duplicate the arrows alone', () => {
+    expect(keyToAction({ key: ' ' })).toBeNull()
+    expect(keyToAction({ key: 'Home' })).toBeNull()
+    expect(keyToAction({ key: 'End' })).toBeNull()
   })
 
   it('maps Tab by shift state', () => {
@@ -89,19 +94,19 @@ describe('typing a riff', () => {
       'ArrowDown',
       'ArrowDown',
       '0',
-      ' ',
+      'ArrowRight',
       '0',
-      ' ',
+      'ArrowRight',
       '3',
-      ' ',
+      'ArrowRight',
       'x',
-      ' ',
+      'ArrowRight',
       'ArrowUp',
       '5',
-      ' ',
+      'ArrowRight',
       '7',
       'h',
-      ' ',
+      'ArrowRight',
       'ArrowUp',
       'ArrowUp',
       '1',
@@ -134,10 +139,10 @@ describe('switching Standard to Drop D', () => {
       'ArrowDown',
       '1',
       '2',
-      ' ',
+      'ArrowRight',
       '5',
       'h',
-      ' ',
+      'ArrowRight',
       '7',
     )
     const before = renderScore(state.song.tab).split('\n')

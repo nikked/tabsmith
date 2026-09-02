@@ -18,11 +18,18 @@ export default function App() {
   const [state, dispatch] = useReducer(apply, undefined, () => initialState(load()))
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
   const [error, setError] = useState<string | null>(null)
+  const guide = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     save(state.song)
   }, [state.song])
+
+  /** showModal throws on a dialog that is already open, so ask first. */
+  const showKeys = () => {
+    const element = guide.current
+    if (element !== null && !element.open) element.showModal()
+  }
 
   const clear = () => {
     if (
@@ -136,8 +143,8 @@ export default function App() {
       {mode === 'edit' ? (
         <>
           <Chart song={state.song} dispatch={dispatch} />
-          <TabGrid state={state} dispatch={dispatch} />
-          <Shortcuts />
+          <TabGrid state={state} dispatch={dispatch} onShowKeys={showKeys} />
+          <Shortcuts guide={guide} onShowKeys={showKeys} />
         </>
       ) : (
         <Output song={state.song} />

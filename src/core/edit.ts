@@ -22,14 +22,7 @@ import {
 export const MAX_FRET = 24
 
 export type Move =
-  | 'prevColumn'
-  | 'nextColumn'
-  | 'stringUp'
-  | 'stringDown'
-  | 'barStart'
-  | 'barEnd'
-  | 'prevBar'
-  | 'nextBar'
+  'prevColumn' | 'nextColumn' | 'stringUp' | 'stringDown' | 'prevBar' | 'nextBar'
 
 export type Action =
   | { readonly kind: 'digit'; readonly digit: number }
@@ -212,10 +205,6 @@ const moveCursor = (score: Score, cursor: Cursor, move: Move): Cursor => {
       return { ...cursor, slot: Math.max(0, cursor.slot - 1) }
     case 'stringDown':
       return { ...cursor, slot: Math.min(stringCount(score) - 1, cursor.slot + 1) }
-    case 'barStart':
-      return { ...cursor, column: 0 }
-    case 'barEnd':
-      return lastColumn(score, cursor)
     case 'prevBar': {
       const previous = stepBar(score, cursor, -1)
       return previous === null ? cursor : { ...previous, column: 0 }
