@@ -164,7 +164,8 @@ Notes on the model:
   `7b9`. So `b` is useful on its own keystroke and the target is something you add, never an
   invalid half-typed state. Nothing requires `to > fret`; a nonsensical target is your problem,
   not the model's.
-- **A section body is free text, not a structure.** A chord sits above its word because of the
+- **A section body is free text, not a structure**, and may hold tabs as well as spaces. A
+  chord sits above its word because of the
   spaces the writer typed, and nothing else knows which word that is. Parsing the body into
   chords and lyrics would let the app reflow or re-space it, which is exactly how the one thing
   holding the chart together gets destroyed. So the body is stored and rendered verbatim, and
@@ -302,7 +303,15 @@ characters wide. Every string line is that same length.
 ## 4. Keymap
 
 This is the tab grid. The chart is ordinary text fields, and the browser's own editing is
-already the right keymap for it.
+already the right keymap for it — with one exception. `Tab` inside a section body types a tab
+rather than moving focus, because a tab stop is how two blocks are made to start at the same
+column and there is nothing else on the keyboard that does it. `Shift+Tab` still moves focus,
+so the body never becomes a trap, and the character goes in through `execCommand` so the
+browser keeps its own undo.
+
+The tab width is stated in the stylesheet rather than left to the browser, and stated as the
+width everything else defaults to, so a body holding tabs lines up the same in the editor, on
+paper, and pasted into anything else.
 
 Only the bindings you could not guess are on the page: the ones that add and remove bars,
 columns and rows, and `Tab`, which does something other than move focus. Everything else lives

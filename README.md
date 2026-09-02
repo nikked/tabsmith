@@ -42,7 +42,11 @@ ones you could not guess:
 
 Type a digit to set a fret, arrow around the grid and on into the row title above or the chord
 fields below, and `x`, `h`, `p`, `b` and `~` for a mute, a hammer-on, a pull-off, a bend and
-vibrato. The chart is ordinary text fields and needs no keymap of its own.
+vibrato.
+
+The chart is ordinary text fields, with one exception: `Tab` inside a section body types a tab
+instead of leaving the field, which is how two blocks are made to start at the same column.
+`Shift+Tab` still moves on.
 
 ## Design
 

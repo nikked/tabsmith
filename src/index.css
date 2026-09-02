@@ -365,9 +365,12 @@ h1 img {
 }
 
 /* Chords sit above their word by the spaces the writer typed, so the chart is
-   monospaced and never soft-wrapped. */
+   monospaced and never soft-wrapped. The tab size is stated rather than left to
+   the browser, and stated as the width everything else defaults to, so a body
+   holding tabs lines up the same here, on paper, and pasted anywhere else. */
 .chart textarea {
   width: 100%;
+  tab-size: 8;
   box-sizing: border-box;
   font-family: ui-monospace, monospace;
   font-size: 0.9rem;
@@ -401,6 +404,7 @@ h1 img {
 .page {
   display: flex;
   flex-direction: column;
+  tab-size: 8;
   gap: 1.4em;
   align-self: stretch;
   padding: 0.75rem;
