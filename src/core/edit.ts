@@ -90,10 +90,10 @@ const allBars = (score: Score): readonly Bar[] => score.rows.flatMap((row) => ro
  * prompts cannot drift apart about it. A chord name is as much typing as a
  * note, and a row's heading belongs to the row that carries it.
  */
-const barHasContent = (bar: Bar): boolean =>
-  bar.columns.some(
-    (column) => column.chord !== undefined || column.cells.some((cell) => cell !== null),
-  )
+const columnHasContent = (column: Column): boolean =>
+  column.chord !== undefined || column.cells.some((cell) => cell !== null)
+
+const barHasContent = (bar: Bar): boolean => bar.columns.some(columnHasContent)
 
 const rowHasHeading = (row: Row): boolean =>
   row.title !== undefined || row.note !== undefined
@@ -499,24 +499,37 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       })
     }
 
-    case 'addColumn':
-      return resetDigits(
-        withTab(
+    case 'addColumn': {
+      const column = state.cursor.column + 1
+      return resetDigits({
+        ...withTab(
           state,
           mapBar(state.song.tab, state.cursor, (bar) => ({
-            columns: [...bar.columns, emptyColumn(stringCount(state.song.tab))],
+            columns: [
+              ...bar.columns.slice(0, column),
+              emptyColumn(stringCount(state.song.tab)),
+              ...bar.columns.slice(column),
+            ],
           })),
         ),
-      )
+        cursor: { ...state.cursor, column },
+      })
+    }
 
+    /**
+     * The column under the cursor, not the bar's last one: a column is added
+     * where you are, so it has to be removable where you are too. Refused
+     * rather than confirmed when it holds anything, which is what keeps `[`
+     * safe to lean on.
+     */
     case 'removeColumn': {
       const bar = barAt(state.song.tab, state.cursor.row, state.cursor.bar)
-      const last = bar?.columns.at(-1)
-      if (bar === undefined || last === undefined || bar.columns.length <= 1) {
+      const at = bar?.columns[state.cursor.column]
+      if (bar === undefined || at === undefined || bar.columns.length <= 1) {
         return resetDigits(state)
       }
-      if (last.cells.some((cell) => cell !== null)) return resetDigits(state)
-      const columns = bar.columns.slice(0, -1)
+      if (columnHasContent(at)) return resetDigits(state)
+      const columns = bar.columns.filter((_, index) => index !== state.cursor.column)
       return resetDigits({
         ...withTab(
           state,

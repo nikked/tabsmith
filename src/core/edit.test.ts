@@ -212,7 +212,64 @@ describe('cursor clamping at score edges', () => {
   })
 })
 
+describe('addColumn', () => {
+  it('puts the new column after the cursor, not at the end', () => {
+    const state = run(
+      initialState(),
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 0, slot: 0 } },
+      digit(7),
+      { kind: 'move', move: 'nextColumn' },
+      digit(9),
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 0, slot: 0 } },
+      { kind: 'addColumn' },
+    )
+    expect(columnsIn(state)).toBe(DEFAULT_BAR_COLUMNS + 1)
+    // 7, then the new empty column, then 9.
+    expect(cellAt(state, 0, 0, 0)).toEqual({ kind: 'fret', fret: 7 })
+    expect(cellAt(state, 0, 1, 0)).toBeNull()
+    expect(cellAt(state, 0, 2, 0)).toEqual({ kind: 'fret', fret: 9 })
+  })
+
+  it('moves the cursor into the column it just made', () => {
+    const state = run(
+      initialState(),
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 3, slot: 0 } },
+      { kind: 'addColumn' },
+    )
+    expect(state.cursor.column).toBe(4)
+  })
+})
+
 describe('removeColumn', () => {
+  it('removes the column under the cursor, not the last one', () => {
+    const state = run(
+      initialState(),
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 5, slot: 0 } },
+      digit(7),
+      { kind: 'setCursor', cursor: { row: 0, bar: 0, column: 2, slot: 0 } },
+      { kind: 'removeColumn' },
+    )
+    expect(columnsIn(state)).toBe(DEFAULT_BAR_COLUMNS - 1)
+    // The 7 shifts left by one, so an empty column really went from before it.
+    expect(cellAt(state, 0, 4, 0)).toEqual({ kind: 'fret', fret: 7 })
+  })
+
+  it('refuses when the column under the cursor holds a note', () => {
+    const state = run(initialState(), digit(7))
+    expect(columnsIn(apply(state, { kind: 'removeColumn' }))).toBe(DEFAULT_BAR_COLUMNS)
+  })
+
+  it('refuses when it holds only a chord name', () => {
+    const state = run(initialState(), {
+      kind: 'setChord',
+      row: 0,
+      bar: 0,
+      column: 0,
+      chord: 'Am',
+    })
+    expect(columnsIn(apply(state, { kind: 'removeColumn' }))).toBe(DEFAULT_BAR_COLUMNS)
+  })
+
   it('refuses when the last column is not empty', () => {
     const state = run(initialState(), toLastColumn(), digit(5))
     const after = apply(state, { kind: 'removeColumn' })

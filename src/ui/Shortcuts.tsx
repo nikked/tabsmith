@@ -60,7 +60,7 @@ const GROUPS: readonly Group[] = [
       },
       {
         keys: [']', '['],
-        does: 'Add a column / remove the last empty one',
+        does: 'Add a column after this one / remove this one when it is empty',
         legend: 'add/remove column',
       },
       {

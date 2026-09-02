@@ -342,7 +342,7 @@ Editing is a pure reducer over `EditorState`; the DOM only dispatches.
 | `↑` `↓`               | String up / down. Above the top string is the row's title, below the lowest is the column's chord field, and stepping off either of those again moves to the neighbouring row. |
 | `Tab` `Shift+Tab`     | Next / previous bar, crossing rows. At either end of the score the key goes back to the browser, so focus leaves the tab — `Shift+Tab` walks back to the chart above it.       |
 | `Enter` `Shift+Enter` | Append a bar after the current one and move into it / remove the current bar. Confirms when it holds anything; never removes the only bar.                                     |
-| `]` `[`               | Add a column to the current bar / remove the last one (only when empty, never below 1)                                                                                         |
+| `]` `[`               | Add a column after the current one and move into it / remove the current one (only when empty, never below 1)                                                                  |
 | `}` `{`               | Start a new row below with one bar in it and move into it / remove the current row. Confirms when it holds anything, its heading included; never removes the only row.         |
 | `?`                   | Open the full keymap                                                                                                                                                           |
 
