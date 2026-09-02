@@ -41,18 +41,38 @@ main {
   gap: 1.5rem;
 }
 
+/* Centred, not baseline-aligned: the name sits in a padded chip whose baseline
+   is not the text's, so baselines would hang it above the buttons. */
 header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
 }
 
-/* The song's title is the biggest thing on the page; the app's name is not. */
+/**
+ * The mark and the name sit in one bordered chip, so the app's name reads as a
+ * single object rather than as loose text among the file actions. The mark is
+ * the favicon itself — one file, so the two cannot drift apart.
+ *
+ * The song's title is the biggest thing on the page and the app's name is not,
+ * so the chip stays at the volume of the buttons beside it.
+ */
 h1 {
-  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.4rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  border: 1px solid var(--muted);
+  border-radius: 9px;
   margin: 0;
+}
+
+h1 img {
+  display: block;
 }
 
 .staff {

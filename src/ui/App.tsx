@@ -92,7 +92,10 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>tabsmith</h1>
+        <h1>
+          <img src="/favicon.svg" alt="" width="20" height="20" />
+          tabsmith
+        </h1>
         <div className="files" role="group" aria-label="File">
           <button type="button" onClick={() => picker.current?.click()}>
             Open…

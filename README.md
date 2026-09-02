@@ -37,8 +37,15 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the file actions, Clear and the mode toggle. Nothing in it is loud except
-the mode toggle, which is the one control you reach for constantly.
+The header carries the wordmark, the file actions, Clear and the mode toggle. Nothing in it is
+loud except the mode toggle, which is the one control you reach for constantly.
+
+The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
+note would. It sits with the name in a single bordered chip so the app announces itself as one
+object rather than as loose text among the file actions, and it stays at the volume of the
+buttons beside it, because the song's title is the biggest thing on the page and the app's name
+is not. The chip renders the favicon file itself, so the logo and the tab icon cannot drift
+apart.
 
 The editor is set like the page it prints rather than like a form. The song's title is the
 largest thing on it, section names are headings, and the fields have no boxes: an underline
