@@ -1,2 +1,7 @@
 pnpm-lock.yaml
 dist
+
+# Written by the app, not by hand: their shape is encode()'s, and JSON.stringify
+# always expands short arrays where prettier would fold them. Formatting it would
+# mean a song downloaded from the app could not be dropped in without failing CI.
+src/demo*.json

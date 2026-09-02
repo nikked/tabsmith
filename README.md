@@ -37,8 +37,23 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the wordmark, the file actions, Clear and the mode toggle. Nothing in it is
-loud except the mode toggle, which is the one control you reach for constantly.
+The header carries the logo, the file actions, Demo and Clear, and the mode toggle. Nothing in
+it is loud except the mode toggle, which is the one control you reach for constantly.
+
+Demo loads a song already written, because the fastest way to say what the app does is to show
+one. It replaces the open song, so it asks first exactly as Open and Clear do — and it is what
+a first visit opens with, since an empty editor and nothing saved to restore says nothing about
+what any of this is for.
+
+That song is `src/demo.json`, a file in exactly the format Save as writes (§5). To change the
+demo, save a song out of the app and drop it in over that file: it is decoded on the way in
+like any other, so an older one is migrated and a broken one reports itself instead of taking
+the app down. It is in `.prettierignore` because its shape is `encode`'s rather than
+prettier's, and a downloaded file would otherwise fail the format check.
+
+Nothing in the app or its tests depends on which song that is — the tests assert the file
+decodes and holds something, and stop there, because a test that named the notes would fail the
+first time the file was swapped.
 
 The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
 note would. It sits with the name in a single bordered chip so the app announces itself as one

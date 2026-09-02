@@ -527,10 +527,15 @@ kbd {
   border-color: var(--muted);
 }
 
-/* Clear destroys as much as Open does, so a gap keeps it off the end of the
-   file actions rather than sitting flush against them. */
-.quiet {
+/* Demo and Clear both replace the whole document rather than acting on a file,
+   so they sit together, and a gap keeps them off the end of the file actions. */
+.document {
+  display: flex;
+  gap: 0.25rem;
   margin-left: 1rem;
+}
+
+.quiet {
   color: var(--muted);
 }
 

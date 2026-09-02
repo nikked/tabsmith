@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# A song of your own to swap into demo.json. Kept out of the repo so it stays
+# yours even if this ever goes public to serve the site.
+src/demo_local.json

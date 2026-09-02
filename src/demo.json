@@ -1,0 +1,444 @@
+{
+  "version": 4,
+  "song": {
+    "title": "Slow Machine",
+    "tempo": "70 bpm",
+    "tabFirst": false,
+    "chart": [
+      {
+        "name": "Intro",
+        "repeat": 2,
+        "body": "Em7  Dmaj7  Em7  Dmaj7"
+      },
+      {
+        "name": "Verse 1",
+        "body": "Em            D             Em\nThe slow machine is turning over\nD                 Em         D\nWarm in the hum of the radio\nEm          D              Em\nNothing to do but let it idle\nD                Em        D\nWatching the little needles glow"
+      },
+      {
+        "name": "Verse 2",
+        "body": "Em             D            Em\nSomewhere a window keeps a light on\nD                Em         D\nSomeone is counting up the hours\nEm           D            Em\nThe engine finds its own slow rhythm\nD                 Em        D\nCarrying us past the water towers"
+      },
+      {
+        "name": "Instrumental Outro",
+        "repeat": 4,
+        "body": "Em7  Dmaj7  C  G"
+      }
+    ],
+    "tab": {
+      "tuning": {
+        "name": "Standard",
+        "strings": [
+          "e",
+          "B",
+          "G",
+          "D",
+          "A",
+          "E"
+        ]
+      },
+      "rows": [
+        {
+          "title": "Main riff",
+          "note": "(let the notes ring into each other)",
+          "bars": [
+            {
+              "columns": [
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0,
+                      "decoration": {
+                        "kind": "~"
+                      }
+                    }
+                  ],
+                  "chord": "Em7"
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 2
+                    },
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0
+                    },
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 2
+                    },
+                    null,
+                    null
+                  ],
+                  "chord": "Dmaj7"
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0
+                    },
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0
+                    },
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                }
+              ]
+            },
+            {
+              "columns": [
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ],
+                  "chord": "Em7"
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 4,
+                      "link": "h"
+                    },
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 5
+                    },
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 3,
+                      "link": "p"
+                    },
+                    null
+                  ],
+                  "chord": "Dmaj7"
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0,
+                      "decoration": {
+                        "kind": "~"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Outro figure",
+          "bars": [
+            {
+              "columns": [
+                {
+                  "cells": [
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 0
+                    },
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 7,
+                      "decoration": {
+                        "kind": "b",
+                        "to": 9
+                      }
+                    },
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "fret",
+                      "fret": 2
+                    },
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                {
+                  "cells": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {
+                      "kind": "mute"
+                    },
+                    null
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "defaultBarColumns": 12
+    }
+  }
+}

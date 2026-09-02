@@ -1,5 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { apply, initialState, songHasContent } from '../core/edit.ts'
+import type { Song } from '../core/model.ts'
+import { DEMO } from '../demo.ts'
 import { decode, encode, filenameFor, load, save } from '../storage.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
@@ -14,8 +16,17 @@ import { TabGrid } from './TabGrid.tsx'
  */
 const pickPath = window.showSaveFilePicker?.bind(window)
 
+/**
+ * An empty editor on a first visit says nothing about what any of this is for,
+ * so the demo stands in until there is something saved to load instead. Null
+ * only when there is no demo to fall back on either.
+ */
+const openingSong = (): Song | null => load() ?? (DEMO.ok ? DEMO.song : null)
+
 export default function App() {
-  const [state, dispatch] = useReducer(apply, undefined, () => initialState(load()))
+  const [state, dispatch] = useReducer(apply, undefined, () =>
+    initialState(openingSong()),
+  )
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
   const [error, setError] = useState<string | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
@@ -29,6 +40,24 @@ export default function App() {
   const showKeys = () => {
     const element = guide.current
     if (element !== null && !element.open) element.showModal()
+  }
+
+  /** Replaces the open song, so it asks the same way Open and Clear do. */
+  const loadDemo = () => {
+    if (!DEMO.ok) {
+      setError(DEMO.error)
+      return
+    }
+    if (
+      songHasContent(state.song) &&
+      !window.confirm(
+        'Replace the song you have open with the demo? This cannot be undone.',
+      )
+    ) {
+      return
+    }
+    setError(null)
+    dispatch({ kind: 'load', song: DEMO.song })
   }
 
   const clear = () => {
@@ -115,9 +144,14 @@ export default function App() {
             if (file !== undefined) void loadFromDisk(file)
           }}
         />
-        <button type="button" className="quiet" onClick={clear}>
-          Clear
-        </button>
+        <div className="document" role="group" aria-label="Document">
+          <button type="button" className="quiet" onClick={loadDemo}>
+            Demo
+          </button>
+          <button type="button" className="quiet" onClick={clear}>
+            Clear
+          </button>
+        </div>
         <div className="segmented modes" role="group" aria-label="View">
           <button
             type="button"
