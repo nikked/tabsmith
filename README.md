@@ -7,8 +7,12 @@ printed to paper or a PDF, and copied to the clipboard when it needs to go somew
 **[nikked.github.io/tabsmith](https://nikked.github.io/tabsmith/)** — open it and press _Demo_
 to see a song already written.
 
-Songs live in the browser and are saved as you type. _Save as_ writes one to a file and _Open_
-reads it back, so a song is a file you keep wherever you keep files.
+Songs live in the browser and are saved as you type. **Songs** is the shelf they sit on: start
+one, paste one in from a chord sheet, or export it as a file. **Copy link** puts a whole song in
+a URL, so sending someone a chart needs no account and no server.
+
+**Practice** is the reading view — the whole window, type you can read from a music stand, and
+the screen held awake.
 
 ## Running it
 
@@ -38,6 +42,7 @@ ones you could not guess:
 | `Enter` `Shift+Enter` | Add a bar after this one / remove this one               |
 | `]` `[`               | Add a column after this one / remove this one when empty |
 | `}` `{`               | Start a row below / remove this row                      |
+| `Cmd+Z` `Cmd+Shift+Z` | Undo / redo. In a text field the browser undoes instead. |
 | `?`                   | Every other key, grouped, in a dialog                    |
 
 Type a digit to set a fret, arrow around the grid and on into the row title above or the chord

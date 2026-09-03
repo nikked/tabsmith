@@ -23,15 +23,16 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, the file actions, Demo and Clear, and the mode toggle. Nothing in
-it is loud except the mode toggle, which is the one control you reach for constantly.
+The header carries the logo, **Songs**, **Practice** (§4b) and the mode toggle. Everything that
+acts on a whole song is behind Songs (§5) rather than here. Nothing in it is loud except the mode
+toggle, which is the one control you reach for constantly.
 
 Demo loads a song already written, because the fastest way to say what the app does is to show
-one. It replaces the open song, so it asks first exactly as Open and Clear do — and it is what
-a first visit opens with, since an empty editor and nothing saved to restore says nothing about
-what any of this is for.
+one. It joins the shelf rather than replacing what is open, so it needs no confirmation — and
+it is the song a first visit's shelf starts with, since an empty editor and nothing saved to
+restore says nothing about what any of this is for.
 
-That song is `src/demo.json`, a file in exactly the format Save as writes (§5). To change the
+That song is `src/demo.json`, a file in exactly the format Export writes (§5). To change the
 demo, save a song out of the app and drop it in over that file: it is decoded on the way in
 like any other, so an older one is migrated and a broken one reports itself instead of taking
 the app down. It is in `.prettierignore` because its shape is `encode`'s rather than
@@ -43,7 +44,7 @@ first time the file was swapped.
 
 The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
 note would. It sits with the name in a single bordered chip so the app announces itself as one
-object rather than as loose text among the file actions, and it stays at the volume of the
+object rather than as loose text in the header, and it stays at the volume of the
 buttons beside it, because the song's title is the biggest thing on the page and the app's name
 is not. The chip renders the favicon file itself, so the logo and the tab icon cannot drift
 apart.
@@ -66,9 +67,10 @@ honest failure: the row really is that wide, and it will be that wide on the pri
 Wrapping it would hide the one thing you need to see. Nothing warns about width — the page is
 as wide as you made it, and paper is the only thing that has an opinion.
 
-The ASCII is a pure function of the document. It is never edited directly and never parsed
-back. That's the single most important constraint in the design: alignment cannot break,
-because alignment is derived.
+The ASCII is a pure function of the document. It is never edited directly, and the editor
+never reads it back. That's the single most important constraint in the design: alignment
+cannot break, because alignment is derived. Paste (§3b) does parse ASCII, but only once, on the
+way in, to make a new song out of text written somewhere else.
 
 ## 2. Data model
 
@@ -499,8 +501,9 @@ refuses or lacks it is not worth a message — the page reads fine, it just dims
 ## 5. Persistence
 
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
-knows the format. The Copy button's clipboard write is the only other side effect, and it lives
-in `Output.tsx`.
+knows the format; `share.ts` reuses its `encode` and `decode` for links. The other side effects
+are the clipboard writes — Copy in `Output.tsx`, Copy link in `App.tsx` — the save dialog, and
+Practice's screen wake lock.
 
 Two documents live there, under two keys and two version counters:
 
@@ -526,12 +529,11 @@ you might open in an editor. A saved file is named after the title, slugged behi
 so a folder of them says what wrote them: _Endless Skies_ becomes `tabsmith-endless-skies.json`,
 and an untitled song becomes `tabsmith.json`.
 
-Saving asks where to put the file. That is the File System Access API, which only Chromium
+Export asks where to put the file. That is the File System Access API, which only Chromium
 implements — Firefox and Safari have no equivalent, and a page cannot open a save dialog in
-them at all. So the capability is read once and the button says what it will actually do:
-`Save as…` where a dialog will open, `Download` where the file can only land in the download
-folder. Promising a dialog that never appears would be the worse failure. A dismissed dialog is
-a decision, not a failure, and says nothing.
+them at all. So the capability is read once: where a dialog can open, Export opens it, and
+elsewhere the file lands in the download folder. A dismissed dialog is a decision, not a
+failure, and says nothing.
 
 ```ts
 encode(song) => string
@@ -545,8 +547,8 @@ Clear uses. A file that will not decode leaves the shelf alone and says why, in 
 line under the header — `localStorage` can discard a bad blob silently because nobody chose it,
 but a file is something you picked on purpose.
 
-Everything that acts on a whole song — the list, New, Import, Export, Demo, Clear — is in one
-dialog behind **Songs**, not the header. On a phone the header is the scarcest space on the
+Everything that acts on a whole song — the list, New, Paste, Import, Export, Demo, Copy link,
+Clear — is in one dialog behind **Songs**, not the header. On a phone the header is the scarcest space on the
 page, and none of those is something you reach for while writing.
 
 ### Old files still open
@@ -592,11 +594,11 @@ changes only the fragment, which is not a navigation — on mount alone, nothing
 
 ## 6. Deliberately absent
 
-Named here so they don't creep in: custom tunings beyond the three presets, capo, multiple songs
-open at once, import or parsing of existing ASCII, rhythm and time signatures, playback,
-sharing.
+Named here so they don't creep in: custom tunings beyond the three presets, a capo stored with
+the song, multiple songs open at once, rhythm and time signatures, playback, accounts.
 
-One song is open at a time. The shelf holds the rest (§5); a file is how a song leaves.
+One song is open at a time. The shelf holds the rest (§5); a file or a link is how a song
+leaves.
 
 Printing is the browser's: the ASCII view has a Print button and a `@media print` block that
 strips the chrome and puts black text on white paper. Saving a PDF is the browser's print
@@ -606,8 +608,6 @@ Lyrics are supported the only way they need to be — typed into a section body 
 chords. Nothing helps keep a chord above its word as the words change, and nothing needs to:
 the ASCII view shows exactly what will print, and nudging a chord a space over is easy once
 you can see it.
-
-The immutable model makes undo/redo a history array if it turns out to be missed.
 
 ## 7. Stack
 
@@ -625,16 +625,23 @@ The immutable model makes undo/redo a history array if it turns out to be missed
 src/
   core/
     model.ts      types, emptySong, emptyScore, emptyBar, emptyColumn
-    edit.ts       Action, apply — every state transition
+    edit.ts       Action, apply, step — every state transition and the undo timeline
     keymap.ts     keyToAction
     render.ts     renderSong, renderScore and their helpers
+    library.ts    the shelf: Library, Entry and the functions over them
+    parse.ts      parseSong — pasted ASCII to a Song (§3b)
   ui/
     App.tsx
     Chart.tsx     title, tempo and the sections
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Output.tsx    <pre> of the rendered song + copy and print
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
+    Songbook.tsx  the shelf dialog behind Songs
+    Paste.tsx     the Paste… dialog
+    Practice.tsx  the reading view (§4b), also how a shared link opens
   storage.ts      the document format: encode, decode, migrations, load/save
+  share.ts        a song in a link, and back
+  demo.ts         the demo song, decoded from demo.json
 ```
 
 `core/` has no React import and no I/O.
