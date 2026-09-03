@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   emptyBar,
   emptyRow,
@@ -8,7 +8,7 @@ import {
   type Score,
   type Song,
 } from './core/model.ts'
-import { decode, encode, filenameFor } from './storage.ts'
+import { decode, encode, filenameFor, loadLibrary } from './storage.ts'
 
 const [STANDARD, , BASS] = TUNINGS
 
@@ -380,5 +380,27 @@ describe('filenameFor', () => {
   it('is the app name alone when there is no title', () => {
     expect(named('')).toBe('tabsmith.json')
     expect(named('???')).toBe('tabsmith.json')
+  })
+})
+
+describe('loadLibrary', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sets aside a shelf it cannot read before anything saves over it', () => {
+    const stored = new Map([
+      ['tabsmith.library', JSON.stringify({ version: 99, library: {} })],
+      ['tabsmith', encode({ ...emptySong(), title: 'Old Riff' })],
+    ])
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    })
+    expect(loadLibrary()?.songs.map((entry) => entry.song.title)).toEqual(['Old Riff'])
+    const [setAside] = [...stored].filter(([key]) =>
+      key.startsWith('tabsmith.library.unreadable.'),
+    )
+    expect(setAside?.[1]).toBe(stored.get('tabsmith.library'))
   })
 })

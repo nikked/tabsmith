@@ -436,10 +436,28 @@ apply(state: EditorState, action: Action): EditorState   // pure
 
 ## 5. Persistence
 
-`localStorage`, one song, autosaved on change and loaded on mount. Save and Load in the header
-write and read the same bytes as a file on disk, so the format is defined once and `storage.ts`
-is the only module that knows it. The Copy button's clipboard write is the only other side
-effect, and it lives in `Output.tsx`.
+`localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
+knows the format. The Copy button's clipboard write is the only other side effect, and it lives
+in `Output.tsx`.
+
+Two documents live there, under two keys and two version counters:
+
+- **A song** is what a _file_ holds, and `encode`/`decode` below define it. That format is
+  untouched by the shelf, so every file this app has ever written still opens.
+- **The shelf** lives under `tabsmith.library`: every song, in order, each with an id, plus
+  which one is open. It carries its own version, because what a library is has nothing to do
+  with what a song is — one counter across both would mean bumping the file format every time
+  the shelf changed shape.
+
+An id rather than a title is what identifies a song, so retitling one cannot lose track of which
+is open. A library holds at least one song — `Songs` is `readonly [Entry, ...Entry[]]`, the same
+way a score holds at least one row — and `open` always names one of them. `repair` is the only
+way in from a decoded document and establishes both: a dangling `open` is repaired rather than
+refused, because the songs in that document are still perfectly good.
+
+Before there was a shelf there was one song under `tabsmith`. It becomes the first song on the
+shelf, and the old key is left in place rather than deleted — nothing reads it any more, and
+leaving it is the difference between a bad upgrade being annoying and being unrecoverable.
 
 The document is `JSON.stringify` of the `Song` plus a schema version integer, indented — a file
 you might open in an editor. A saved file is named after the title, slugged behind the app name
@@ -459,10 +477,15 @@ decode(raw) => { ok: true; song } | { ok: false; error }
 filenameFor(song) => string
 ```
 
-Loading is not a merge: it replaces the open song, and is confirmed the same way Clear is,
-by `songHasContent`. A file that will not decode leaves the editor alone and says why, in a
-dismissible line under the header — `localStorage` can discard a bad blob silently because
-nobody chose it, but a file is something you picked on purpose.
+Importing adds to the shelf rather than replacing what is open, so it needs no confirmation —
+nothing is lost by it. Deleting a song does, and asks by `songHasContent`, the same predicate
+Clear uses. A file that will not decode leaves the shelf alone and says why, in a dismissible
+line under the header — `localStorage` can discard a bad blob silently because nobody chose it,
+but a file is something you picked on purpose.
+
+Everything that acts on a whole song — the list, New, Import, Export, Demo, Clear — is in one
+dialog behind **Songs**, not the header. On a phone the header is the scarcest space on the
+page, and none of those is something you reach for while writing.
 
 ### Old files still open
 
@@ -496,7 +519,7 @@ Named here so they don't creep in: custom tunings beyond the three presets, capo
 open at once, import or parsing of existing ASCII, rhythm and time signatures, playback,
 sharing.
 
-A library of songs is the filesystem's job (§5): one song is open, the rest are files.
+One song is open at a time. The shelf holds the rest (§5); a file is how a song leaves.
 
 Printing is the browser's: the ASCII view has a Print button and a `@media print` block that
 strips the chrome and puts black text on white paper. Saving a PDF is the browser's print

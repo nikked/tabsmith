@@ -1076,6 +1076,28 @@ describe('undo', () => {
     expect(canRedo(step(undone, digit(3)))).toBe(false)
   })
 
+  it('starts a new history on load so undo cannot replace another song', () => {
+    const before = walk(initialTimeline(), digit(7), digit(8), { kind: 'undo' })
+    expect(canUndo(before)).toBe(true)
+    expect(canRedo(before)).toBe(true)
+
+    const song = { ...emptySong(), title: 'Another song' }
+    const loaded = step(before, { kind: 'load', song })
+    expect(loaded.present.song).toBe(song)
+    expect(step(loaded, { kind: 'undo' })).toBe(loaded)
+    expect(step(loaded, { kind: 'redo' })).toBe(loaded)
+
+    const edited = step(loaded, { kind: 'setTitle', title: 'Renamed' })
+    expect(step(edited, { kind: 'undo' }).present.song).toBe(song)
+  })
+
+  it('clears typing history even when loading the same song reference', () => {
+    const typed = step(initialTimeline(), { kind: 'setTitle', title: 'A song' })
+    const loaded = step(typed, { kind: 'load', song: typed.present.song })
+    expect(canUndo(loaded)).toBe(false)
+    expect(loaded.typing).toBeNull()
+  })
+
   it('holds still at either end rather than throwing', () => {
     const fresh = initialTimeline()
     expect(step(fresh, { kind: 'undo' })).toBe(fresh)

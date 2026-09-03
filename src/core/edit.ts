@@ -699,6 +699,9 @@ export const canUndo = (timeline: Timeline): boolean => timeline.past.length > 0
 export const canRedo = (timeline: Timeline): boolean => timeline.future.length > 0
 
 export const step = (timeline: Timeline, action: TimelineAction): Timeline => {
+  // A load changes which song the shelf will save, so its history cannot cross over.
+  if (action.kind === 'load') return initialTimeline(action.song)
+
   if (action.kind === 'undo') {
     const previous = timeline.past.at(-1)
     if (previous === undefined) return timeline
