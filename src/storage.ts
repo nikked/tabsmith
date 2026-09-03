@@ -1,9 +1,12 @@
 import { z } from 'zod'
 import { MAX_FRET } from './core/edit.ts'
-import { emptySection, type Song } from './core/model.ts'
+import { repair, type Entry, type Library } from './core/library.ts'
+import { emptySection, emptySong, type Song } from './core/model.ts'
 
 const KEY = 'tabsmith'
+const LIBRARY_KEY = 'tabsmith.library'
 const CURRENT_VERSION = 4
+const LIBRARY_VERSION = 1
 
 const link = z.enum(['h', 'p', '/', '\\'])
 
@@ -166,13 +169,70 @@ export const filenameFor = (song: Song): string => {
   return slug === '' ? 'tabsmith.json' : `tabsmith-${slug}.json`
 }
 
-export const save = (song: Song): void => {
-  localStorage.setItem(KEY, encode(song))
+/**
+ * A file still holds exactly one song, so `encode` above is untouched and every
+ * file ever written by this app still opens. The shelf is a separate document
+ * under its own key, with its own version: what a library is has nothing to do
+ * with what a song is, and giving them one version counter would mean bumping
+ * the file format every time the shelf changed shape.
+ */
+const entry = z.object({ id: z.string().min(1), song })
+
+const library = z.object({
+  songs: z.array(entry),
+  open: z.string(),
+})
+
+export const newId = (): string => crypto.randomUUID()
+
+export const saveLibrary = (value: Library): void => {
+  localStorage.setItem(
+    LIBRARY_KEY,
+    JSON.stringify({ version: LIBRARY_VERSION, library: value }),
+  )
 }
 
-export const load = (): Song | null => {
+const readLibrary = (raw: string): Library | null => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!isDoc(parsed) || parsed.version !== LIBRARY_VERSION) return null
+  const result = library.safeParse(parsed.library)
+  return result.success ? repair(result.data.songs, result.data.open) : null
+}
+
+/**
+ * Before there was a shelf there was one song under `tabsmith`, so it becomes
+ * the first song on it. The old key is left alone rather than deleted: nothing
+ * reads it any more, and leaving it is the difference between a bad upgrade
+ * being annoying and being unrecoverable.
+ */
+const inherited = (): Library | null => {
   const raw = localStorage.getItem(KEY)
   if (raw === null) return null
   const result = decode(raw)
-  return result.ok ? result.song : null
+  return result.ok ? repair([{ id: newId(), song: result.song }], '') : null
 }
+
+/**
+ * A shelf this build cannot read — written by a newer one, say — is about to be
+ * saved over, so it is set aside first under a key of its own.
+ */
+export const loadLibrary = (): Library | null => {
+  const raw = localStorage.getItem(LIBRARY_KEY)
+  if (raw === null) return inherited()
+  const read = readLibrary(raw)
+  if (read !== null) return read
+  localStorage.setItem(`${LIBRARY_KEY}.unreadable.${Date.now()}`, raw)
+  return inherited()
+}
+
+export const startingLibrary = (first: Song = emptySong()): Library => {
+  const id = newId()
+  return { songs: [{ id, song: first }], open: id }
+}
+
+export type { Entry }

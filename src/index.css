@@ -2,6 +2,7 @@
    are the palette's, so a token can be re-picked without guessing at a hex. */
 :root {
   --bg: #eff1f5; /* base */
+  --raised: #e6e9ef; /* mantle */
   --fg: #4c4f69; /* text */
   --muted: #8c8fa1; /* overlay1 */
   --line: #bcc0cc; /* surface1 */
@@ -14,6 +15,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #24273a; /* base */
+    --raised: #1e2030; /* mantle */
     --fg: #cad3f5; /* text */
     --muted: #8087a2; /* overlay1 */
     --line: #494d64; /* surface1 */
@@ -540,8 +542,96 @@ button {
   border-radius: 6px;
 }
 
-.guide::backdrop {
+.guide::backdrop,
+.songbook::backdrop {
   background: rgb(0 0 0 / 55%);
+}
+
+.songbook {
+  width: min(26rem, 92vw);
+  max-height: 80vh;
+  padding: 1.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.songbook h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.songbook h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.songbook ul {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden auto;
+  max-height: 40vh;
+}
+
+.songbook li {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg);
+}
+
+/* The whole row is the target, so a thumb can land anywhere on the title. */
+.songbook .pick {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.songbook li.current .pick {
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--cursor);
+}
+
+.songbook .pick:hover,
+.songbook .drop:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.songbook .drop {
+  padding: 0 0.85rem;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.songbook .drop:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.shelf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.songbook form {
+  margin-top: 1.5rem;
 }
 
 .guide section + section {

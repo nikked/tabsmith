@@ -1,11 +1,29 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
-import type { Song } from '../core/model.ts'
+import {
+  addEntry,
+  openEntry,
+  openSong,
+  removeEntry,
+  titleOf,
+  withOpenSong,
+  type Library,
+} from '../core/library.ts'
+import { emptySong, type Song } from '../core/model.ts'
 import { DEMO } from '../demo.ts'
-import { decode, encode, filenameFor, load, save } from '../storage.ts'
+import {
+  decode,
+  encode,
+  filenameFor,
+  loadLibrary,
+  newId,
+  saveLibrary,
+  startingLibrary,
+} from '../storage.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
+import { Songbook } from './Songbook.tsx'
 import { TabGrid } from './TabGrid.tsx'
 
 /**
@@ -18,24 +36,32 @@ const pickPath = window.showSaveFilePicker?.bind(window)
 
 /**
  * An empty editor on a first visit says nothing about what any of this is for,
- * so the demo stands in until there is something saved to load instead. Null
- * only when there is no demo to fall back on either.
+ * so the demo is the song the shelf starts with.
  */
-const openingSong = (): Song | null => load() ?? (DEMO.ok ? DEMO.song : null)
+const openingLibrary = (): Library =>
+  loadLibrary() ?? startingLibrary(DEMO.ok ? DEMO.song : emptySong())
 
 export default function App() {
+  const [library, setLibrary] = useState<Library>(openingLibrary)
   const [timeline, dispatch] = useReducer(step, undefined, () =>
-    initialTimeline(openingSong()),
+    initialTimeline(openEntry(library).song),
   )
   const state = timeline.present
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
   const [error, setError] = useState<string | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
+  const shelf = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
 
+  // The editor holds the open song while it is being written; this is how it
+  // gets back to the shelf, which is the thing that is actually persisted.
   useEffect(() => {
-    save(state.song)
+    setLibrary((current) => withOpenSong(current, state.song))
   }, [state.song])
+
+  useEffect(() => {
+    saveLibrary(library)
+  }, [library])
 
   /**
    * Bound on the window rather than the staff, because an edit can be made from
@@ -58,27 +84,49 @@ export default function App() {
   }, [])
 
   /** showModal throws on a dialog that is already open, so ask first. */
-  const showKeys = () => {
-    const element = guide.current
-    if (element !== null && !element.open) element.showModal()
+  const show = (dialog: HTMLDialogElement | null) => {
+    if (dialog !== null && !dialog.open) dialog.showModal()
   }
 
-  /** Replaces the open song, so it asks the same way Open and Clear do. */
+  /**
+   * Every way a song reaches the shelf goes through here, so whatever is being
+   * edited is written back before the shelf changes under it.
+   */
+  const shelve = (song: Song) => {
+    const entry = { id: newId(), song }
+    setLibrary(addEntry(withOpenSong(library, state.song), entry))
+    dispatch({ kind: 'load', song })
+    setError(null)
+  }
+
+  const switchTo = (id: string) => {
+    const next = library.songs.find((entry) => entry.id === id)
+    if (next === undefined || id === library.open) return
+    setLibrary(openSong(withOpenSong(library, state.song), id))
+    dispatch({ kind: 'load', song: next.song })
+  }
+
+  const deleteSong = (id: string) => {
+    const saved = withOpenSong(library, state.song)
+    const entry = saved.songs.find((candidate) => candidate.id === id)
+    if (entry === undefined) return
+    if (
+      songHasContent(entry.song) &&
+      !window.confirm(`Delete ${titleOf(entry)}? This cannot be undone.`)
+    ) {
+      return
+    }
+    const next = removeEntry(saved, id)
+    setLibrary(next)
+    if (next.open !== saved.open) dispatch({ kind: 'load', song: openEntry(next).song })
+  }
+
   const loadDemo = () => {
     if (!DEMO.ok) {
       setError(DEMO.error)
       return
     }
-    if (
-      songHasContent(state.song) &&
-      !window.confirm(
-        'Replace the song you have open with the demo? This cannot be undone.',
-      )
-    ) {
-      return
-    }
-    setError(null)
-    dispatch({ kind: 'load', song: DEMO.song })
+    shelve(DEMO.song)
   }
 
   const clear = () => {
@@ -123,20 +171,14 @@ export default function App() {
     }
   }
 
+  /** An imported song joins the shelf rather than replacing what is open. */
   const loadFromDisk = async (file: File) => {
     const result = decode(await file.text())
     if (!result.ok) {
       setError(result.error)
       return
     }
-    setError(null)
-    if (
-      songHasContent(state.song) &&
-      !window.confirm('Replace the song you have open? This cannot be undone.')
-    ) {
-      return
-    }
-    dispatch({ kind: 'load', song: result.song })
+    shelve(result.song)
   }
 
   return (
@@ -151,14 +193,9 @@ export default function App() {
           />
           tabsmith
         </h1>
-        <div className="files" role="group" aria-label="File">
-          <button type="button" onClick={() => picker.current?.click()}>
-            Open…
-          </button>
-          <button type="button" onClick={() => void saveToDisk()}>
-            {pickPath === undefined ? 'Download' : 'Save as…'}
-          </button>
-        </div>
+        <button type="button" className="shelf-open" onClick={() => show(shelf.current)}>
+          Songs
+        </button>
         <input
           ref={picker}
           type="file"
@@ -170,14 +207,6 @@ export default function App() {
             if (file !== undefined) void loadFromDisk(file)
           }}
         />
-        <div className="document" role="group" aria-label="Document">
-          <button type="button" className="quiet" onClick={loadDemo}>
-            Demo
-          </button>
-          <button type="button" className="quiet" onClick={clear}>
-            Clear
-          </button>
-        </div>
         <div className="segmented modes" role="group" aria-label="View">
           <button
             type="button"
@@ -206,12 +235,27 @@ export default function App() {
       {mode === 'edit' ? (
         <>
           <Chart song={state.song} dispatch={dispatch} />
-          <TabGrid state={state} dispatch={dispatch} onShowKeys={showKeys} />
-          <Shortcuts guide={guide} onShowKeys={showKeys} />
+          <TabGrid
+            state={state}
+            dispatch={dispatch}
+            onShowKeys={() => show(guide.current)}
+          />
+          <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
         </>
       ) : (
         <Output song={state.song} />
       )}
+      <Songbook
+        shelf={shelf}
+        library={library}
+        onOpen={switchTo}
+        onDelete={deleteSong}
+        onNew={() => shelve(emptySong())}
+        onImport={() => picker.current?.click()}
+        onDemo={loadDemo}
+        onExport={() => void saveToDisk()}
+        onClear={clear}
+      />
     </main>
   )
 }
