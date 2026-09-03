@@ -22,6 +22,7 @@ import {
 } from '../storage.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
+import { Practice } from './Practice.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
 import { Songbook } from './Songbook.tsx'
 import { TabGrid } from './TabGrid.tsx'
@@ -47,7 +48,7 @@ export default function App() {
     initialTimeline(openEntry(library).song),
   )
   const state = timeline.present
-  const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
+  const [mode, setMode] = useState<'edit' | 'ascii' | 'practice'>('edit')
   const [error, setError] = useState<string | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
   const shelf = useRef<HTMLDialogElement>(null)
@@ -181,6 +182,10 @@ export default function App() {
     shelve(result.song)
   }
 
+  if (mode === 'practice') {
+    return <Practice song={state.song} onLeave={() => setMode('edit')} />
+  }
+
   return (
     <main>
       <header>
@@ -207,6 +212,9 @@ export default function App() {
             if (file !== undefined) void loadFromDisk(file)
           }}
         />
+        <button type="button" onClick={() => setMode('practice')}>
+          Practice
+        </button>
         <div className="segmented modes" role="group" aria-label="View">
           <button
             type="button"
