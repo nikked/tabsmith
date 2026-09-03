@@ -8,6 +8,7 @@ type Props = {
   readonly onDelete: (id: string) => void
   readonly onNew: () => void
   readonly onImport: () => void
+  readonly onPaste: () => void
   readonly onDemo: () => void
   readonly onExport: () => void
   readonly onShare: () => void
@@ -31,6 +32,7 @@ export function Songbook({
   onDelete,
   onNew,
   onImport,
+  onPaste,
   onDemo,
   onExport,
   onShare,
@@ -70,8 +72,11 @@ export function Songbook({
         <button type="button" onClick={onNew}>
           New song
         </button>
+        <button type="button" onClick={onPaste}>
+          Paste…
+        </button>
         <button type="button" onClick={onImport}>
-          Import…
+          Import file…
         </button>
         <button type="button" className="quiet" onClick={onDemo}>
           Demo

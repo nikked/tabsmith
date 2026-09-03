@@ -185,6 +185,18 @@ const library = z.object({
 
 export const newId = (): string => crypto.randomUUID()
 
+/**
+ * The same schema a file goes through, for a song this app built rather than
+ * read — the importer assembles one out of pasted text, and a bug there should
+ * be caught at the same boundary a bad file is.
+ */
+export const validate = (value: unknown): Loaded => {
+  const result = song.safeParse(value)
+  return result.success
+    ? { ok: true, song: result.data }
+    : { ok: false, error: 'That text did not make a song this app can hold.' }
+}
+
 export const saveLibrary = (value: Library): void => {
   localStorage.setItem(
     LIBRARY_KEY,
