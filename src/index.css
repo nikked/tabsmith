@@ -578,8 +578,66 @@ button {
 }
 
 .guide::backdrop,
+.paste::backdrop,
 .songbook::backdrop {
   background: rgb(0 0 0 / 55%);
+}
+
+/* A dialog is hidden by the UA's own `display: none` while it is closed, so the
+   layout has to be set on the open state or a closed one stays on the page. */
+.paste[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.paste {
+  width: min(44rem, 92vw);
+  max-height: 85vh;
+  padding: 1.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.paste h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.paste p {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.paste input,
+.paste textarea {
+  font: inherit;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+/* Pasted tab is monospaced and must not wrap: a soft-wrapped staff is
+   unreadable, and the spacing is the whole point of what was pasted. */
+.paste textarea {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  tab-size: 8;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
+}
+
+.paste-error {
+  color: var(--alert);
 }
 
 .songbook {

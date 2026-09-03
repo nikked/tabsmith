@@ -23,6 +23,7 @@ import {
 import { forgetLink, linkedSong, toLink } from '../share.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
+import { Paste } from './Paste.tsx'
 import { Practice } from './Practice.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
 import { Songbook } from './Songbook.tsx'
@@ -56,6 +57,7 @@ export default function App() {
   const guide = useRef<HTMLDialogElement>(null)
   const shelf = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
+  const paste = useRef<HTMLDialogElement>(null)
 
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
@@ -305,6 +307,7 @@ export default function App() {
       ) : (
         <Output song={state.song} />
       )}
+      <Paste paste={paste} onImport={shelve} />
       <Songbook
         shelf={shelf}
         library={library}
@@ -312,6 +315,10 @@ export default function App() {
         onDelete={deleteSong}
         onNew={() => shelve(emptySong())}
         onImport={() => picker.current?.click()}
+        onPaste={() => {
+          shelf.current?.close()
+          show(paste.current)
+        }}
         onDemo={loadDemo}
         onExport={() => void saveToDisk()}
         onShare={() => void share()}

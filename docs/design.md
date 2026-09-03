@@ -334,6 +334,55 @@ Counting columns from 0: column 1 is 3 wide (`h9` and its pad), column 5 is 4 (`
 is 1 because it is last and empty, and the rest are 2 — so the bar is `2+3+2+2+2+4+2+1 = 18`
 characters wide. Every string line is that same length.
 
+## 3b. Reading a pasted song
+
+Every song you already know is somewhere on the internet as a chord sheet, and without a way in,
+each one is a retype. **Paste…** takes a page in the shape Ultimate Guitar writes and makes a
+`Song` of it. `core/parse.ts` is pure and has no idea where the text came from.
+
+A line is classified before anything else happens:
+
+- **A heading** is a whole line of `[Verse 1]`, with the `x3` some writers put beside it. A
+  bracket in the middle of a lyric is a lyric.
+- **A staff line** is an optional string name, a bar line, and then only the characters a tab is
+  made of — with no spaces anywhere, which is what tells it from `| x2 |`. Text after a space
+  following it is the row's aside, one line per string as the renderer hangs it.
+- **A line straight under a staff** belongs to it by where it starts: past the closing bar line
+  it carries on the aside, under the bars it is the chord names, which are always the system's
+  last line. Anything else ends the system, a blank line included: systems are separated by
+  blanks, and merging two would leave twelve lines matching no tuning.
+- **Everything else is chart**, kept verbatim. The spaces are what hold a chord over its word
+  (§2), so the importer is the last place that should be tidying them.
+
+Six lines ending on `D` are Drop D, six are standard, four are a bass; anything else is skipped,
+and a page mixing a guitar and a bass is refused outright rather than half-read.
+
+Above a staff, a heading with nothing under it is the row's title, and a single line right above
+it, after a heading or a blank, is the row's note; that is how `renderSystems` writes a row. Two
+or more lines are a section's words. So `[Verse 1]`, one line of chords and a riff reads as a
+row titled Verse 1 with the chords as its note: nothing is lost, it lands on the row.
+
+Reading a bar is the inverse of `sizeColumns`: a column is as wide as its widest cell, and one
+dash follows every column but the last. That makes our own output round-trip exactly — including
+the distinction between an empty column and the gap between two notes, which is the one thing
+the widths carry. Each chord name goes back on the column it starts under. One the renderer
+pushed right off its column, because the name before it ran long, starts under no column and
+goes to the first one after the previous name's; the rendered text does not say which it was.
+
+Hand-written tab is not on that grid, though, and two rules settle what happens then. Each string
+is scanned for its own notes first, because the digit inside `12` is a perfectly good note to a
+scanner that does not know it is halfway through one. And a column never runs past a note another
+string starts inside it: `12b14` on the top string must not swallow the `p0` underneath. **Where
+spacing and notes disagree, the notes win** — a lost note is not recoverable, and a shifted one
+is visible.
+
+Pasting is for songs from elsewhere; a file or a link is still the way to move a song between
+copies of tabsmith, because those carry everything exactly.
+
+The parsed song goes through the same zod schema a file does before it is shelved. It is a
+document this app assembled rather than read, and a bug in the parser should be caught at the
+boundary a bad file is.
+
 ## 4. Keymap
 
 This is the tab grid. The chart is ordinary text fields, and the browser's own editing is
