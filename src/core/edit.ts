@@ -51,6 +51,7 @@ export type Action =
     }
   | { readonly kind: 'addRow' }
   | { readonly kind: 'removeRow' }
+  | { readonly kind: 'moveRow'; readonly index: number; readonly to: number }
   | { readonly kind: 'addColumn' }
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
@@ -60,6 +61,11 @@ export type Action =
   | { readonly kind: 'setTempo'; readonly tempo: string }
   | { readonly kind: 'addSection'; readonly after: number }
   | { readonly kind: 'removeSection'; readonly index: number }
+  | {
+      readonly kind: 'moveSection'
+      readonly index: number
+      readonly to: number
+    }
   | {
       readonly kind: 'setSection'
       readonly index: number
@@ -501,6 +507,26 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       })
     }
 
+    // Lifted out and put back at an index, like a section. The cursor stays in
+    // the row it was in, wherever that row ends up, so a drag never leaves you
+    // editing bars you did not touch.
+    case 'moveRow': {
+      const { rows } = state.song.tab
+      const moved = rows[action.index]
+      if (moved === undefined || action.to < 0 || action.to >= rows.length) return state
+      if (action.to === action.index) return state
+      const rest = rows.filter((_, index) => index !== action.index)
+      const reordered = [...rest.slice(0, action.to), moved, ...rest.slice(action.to)]
+      const editing = rows[state.cursor.row]
+      return resetDigits({
+        ...withTab(state, { ...state.song.tab, rows: reordered }),
+        cursor: {
+          ...state.cursor,
+          row: editing === undefined ? state.cursor.row : reordered.indexOf(editing),
+        },
+      })
+    }
+
     case 'addColumn': {
       const column = state.cursor.column + 1
       return resetDigits({
@@ -590,6 +616,25 @@ export const apply = (state: EditorState, action: Action): EditorState => {
             state,
             state.song.chart.filter((_, index) => index !== action.index),
           )
+
+    /**
+     * Lifted out and put back down, not swapped with its neighbour, so the
+     * action says where a section ends up rather than which way it stepped.
+     * Out-of-range is a no-op: the ends of the chart are where the buttons are
+     * disabled, and the reducer agrees rather than wrapping around.
+     */
+    case 'moveSection': {
+      const { chart } = state.song
+      const moved = chart[action.index]
+      if (moved === undefined || action.to < 0 || action.to >= chart.length) return state
+      if (action.to === action.index) return state
+      const rest = chart.filter((_, index) => index !== action.index)
+      return withChart(state, [
+        ...rest.slice(0, action.to),
+        moved,
+        ...rest.slice(action.to),
+      ])
+    }
 
     case 'setSection':
       return withChart(

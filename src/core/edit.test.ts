@@ -340,6 +340,63 @@ describe('removeRow', () => {
   })
 })
 
+describe('moveRow', () => {
+  const titled = (state: EditorState) => state.song.tab.rows.map((row) => row.title)
+  const three = (): EditorState =>
+    run(
+      initialState(),
+      { kind: 'setRowHeading', row: 0, title: 'A', note: '', aside: '' },
+      { kind: 'addRow' },
+      { kind: 'setRowHeading', row: 1, title: 'B', note: '', aside: '' },
+      { kind: 'addRow' },
+      { kind: 'setRowHeading', row: 2, title: 'C', note: '', aside: '' },
+    )
+
+  it('moves a row to where it is sent, carrying its bars with it', () => {
+    const start = run(three(), {
+      kind: 'setCursor',
+      cursor: { row: 0, bar: 0, column: 0, slot: 0 },
+    })
+    const withNote = apply(start, digit(5))
+    expect(titled(apply(withNote, { kind: 'moveRow', index: 0, to: 2 }))).toEqual([
+      'B',
+      'C',
+      'A',
+    ])
+    expect(
+      cellAt(apply(withNote, { kind: 'moveRow', index: 0, to: 2 }), 0, 0, 0, 2),
+    ).toEqual({ kind: 'fret', fret: 5 })
+    expect(titled(apply(start, { kind: 'moveRow', index: 2, to: 0 }))).toEqual([
+      'C',
+      'A',
+      'B',
+    ])
+  })
+
+  it('keeps the cursor in the row it was in', () => {
+    const inB = run(three(), {
+      kind: 'setCursor',
+      cursor: { row: 1, bar: 0, column: 1, slot: 3 },
+    })
+    expect(apply(inB, { kind: 'moveRow', index: 1, to: 0 }).cursor).toEqual({
+      row: 0,
+      bar: 0,
+      column: 1,
+      slot: 3,
+    })
+    expect(apply(inB, { kind: 'moveRow', index: 0, to: 2 }).cursor.row).toBe(0)
+    expect(apply(inB, { kind: 'moveRow', index: 2, to: 0 }).cursor.row).toBe(2)
+  })
+
+  it('does nothing off either end or onto itself', () => {
+    const state = three()
+    expect(apply(state, { kind: 'moveRow', index: 0, to: -1 })).toBe(state)
+    expect(apply(state, { kind: 'moveRow', index: 2, to: 3 })).toBe(state)
+    expect(apply(state, { kind: 'moveRow', index: 7, to: 0 })).toBe(state)
+    expect(apply(state, { kind: 'moveRow', index: 1, to: 1 })).toBe(state)
+  })
+})
+
 describe('removeRowDropsContent', () => {
   it('is false for an untouched row and for the only row', () => {
     const two = apply(initialState(), { kind: 'addRow' })
@@ -779,6 +836,36 @@ describe('the chart', () => {
     expect(chartOf(apply(two, { kind: 'removeSection', index: 0 }))).toHaveLength(1)
     const one = apply(two, { kind: 'removeSection', index: 0 })
     expect(chartOf(apply(one, { kind: 'removeSection', index: 0 }))).toHaveLength(1)
+  })
+
+  it('moves a section to where it is sent, carrying its body with it', () => {
+    const named = (state: EditorState) => chartOf(state).map((section) => section.name)
+    const three = run(
+      initialState(),
+      { kind: 'addSection', after: 0 },
+      { kind: 'setSection', index: 1, section: { name: 'Chorus', body: 'Cmaj7' } },
+      { kind: 'addSection', after: 1 },
+      { kind: 'setSection', index: 2, section: { name: 'Bridge', body: '' } },
+    )
+    expect(named(three)).toEqual(['Verse 1', 'Chorus', 'Bridge'])
+
+    const lifted = apply(three, { kind: 'moveSection', index: 1, to: 2 })
+    expect(named(lifted)).toEqual(['Verse 1', 'Bridge', 'Chorus'])
+    expect(chartOf(lifted)[2]?.body).toBe('Cmaj7')
+
+    expect(named(apply(three, { kind: 'moveSection', index: 2, to: 0 }))).toEqual([
+      'Bridge',
+      'Verse 1',
+      'Chorus',
+    ])
+  })
+
+  it('refuses to move off either end rather than wrapping round, or onto itself', () => {
+    const two = run(initialState(), { kind: 'addSection', after: 0 })
+    expect(apply(two, { kind: 'moveSection', index: 0, to: -1 })).toBe(two)
+    expect(apply(two, { kind: 'moveSection', index: 1, to: 2 })).toBe(two)
+    expect(apply(two, { kind: 'moveSection', index: 7, to: 0 })).toBe(two)
+    expect(apply(two, { kind: 'moveSection', index: 1, to: 1 })).toBe(two)
   })
 
   it('keeps the body exactly as typed', () => {

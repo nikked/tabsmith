@@ -160,7 +160,10 @@ Notes on the model:
 - **Rows own their bars**, and a row is a line of the finished tab. Nesting rather than a flag
   on `Bar` is what makes a bar in two rows, or in none, unconstructible — the same reason a
   column holds its own cells. A row holds at least one bar and a score at least one row, so
-  removing the last bar of a row removes the row with it.
+  removing the last bar of a row removes the row with it. Rows are reordered the way sections
+  are: `moveRow` lifts one out and puts it back at an index, dragged by the grip beside its
+  title. The drag is pointer events rather than HTML drag and drop, which phones do not do, and
+  the cursor stays in the row it was in wherever that row lands.
 - `Link` is a _prefix_ on the note it belongs to (`h9` reads "hammered to 9"), `Decoration` a
   suffix (`7~`). The union makes `{ kind: 'mute' }` structurally unable to carry either.
 - **A bend's target is optional.** `{ kind: 'b' }` renders `7b`, `{ kind: 'b', to: 9 }` renders
@@ -173,6 +176,10 @@ Notes on the model:
   chords and lyrics would let the app reflow or re-space it, which is exactly how the one thing
   holding the chart together gets destroyed. So the body is stored and rendered verbatim, and
   the editor shows it monospaced and never soft-wrapped.
+- **The chart is an ordered list, and the order is editable.** A section is lifted out and put
+  back down at an index rather than swapped with its neighbour, so `moveSection` says where a
+  section ends up rather than which way it stepped. An index outside the chart is a no-op: the
+  ends are where the buttons are disabled, and the reducer agrees rather than wrapping round.
 - **A nameless section is a block of chords**, and renders with no empty brackets. A section
   with a name and no body renders as a bare heading — a `[Chorus 2]` that repeats an earlier
   one is worth marking even when there is nothing new to write under it.
@@ -466,7 +473,7 @@ Two rules keep this cheap as the schema keeps changing:
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
 multiple songs open at once, import or parsing of existing ASCII, rhythm and time signatures,
-playback, sharing, reordering sections.
+playback, sharing.
 
 A library of songs is the filesystem's job (§5): one song is open, the rest are files.
 

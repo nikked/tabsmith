@@ -100,6 +100,22 @@ export function Chart({ song, dispatch }: Props) {
             </label>
             <button
               type="button"
+              title="Move this section up"
+              disabled={index === 0}
+              onClick={() => dispatch({ kind: 'moveSection', index, to: index - 1 })}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              title="Move this section down"
+              disabled={index === song.chart.length - 1}
+              onClick={() => dispatch({ kind: 'moveSection', index, to: index + 1 })}
+            >
+              ↓
+            </button>
+            <button
+              type="button"
               title="Add a section below"
               onClick={() => dispatch({ kind: 'addSection', after: index })}
             >
