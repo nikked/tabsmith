@@ -70,6 +70,16 @@ const GROUPS: readonly Group[] = [
       },
     ],
   },
+  {
+    title: 'Undoing',
+    shortcuts: [
+      {
+        keys: ['Cmd+Z', 'Ctrl+Z'],
+        does: 'Undo the last edit. Inside a text field the browser undoes what you typed there instead.',
+      },
+      { keys: ['Cmd+Shift+Z', 'Ctrl+Shift+Z'], does: 'Redo' },
+    ],
+  },
 ]
 
 const LEGEND: readonly Shortcut[] = GROUPS.flatMap((group) =>
