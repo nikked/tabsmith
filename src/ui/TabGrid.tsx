@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useRef, type Dispatch, type KeyboardEvent } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type KeyboardEvent,
+} from 'react'
 import {
   atFirstBar,
   atLastBar,
@@ -24,6 +31,32 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
   const current = useRef<HTMLDivElement>(null)
   const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
   const titleFields = useRef<Record<number, HTMLInputElement | null>>({})
+  const groups = useRef<Record<number, HTMLDivElement | null>>({})
+  const [drag, setDrag] = useState<{ readonly from: number; readonly to: number } | null>(
+    null,
+  )
+
+  /**
+   * Where a row dropped at this height lands: past every other row whose middle
+   * is above the pointer. The same index moveRow takes, since it counts the
+   * rows with the moved one already lifted out.
+   */
+  const dropIndex = (from: number, y: number): number =>
+    score.rows.filter((_, index) => {
+      const node = groups.current[index]
+      if (index === from || node == null) return false
+      const box = node.getBoundingClientRect()
+      return box.top + box.height / 2 < y
+    }).length
+
+  // The row a drop would land next to, and on which side, so the line is drawn
+  // where the row will actually go.
+  const dropMark = (rowIndex: number): string => {
+    if (drag === null || drag.to === drag.from) return ''
+    if (rowIndex === drag.from) return ' lifted'
+    if (rowIndex !== drag.to) return ''
+    return drag.to > drag.from ? ' drop-below' : ' drop-above'
+  }
 
   useEffect(() => {
     staff.current?.focus()
@@ -183,8 +216,50 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
       </div>
       <div ref={staff} className="staff" tabIndex={0} onKeyDown={onKeyDown}>
         {score.rows.map((row, rowIndex) => (
-          <div key={rowIndex} className="row-group">
+          <div
+            key={rowIndex}
+            ref={(node) => {
+              groups.current[rowIndex] = node
+            }}
+            className={`row-group${dropMark(rowIndex)}`}
+          >
             <div className="row-head">
+              {score.rows.length > 1 && (
+                <button
+                  type="button"
+                  className="row-grip"
+                  title="Drag to move this row"
+                  aria-label={`Move row ${rowIndex + 1}`}
+                  // Pointer events rather than HTML drag and drop, which a
+                  // phone does not do. Default prevented so pressing the grip
+                  // leaves focus on the staff instead of moving it here.
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    setDrag({ from: rowIndex, to: rowIndex })
+                  }}
+                  // Capture, not the drag state, says whether this grip is
+                  // being dragged: a quick flick can move and let go before
+                  // the render that would have set it.
+                  onPointerMove={(event) => {
+                    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+                    setDrag({ from: rowIndex, to: dropIndex(rowIndex, event.clientY) })
+                  }}
+                  onPointerUp={(event) => {
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                      dispatch({
+                        kind: 'moveRow',
+                        index: rowIndex,
+                        to: dropIndex(rowIndex, event.clientY),
+                      })
+                    }
+                    setDrag(null)
+                  }}
+                  onPointerCancel={() => setDrag(null)}
+                >
+                  ⠿
+                </button>
+              )}
               <input
                 ref={(node) => {
                   titleFields.current[rowIndex] = node
