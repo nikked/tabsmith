@@ -10,6 +10,8 @@ type Props = {
   readonly onImport: () => void
   readonly onDemo: () => void
   readonly onExport: () => void
+  readonly onShare: () => void
+  readonly copied: boolean
   readonly onClear: () => void
 }
 
@@ -31,6 +33,8 @@ export function Songbook({
   onImport,
   onDemo,
   onExport,
+  onShare,
+  copied,
   onClear,
 }: Props) {
   const open = openEntry(library)
@@ -78,6 +82,9 @@ export function Songbook({
       <div className="shelf-actions">
         <button type="button" onClick={onExport}>
           Export…
+        </button>
+        <button type="button" onClick={onShare}>
+          {copied ? 'Link copied' : 'Copy link'}
         </button>
         <button type="button" className="quiet" onClick={onClear}>
           Clear

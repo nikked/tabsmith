@@ -46,13 +46,14 @@ const useWakeLock = (): void => {
  * read from a music stand at arm's length, so the only controls are the size
  * and the way out, and both get out of the way of the page.
  */
-export function Practice({
-  song,
-  onLeave,
-}: {
+type Props = {
   readonly song: Song
   readonly onLeave: () => void
-}) {
+  /** Present only for a song that arrived by link and is not yours yet. */
+  readonly onKeep?: () => void
+}
+
+export function Practice({ song, onLeave, onKeep }: Props) {
   const [step, setStep] = useState(2)
   useWakeLock()
 
@@ -85,8 +86,13 @@ export function Practice({
         >
           A+
         </button>
+        {onKeep !== undefined && (
+          <button type="button" onClick={onKeep}>
+            Add to my songs
+          </button>
+        )}
         <button type="button" onClick={onLeave}>
-          Done
+          {onKeep === undefined ? 'Done' : 'Not now'}
         </button>
       </div>
       {songBlocks(song).map((block, index) => (

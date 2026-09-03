@@ -526,6 +526,21 @@ Two rules keep this cheap as the schema keeps changing:
   this one still opens. A version integer higher than this build's is refused outright and says
   so — past that point guessing is worse than stopping.
 
+### Sharing a song
+
+**Copy link** puts the whole song in the fragment of a URL: deflate the same bytes `encode`
+writes, then base64url so nothing in it needs escaping. There is no server, no account and no
+upload — the link _is_ the song, and nothing of yours leaves the machine except what you send.
+The demo song, 2.8 KB of JSON, makes an 1156-character link.
+
+Opening one shows the song read-only with **Add to my songs**. It is never shelved on arrival:
+a link someone sent you is something to read, and whether to keep it is your decision rather
+than the sender's. The fragment is dropped from the address bar once read, so a reload does not
+offer the same song twice and the URL cannot be mistaken for what is open.
+
+Read on mount and on `hashchange` both. Pasting a link into a tab that already has tabsmith open
+changes only the fragment, which is not a navigation — on mount alone, nothing would happen.
+
 ## 6. Deliberately absent
 
 Named here so they don't creep in: custom tunings beyond the three presets, capo, multiple songs

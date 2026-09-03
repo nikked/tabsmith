@@ -20,6 +20,7 @@ import {
   saveLibrary,
   startingLibrary,
 } from '../storage.ts'
+import { forgetLink, linkedSong, toLink } from '../share.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
 import { Practice } from './Practice.tsx'
@@ -50,6 +51,8 @@ export default function App() {
   const state = timeline.present
   const [mode, setMode] = useState<'edit' | 'ascii' | 'practice'>('edit')
   const [error, setError] = useState<string | null>(null)
+  const [shared, setShared] = useState<Song | null>(null)
+  const [copied, setCopied] = useState(false)
   const guide = useRef<HTMLDialogElement>(null)
   const shelf = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
@@ -63,6 +66,27 @@ export default function App() {
   useEffect(() => {
     saveLibrary(library)
   }, [library])
+
+  /**
+   * A song can arrive in the address bar. It is shown rather than shelved: a
+   * link someone sent you is something to read, and whether to keep it is your
+   * decision, not the sender's.
+   */
+  useEffect(() => {
+    const read = () => {
+      void linkedSong(location.hash).then((result) => {
+        if (result === null) return
+        forgetLink()
+        if (result.ok) setShared(result.song)
+        else setError(result.error)
+      })
+    }
+    read()
+    // Pasting a link into a tab that already has tabsmith open changes only the
+    // fragment, which is not a navigation — without this, nothing would happen.
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
 
   /**
    * Bound on the window rather than the staff, because an edit can be made from
@@ -172,6 +196,21 @@ export default function App() {
     }
   }
 
+  /**
+   * Copied rather than opened: the whole song is in the link, so there is
+   * nothing to visit and nothing to wait for.
+   */
+  const share = async () => {
+    try {
+      await navigator.clipboard.writeText(await toLink(state.song))
+      setError(null)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setError('Could not copy the link.')
+    }
+  }
+
   /** An imported song joins the shelf rather than replacing what is open. */
   const loadFromDisk = async (file: File) => {
     const result = decode(await file.text())
@@ -180,6 +219,19 @@ export default function App() {
       return
     }
     shelve(result.song)
+  }
+
+  if (shared !== null) {
+    return (
+      <Practice
+        song={shared}
+        onLeave={() => setShared(null)}
+        onKeep={() => {
+          shelve(shared)
+          setShared(null)
+        }}
+      />
+    )
   }
 
   if (mode === 'practice') {
@@ -262,6 +314,8 @@ export default function App() {
         onImport={() => picker.current?.click()}
         onDemo={loadDemo}
         onExport={() => void saveToDisk()}
+        onShare={() => void share()}
+        copied={copied}
         onClear={clear}
       />
     </main>
