@@ -199,6 +199,7 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                     row: rowIndex,
                     title: event.target.value,
                     note: row.note ?? '',
+                    aside: row.aside ?? '',
                   })
                 }
                 onKeyDown={(event) => onHeadingKeyDown(event, rowIndex)}
@@ -214,6 +215,7 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                     row: rowIndex,
                     title: row.title ?? '',
                     note: event.target.value,
+                    aside: row.aside ?? '',
                   })
                 }
                 onKeyDown={(event) => onHeadingKeyDown(event, rowIndex)}
@@ -293,6 +295,24 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                   <span className="barline" />
                 </div>
               ))}
+              <textarea
+                className="row-aside"
+                placeholder="Aside"
+                spellCheck={false}
+                rows={Math.max(1, (row.aside ?? '').split('\n').length)}
+                value={row.aside ?? ''}
+                aria-label={`Aside for row ${rowIndex + 1}`}
+                onChange={(event) =>
+                  dispatch({
+                    kind: 'setRowHeading',
+                    row: rowIndex,
+                    title: row.title ?? '',
+                    note: row.note ?? '',
+                    aside: event.target.value,
+                  })
+                }
+                onKeyDown={(event) => event.stopPropagation()}
+              />
             </div>
           </div>
         ))}

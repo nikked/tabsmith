@@ -184,9 +184,33 @@ h1 img {
 /* Keys go to whichever field is focused — a chord name or a row's heading — so
    the cell they will come back to is dimmed rather than lit: two full
    highlights would claim the cursor is in two places. */
-.staff:has(.chord:focus, .row-title:focus, .row-note:focus) .cell.current {
+.staff:has(.chord:focus, .row-title:focus, .row-note:focus, .row-aside:focus)
+  .cell.current {
   background: color-mix(in srgb, var(--cursor) 30%, transparent);
   color: var(--fg);
+}
+
+/* Hung off the closing bar line, where it renders — inside the row's scroller,
+   so it stays with the bar it comments on rather than pinned to the window. */
+.row-aside {
+  font: inherit;
+  flex: none;
+  width: 12em;
+  align-self: start;
+  margin-top: 0.1rem;
+  padding: 0.1rem 0.2rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+  resize: none;
+  overflow: hidden;
+}
+
+.row-aside:focus {
+  outline: none;
+  color: var(--fg);
+  border-bottom: 1px solid var(--fg);
 }
 
 .chord {
@@ -221,7 +245,8 @@ h1 img {
  */
 .chord:focus,
 .row-title:focus,
-.row-note:focus {
+.row-note:focus,
+.row-aside:focus {
   field-sizing: content;
   /* An explicit width would win over field-sizing, so it has to go. */
   width: auto;
@@ -237,6 +262,10 @@ h1 img {
 
 .row-note:focus {
   min-width: 30em;
+}
+
+.row-aside:focus {
+  min-width: 12em;
 }
 
 .error {

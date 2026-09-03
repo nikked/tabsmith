@@ -672,11 +672,17 @@ describe('the ends of the score', () => {
 describe('row headings', () => {
   const rowAt = (state: EditorState, index = 0) => state.song.tab.rows[index]
 
-  const set = (state: EditorState, title: string, note: string, row = 0) =>
-    apply(state, { kind: 'setRowHeading', row, title, note })
+  const set = (state: EditorState, title: string, note: string, aside = '', row = 0) =>
+    apply(state, { kind: 'setRowHeading', row, title, note, aside })
 
   it('keeps a title and a note on the row they were typed on', () => {
-    const state = set(run(initialState(), { kind: 'addRow' }), 'Main Riff', 'let ring', 1)
+    const state = set(
+      run(initialState(), { kind: 'addRow' }),
+      'Main Riff',
+      'let ring',
+      '',
+      1,
+    )
     expect(rowAt(state, 1)?.title).toBe('Main Riff')
     expect(rowAt(state, 1)?.note).toBe('let ring')
     expect(rowAt(state, 0)?.title).toBeUndefined()
@@ -689,6 +695,19 @@ describe('row headings', () => {
       bars: rowAt(named)?.bars,
     })
     expect(rowAt(set(named, '', ''))).toEqual({ bars: rowAt(named)?.bars })
+    const annotated = set(named, 'Main Riff', 'let ring', 'x2')
+    expect(rowAt(set(annotated, 'Main Riff', 'let ring', ''))).toEqual({
+      title: 'Main Riff',
+      note: 'let ring',
+      bars: rowAt(named)?.bars,
+    })
+  })
+
+  it('counts an aside as work, so its row is not silently dropped', () => {
+    const state = set(run(initialState(), { kind: 'addRow' }), '', '', 'x2 for Intro', 1)
+    expect(rowAt(state, 1)?.aside).toBe('x2 for Intro')
+    expect(removeRowDropsContent(state.song.tab, 1)).toBe(true)
+    expect(songHasContent(state.song)).toBe(true)
   })
 
   it('survives every edit made to the bars under it', () => {
@@ -705,7 +724,7 @@ describe('row headings', () => {
   })
 
   it('goes with the row when a bar removal takes the row with it', () => {
-    const two = set(run(initialState(), { kind: 'addRow' }), 'Main Riff', '', 1)
+    const two = set(run(initialState(), { kind: 'addRow' }), 'Main Riff', '', '', 1)
     const state = run(
       two,
       { kind: 'setCursor', cursor: { row: 1, bar: 0, column: 0, slot: 0 } },

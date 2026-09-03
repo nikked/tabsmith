@@ -97,6 +97,7 @@ type Bar = { readonly columns: readonly Column[] }
 type Row = {
   readonly title?: string               // bracketed on render: [Main Riff]
   readonly note?: string                // written above the staff as typed
+  readonly aside?: string               // hung off the closing bar line, one line per string
   readonly bars: readonly Bar[]
 }
 
@@ -152,8 +153,10 @@ Notes on the model:
 - **A row can be titled**, because a tab is usually several named parts rather than one long
   one. Vertically a row reads title, strings, chord fields, and rows stack, so `↑` and `↓` walk
   that whole column and step into the neighbouring row at either end. The title is bracketed on render; the note under it is written as typed, so it can be an
-  aside, a tempo mark or a fingering hint rather than only a parenthetical. Both are absent when
-  empty, the same as a chord name.
+  aside, a tempo mark or a fingering hint rather than only a parenthetical. An aside is the
+  third field and the only one that does not sit above the staff: `x2 for Intro` is an
+  instruction for these bars rather than a name for them, so it hangs off the closing bar line
+  where it was written on paper. All three are absent when empty, the same as a chord name.
 - **Rows own their bars**, and a row is a line of the finished tab. Nesting rather than a flag
   on `Bar` is what makes a bar in two rows, or in none, unconstructible — the same reason a
   column holds its own cells. A row holds at least one bar and a score at least one row, so
@@ -279,6 +282,10 @@ from `tuning.strings`.
 **A row's heading** is up to two lines above the staff, at the left margin rather than indented
 to it: they title the whole row, not any string in it. `[title]` then the note verbatim, either
 one on its own, and nothing at all when the row has neither.
+
+**A row's aside** goes to the right of the staff instead, one of its lines per string from the
+top down, separated from the closing bar line by a single space. Lines past the last string
+carry on underneath in the same column, so a long aside is never silently truncated.
 
 **Systems** — one per `Row`, in order, separated by a blank line. There is no packing and no
 maximum width: the document says which bars share a line, so rendering has nothing left to
@@ -459,7 +466,7 @@ Two rules keep this cheap as the schema keeps changing:
 
 Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
 multiple songs open at once, import or parsing of existing ASCII, rhythm and time signatures,
-playback, annotation lines above the staff, sharing, reordering sections.
+playback, sharing, reordering sections.
 
 A library of songs is the filesystem's job (§5): one song is open, the rest are files.
 
