@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   apply,
   atFirstBar,
+  canRedo,
+  canUndo,
+  initialTimeline,
+  step,
   atLastBar,
   initialState,
   removeBarDropsContent,
@@ -11,6 +15,8 @@ import {
   scoreHasContent,
   songHasContent,
   type Action,
+  type Timeline,
+  type TimelineAction,
 } from './edit.ts'
 import {
   DEFAULT_BAR_COLUMNS,
@@ -996,5 +1002,92 @@ describe('what counts as content', () => {
       expect(scoreHasContent(score)).toBe(true)
       expect(removeRowDropsContent(oneRow(row), 0)).toBe(true)
     }
+  })
+})
+
+describe('undo', () => {
+  const walk = (timeline: Timeline, ...actions: readonly TimelineAction[]): Timeline =>
+    actions.reduce(step, timeline)
+
+  const chordNames = (timeline: Timeline) =>
+    timeline.present.song.tab.rows[0]?.bars[0]?.columns[0]?.chord
+
+  const typeChord = (text: string): readonly TimelineAction[] =>
+    [...text].map((_, index) => ({
+      kind: 'setChord' as const,
+      row: 0,
+      bar: 0,
+      column: 0,
+      chord: text.slice(0, index + 1),
+    }))
+
+  it('puts the song back the way it was, and forward again', () => {
+    const edited = walk(initialTimeline(), digit(7))
+    expect(edited.present.song).not.toBe(initialTimeline().present.song)
+
+    const undone = step(edited, { kind: 'undo' })
+    expect(undone.present.song.tab).toEqual(initialTimeline().present.song.tab)
+    expect(canRedo(undone)).toBe(true)
+
+    expect(step(undone, { kind: 'redo' }).present.song).toBe(edited.present.song)
+  })
+
+  it('does not count moving the cursor as something to undo', () => {
+    const moved = walk(
+      initialTimeline(),
+      { kind: 'move', move: 'nextColumn' },
+      { kind: 'move', move: 'stringDown' },
+    )
+    expect(canUndo(moved)).toBe(false)
+    expect(moved.present.cursor).toEqual({ row: 0, bar: 0, column: 1, slot: 1 })
+  })
+
+  it('does not count an edit the reducer refused', () => {
+    // A score keeps at least one row, so `{` on the only row is refused.
+    const refused = walk(initialTimeline(), { kind: 'removeRow' })
+    expect(canUndo(refused)).toBe(false)
+    expect(refused.present.song.tab.rows).toHaveLength(1)
+  })
+
+  it('collapses a run of keystrokes in one field into a single step', () => {
+    const typed = walk(initialTimeline(), ...typeChord('Cmaj7'))
+    expect(chordNames(typed)).toBe('Cmaj7')
+    expect(typed.past).toHaveLength(1)
+    expect(chordNames(step(typed, { kind: 'undo' }))).toBeUndefined()
+  })
+
+  it('starts a new step when the typing moves to another field', () => {
+    const typed = walk(
+      initialTimeline(),
+      ...typeChord('Am'),
+      { kind: 'setTitle', title: 'S' },
+      { kind: 'setTitle', title: 'Sl' },
+    )
+    expect(typed.past).toHaveLength(2)
+
+    const back = step(typed, { kind: 'undo' })
+    expect(back.present.song.title).toBe('')
+    expect(chordNames(back)).toBe('Am')
+  })
+
+  it('drops the redo branch once a new edit is made', () => {
+    const undone = walk(initialTimeline(), digit(7), { kind: 'undo' })
+    expect(canRedo(undone)).toBe(true)
+    expect(canRedo(step(undone, digit(3)))).toBe(false)
+  })
+
+  it('holds still at either end rather than throwing', () => {
+    const fresh = initialTimeline()
+    expect(step(fresh, { kind: 'undo' })).toBe(fresh)
+    expect(step(fresh, { kind: 'redo' })).toBe(fresh)
+  })
+
+  it('keeps the history bounded, dropping the oldest first', () => {
+    const many = walk(
+      initialTimeline(),
+      ...Array.from({ length: 150 }, () => ({ kind: 'addBar' }) as const),
+    )
+    expect(many.past).toHaveLength(100)
+    expect(many.present.song.tab.rows[0]?.bars).toHaveLength(152)
   })
 })

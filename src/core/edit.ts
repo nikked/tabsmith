@@ -645,3 +645,96 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       )
   }
 }
+
+/**
+ * Undo is a list of past states, which is all the immutable model needs it to
+ * be: nothing is edited in place, so keeping the state from before an action is
+ * keeping the whole document. `future` is what undo has taken away, and any new
+ * edit drops it — a branch you cannot get back to is not worth carrying.
+ */
+export type Timeline = {
+  readonly present: EditorState
+  readonly past: readonly EditorState[]
+  readonly future: readonly EditorState[]
+  readonly typing: string | null
+}
+
+export type TimelineAction =
+  Action | { readonly kind: 'undo' } | { readonly kind: 'redo' }
+
+/** Deep enough that the end is never in sight, short enough to stay bounded. */
+const HISTORY = 100
+
+/**
+ * Which field a text edit is going into. A run of keystrokes in one of them
+ * collapses to a single step, so undoing a chord name does not walk back
+ * through it a letter at a time. Null for everything else, where each action is
+ * its own step.
+ */
+const typingIn = (action: Action): string | null => {
+  switch (action.kind) {
+    case 'setTitle':
+      return 'title'
+    case 'setTempo':
+      return 'tempo'
+    case 'setChord':
+      return `chord:${action.row}:${action.bar}:${action.column}`
+    case 'setRowHeading':
+      return `heading:${action.row}`
+    case 'setSection':
+      return `section:${action.index}`
+    default:
+      return null
+  }
+}
+
+export const initialTimeline = (song: Song | null = null): Timeline => ({
+  present: initialState(song),
+  past: [],
+  future: [],
+  typing: null,
+})
+
+export const canUndo = (timeline: Timeline): boolean => timeline.past.length > 0
+export const canRedo = (timeline: Timeline): boolean => timeline.future.length > 0
+
+export const step = (timeline: Timeline, action: TimelineAction): Timeline => {
+  if (action.kind === 'undo') {
+    const previous = timeline.past.at(-1)
+    if (previous === undefined) return timeline
+    return {
+      present: previous,
+      past: timeline.past.slice(0, -1),
+      future: [timeline.present, ...timeline.future],
+      typing: null,
+    }
+  }
+
+  if (action.kind === 'redo') {
+    const [next, ...rest] = timeline.future
+    if (next === undefined) return timeline
+    return {
+      present: next,
+      past: [...timeline.past, timeline.present],
+      future: rest,
+      typing: null,
+    }
+  }
+
+  const present = apply(timeline.present, action)
+  const typing = typingIn(action)
+  // A cursor move is not an edit, and neither is an action the reducer refused,
+  // so neither leaves a step to undo back to.
+  if (present.song === timeline.present.song) {
+    return { ...timeline, present, typing }
+  }
+  return {
+    present,
+    past:
+      typing !== null && typing === timeline.typing
+        ? timeline.past
+        : [...timeline.past, timeline.present].slice(-HISTORY),
+    future: [],
+    typing,
+  }
+}

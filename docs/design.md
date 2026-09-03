@@ -229,13 +229,33 @@ retune(score, tuning) => Score                 // total; drops or prepends rows 
 retuneDropsNotes(score, tuning) => boolean     // true if any dropped row holds a cell
 ```
 
-Both are pure and live in `core/`. Dropping notes is unrecoverable — there is no undo (§6) and
-§5 autosaves immediately — so the UI calls `retuneDropsNotes` first and confirms before
+Both are pure and live in `core/`. Undo (§2c) takes a narrowing retune back, but only until the
+page is reloaded, and §5 autosaves immediately — so the UI calls `retuneDropsNotes` first and confirms before
 dispatching `retune`. It never asks when nothing would be lost, which is every same-width
 switch and every switch on an empty document.
 
 `retune` also moves `cursor.slot` by the same bottom-up offset it applies to the rows, then
 clamps it into the new row count, so the cursor stays on the string it was on.
+
+## 2c. Undo
+
+The model is immutable, so undo is a list of past states and nothing more: no inverse of each
+action, no diffing, no journal. `Timeline` holds `past`, `present` and `future` of `EditorState`,
+and `step` wraps `apply`.
+
+- **A cursor move is not an edit.** `apply` returns the same `song` reference when nothing about
+  the document changed, so `step` compares references and adds no history entry. An action the
+  reducer refused — `{` on the only row — leaves nothing to undo back to either.
+- **A run of keystrokes in one field is one step.** `typingIn` names the field an action writes
+  to, and consecutive edits to the same name fold into the entry already on the stack. Without
+  it, undoing a chord name would walk back through it a letter at a time.
+- **A new edit drops the future.** A branch you cannot navigate back to is not worth carrying.
+- **100 steps**, oldest dropped first, and none of it is persisted: undo is for the mistake you
+  just made, not a version history. Which is why the destructive prompts (§4) stay.
+
+The binding is on the window rather than the staff, because an edit can be made from a button as
+easily as from a key. A focused `<input>` or `<textarea>` is left alone: the browser keeps its
+own undo stack for what is typed there, and it is the finer of the two.
 
 ## 3. ASCII rendering
 
@@ -383,7 +403,8 @@ the name is a note to the reader, not data the editor acts on.
 
 Removing a bar is gated the way a narrowing retune is (§2b): `removeBarDropsContent` is pure and
 lives in `core/`, and the UI confirms before dispatching when it returns true. Losing a bar of
-notes is unrecoverable for the same reasons — no undo (§6), and §5 autosaves immediately.
+notes is worth asking about for the same reasons — undo (§2c) does not survive a reload, and §5
+autosaves immediately.
 
 ```ts
 removeBarDropsContent(score, { row, bar }) => boolean   // true only when the removal really happens
@@ -471,9 +492,9 @@ Two rules keep this cheap as the schema keeps changing:
 
 ## 6. Deliberately absent
 
-Named here so they don't creep in: undo/redo, custom tunings beyond the three presets, capo,
-multiple songs open at once, import or parsing of existing ASCII, rhythm and time signatures,
-playback, sharing.
+Named here so they don't creep in: custom tunings beyond the three presets, capo, multiple songs
+open at once, import or parsing of existing ASCII, rhythm and time signatures, playback,
+sharing.
 
 A library of songs is the filesystem's job (§5): one song is open, the rest are files.
 

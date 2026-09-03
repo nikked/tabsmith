@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { apply, initialState, songHasContent } from '../core/edit.ts'
+import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import type { Song } from '../core/model.ts'
 import { DEMO } from '../demo.ts'
 import { decode, encode, filenameFor, load, save } from '../storage.ts'
@@ -24,9 +24,10 @@ const pickPath = window.showSaveFilePicker?.bind(window)
 const openingSong = (): Song | null => load() ?? (DEMO.ok ? DEMO.song : null)
 
 export default function App() {
-  const [state, dispatch] = useReducer(apply, undefined, () =>
-    initialState(openingSong()),
+  const [timeline, dispatch] = useReducer(step, undefined, () =>
+    initialTimeline(openingSong()),
   )
+  const state = timeline.present
   const [mode, setMode] = useState<'edit' | 'ascii'>('edit')
   const [error, setError] = useState<string | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
@@ -35,6 +36,26 @@ export default function App() {
   useEffect(() => {
     save(state.song)
   }, [state.song])
+
+  /**
+   * Bound on the window rather than the staff, because an edit can be made from
+   * a button as easily as from a key. A text field is left alone: the browser
+   * keeps its own undo stack for what is typed there, and it is the finer of
+   * the two.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return
+      const { target } = event
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return
+      }
+      event.preventDefault()
+      dispatch({ kind: event.shiftKey ? 'redo' : 'undo' })
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   /** showModal throws on a dialog that is already open, so ask first. */
   const showKeys = () => {
