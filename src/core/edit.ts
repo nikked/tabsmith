@@ -47,6 +47,7 @@ export type Action =
       readonly row: number
       readonly title: string
       readonly note: string
+      readonly aside: string
     }
   | { readonly kind: 'addRow' }
   | { readonly kind: 'removeRow' }
@@ -96,7 +97,7 @@ const columnHasContent = (column: Column): boolean =>
 const barHasContent = (bar: Bar): boolean => bar.columns.some(columnHasContent)
 
 const rowHasHeading = (row: Row): boolean =>
-  row.title !== undefined || row.note !== undefined
+  row.title !== undefined || row.note !== undefined || row.aside !== undefined
 
 const rowHasContent = (row: Row): boolean =>
   rowHasHeading(row) || row.bars.some(barHasContent)
@@ -143,9 +144,10 @@ const setCell = (score: Score, cursor: Cursor, cell: Cell | null): Score =>
   }))
 
 /** An emptied field leaves nothing behind, so it never reaches the ASCII. */
-const withHeading = (row: Row, title: string, note: string): Row => ({
+const withHeading = (row: Row, title: string, note: string, aside: string): Row => ({
   ...(title === '' ? {} : { title }),
   ...(note === '' ? {} : { note }),
+  ...(aside === '' ? {} : { aside }),
   bars: row.bars,
 })
 
@@ -432,7 +434,7 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         withTab(
           state,
           mapRow(state.song.tab, action.row, (row) =>
-            withHeading(row, action.title, action.note),
+            withHeading(row, action.title, action.note, action.aside),
           ),
         ),
       )

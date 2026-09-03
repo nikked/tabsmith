@@ -314,6 +314,30 @@ describe('row headings', () => {
     expect(heading({ title: '', note: '', bars: [emptyBar(2, 6)] })[0]).toBe('e|---|')
   })
 
+  it('hangs an aside off the closing bar line, one line per string', () => {
+    const lines = heading({
+      aside: 'x2 for Intro\nthen straight on',
+      bars: [emptyBar(2, 6)],
+    })
+    expect(lines.slice(0, 3)).toEqual([
+      'e|---| x2 for Intro',
+      'B|---| then straight on',
+      'G|---|',
+    ])
+  })
+
+  it('carries an aside longer than the staff on in the same column', () => {
+    const lines = renderScore(
+      scoreOfRows(BASS, { aside: 'a\nb\nc\nd\ne\nf', bars: [emptyBar(1, 4)] }),
+    ).split('\n')
+    expect(lines).toEqual(['G|-| a', 'D|-| b', 'A|-| c', 'E|-| d', '     e', '     f'])
+  })
+
+  it('skips a blank line of an aside rather than padding the staff', () => {
+    const lines = heading({ aside: '\nunder the first', bars: [emptyBar(1, 6)] })
+    expect(lines.slice(0, 2)).toEqual(['e|-|', 'B|-| under the first'])
+  })
+
   it('sits at the left margin, not indented to the staff', () => {
     const bass = renderScore(
       scoreOfRows(TUNINGS[2], { title: 'Main Riff', bars: [emptyBar(2, 4)] }),

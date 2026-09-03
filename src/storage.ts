@@ -39,6 +39,7 @@ const bar = z.object({ columns: z.array(column).nonempty() })
 const row = z.object({
   title: z.string().optional(),
   note: z.string().optional(),
+  aside: z.string().optional(),
   bars: z.array(bar).nonempty(),
 })
 

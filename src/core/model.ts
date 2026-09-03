@@ -29,6 +29,7 @@ export type Bar = { readonly columns: readonly Column[] }
 export type Row = {
   readonly title?: string
   readonly note?: string
+  readonly aside?: string
   readonly bars: readonly Bar[]
 }
 

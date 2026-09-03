@@ -76,6 +76,32 @@ const rowHeading = (row: Row): readonly string[] =>
   ].filter((line) => line !== '')
 
 /**
+ * An aside belongs to the bars rather than naming them, so it hangs off the
+ * closing bar line instead of sitting above the staff where a title goes:
+ * `x2 for Intro` is an instruction for these bars, not what they are called.
+ * One of its lines per string, top down, and anything past the last string
+ * carries on in the same column so nothing typed is dropped.
+ */
+const withAside = (
+  staff: readonly string[],
+  aside: string | undefined,
+): readonly string[] => {
+  if (aside === undefined || aside === '') return staff
+  const lines = aside.split('\n')
+  const margin = ' '.repeat(staff[0]?.length ?? 0)
+  return [
+    ...staff.map((line, slot) => {
+      const text = lines[slot]
+      return text === undefined || text === '' ? line : `${line} ${text}`
+    }),
+    ...lines
+      .slice(staff.length)
+      .filter((text) => text !== '')
+      .map((text) => `${margin} ${text}`),
+  ]
+}
+
+/**
  * One string per system. A system is the unit that must not be broken across a
  * page, so the caller needs them apart before it can say so.
  */
@@ -86,11 +112,14 @@ export const renderSystems = (score: Score): readonly string[] => {
     const system: readonly MeasuredBar[] = row.bars.map((bar) => ({
       sized: sizeColumns(bar),
     }))
-    const staff = strings.map(
-      (label, slot) =>
-        `${label.padEnd(labelWidth)}|${system
-          .map(({ sized }) => barRow(sized, slot))
-          .join('')}`,
+    const staff = withAside(
+      strings.map(
+        (label, slot) =>
+          `${label.padEnd(labelWidth)}|${system
+            .map(({ sized }) => barRow(sized, slot))
+            .join('')}`,
+      ),
+      row.aside,
     )
     const chords = chordRow(system)
     return [
