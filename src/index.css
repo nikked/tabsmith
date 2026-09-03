@@ -479,6 +479,41 @@ h1 img {
   overflow-x: auto;
 }
 
+/* The reading view: the whole window, nothing but the song. Padded at the
+   bottom so the last line can still be scrolled clear of a phone's home bar. */
+.practice {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4em;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 1rem 1rem 40vh;
+  font-family: ui-monospace, monospace;
+  tab-size: 8;
+  line-height: 1.5;
+}
+
+.practice pre {
+  margin: 0;
+  font-family: inherit;
+  overflow-x: auto;
+}
+
+/* Stays put while the song scrolls under it, because reaching the controls
+   should never mean scrolling back to the top mid-song. */
+.practice-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+  background: var(--bg);
+}
+
 .output pre {
   margin: 0;
   font-family: inherit;
@@ -852,6 +887,41 @@ kbd {
   }
 
   /* A staff split down the middle by a page break is unreadable. */
+  /* The reading view: the whole window, nothing but the song. Padded at the
+   bottom so the last line can still be scrolled clear of a phone's home bar. */
+  .practice {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4em;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    padding: 1rem 1rem 40vh;
+    font-family: ui-monospace, monospace;
+    tab-size: 8;
+    line-height: 1.5;
+  }
+
+  .practice pre {
+    margin: 0;
+    font-family: inherit;
+    overflow-x: auto;
+  }
+
+  /* Stays put while the song scrolls under it, because reaching the controls
+   should never mean scrolling back to the top mid-song. */
+  .practice-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-family: system-ui, sans-serif;
+    font-size: 1rem;
+    background: var(--bg);
+  }
+
   .output pre {
     break-inside: avoid;
   }

@@ -434,6 +434,19 @@ keyToAction(e: KeyboardEvent): Action | null   // pure
 apply(state: EditorState, action: Action): EditorState   // pure
 ```
 
+## 4b. Practice mode
+
+The editor and the ASCII view are two readings of the same page; **Practice** replaces it. It is
+the whole window, the song at a size readable from a music stand, and nothing else: no header,
+no keys, no chrome. That is why it is a plain button rather than a third segment beside Edit and
+ASCII — you cannot see the header while you are in it, so there is no state for it to show.
+
+It renders `songBlocks` the same way the ASCII view does, so there is no third rendering of a
+song to keep in step. What it adds is a size control, `Escape` and Done to leave, and a screen
+wake lock, which is the one thing paper on a stand does better than a screen. The lock is
+re-taken on `visibilitychange`, because coming back from another app releases it. A browser that
+refuses or lacks it is not worth a message — the page reads fine, it just dims.
+
 ## 5. Persistence
 
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
