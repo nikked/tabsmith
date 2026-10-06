@@ -8,3 +8,10 @@ import { decode, type Loaded } from './storage.ts'
  * broken file does rather than taking the app down at import time.
  */
 export const DEMO: Loaded = decode(demoFile)
+
+/**
+ * The title that keeps a song off the sheet. Every new device starts with the
+ * demo, so syncing it would put one more copy in the sheet per device. Matching
+ * on the title rather than the id means renaming the demo is what adopts it.
+ */
+export const DEMO_TITLE = 'Slow Machine (Demo)'

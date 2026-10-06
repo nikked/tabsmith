@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { songHasContent } from './core/edit.ts'
 import { renderSong } from './core/render.ts'
-import { DEMO } from './demo.ts'
+import { DEMO, DEMO_TITLE } from './demo.ts'
 
 /**
  * demo.json is meant to be replaced by any song saved out of the app, so these
@@ -18,5 +18,10 @@ describe('the demo song', () => {
     if (!DEMO.ok) throw new Error(DEMO.error)
     expect(songHasContent(DEMO.song)).toBe(true)
     expect(renderSong(DEMO.song).trim()).not.toBe('')
+  })
+
+  it('carries the title that keeps it off the sheet', () => {
+    if (!DEMO.ok) throw new Error(DEMO.error)
+    expect(DEMO.song.title).toBe(DEMO_TITLE)
   })
 })

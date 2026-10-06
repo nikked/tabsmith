@@ -176,11 +176,27 @@ export const filenameFor = (song: Song): string => {
  * with what a song is, and giving them one version counter would mean bumping
  * the file format every time the shelf changed shape.
  */
-const entry = z.object({ id: z.string().min(1), song })
+const entry = z.object({
+  id: z.string().min(1),
+  song,
+  // A song shelved before sync existed has never been edited as far as another
+  // device can tell, so any copy that has wins over it.
+  updatedAt: z.number().default(0),
+})
 
 const library = z.object({
   songs: z.array(entry),
   open: z.string(),
+  removed: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        at: z.number(),
+        // A deletion stored before deleted songs were kept has no song to keep.
+        song: song.nullable().default(null),
+      }),
+    )
+    .default([]),
 })
 
 export const newId = (): string => crypto.randomUUID()
@@ -213,7 +229,9 @@ const readLibrary = (raw: string): Library | null => {
   }
   if (!isDoc(parsed) || parsed.version !== LIBRARY_VERSION) return null
   const result = library.safeParse(parsed.library)
-  return result.success ? repair(result.data.songs, result.data.open) : null
+  return result.success
+    ? repair(result.data.songs, result.data.open, result.data.removed)
+    : null
 }
 
 /**
@@ -226,7 +244,9 @@ const inherited = (): Library | null => {
   const raw = localStorage.getItem(KEY)
   if (raw === null) return null
   const result = decode(raw)
-  return result.ok ? repair([{ id: newId(), song: result.song }], '') : null
+  return result.ok
+    ? repair([{ id: newId(), song: result.song, updatedAt: 0 }], '', [])
+    : null
 }
 
 /**
@@ -244,7 +264,11 @@ export const loadLibrary = (): Library | null => {
 
 export const startingLibrary = (first: Song = emptySong()): Library => {
   const id = newId()
-  return { songs: [{ id, song: first }], open: id }
+  return {
+    songs: [{ id, song: first, updatedAt: Date.now() }],
+    open: id,
+    removed: [],
+  }
 }
 
 export type { Entry }

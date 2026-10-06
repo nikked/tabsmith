@@ -10,6 +10,7 @@ import {
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
+import { merge } from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -21,6 +22,7 @@ import {
   startingLibrary,
 } from '../storage.ts'
 import { forgetLink, linkedSong, toLink } from '../share.ts'
+import { loadSettings, saveSettings, syncLibrary, type Settings } from '../sync.ts'
 import { Chart } from './Chart.tsx'
 import { Output } from './Output.tsx'
 import { Paste } from './Paste.tsx'
@@ -44,6 +46,9 @@ const pickPath = window.showSaveFilePicker?.bind(window)
 const openingLibrary = (): Library =>
   loadLibrary() ?? startingLibrary(DEMO.ok ? DEMO.song : emptySong())
 
+/** Long enough that a burst of typing is one sync rather than one per key. */
+const SYNC_DELAY = 3000
+
 export default function App() {
   const [library, setLibrary] = useState<Library>(openingLibrary)
   const [timeline, dispatch] = useReducer(step, undefined, () =>
@@ -54,6 +59,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
+  const [syncWith, setSyncWith] = useState<Settings | null>(loadSettings)
+  const [syncNote, setSyncNote] = useState<string | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
   const shelf = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
@@ -62,12 +69,67 @@ export default function App() {
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
   useEffect(() => {
-    setLibrary((current) => withOpenSong(current, state.song))
+    setLibrary((current) => withOpenSong(current, state.song, Date.now()))
   }, [state.song])
 
   useEffect(() => {
     saveLibrary(library)
   }, [library])
+
+  // A sync answers after the render that sent it, so it reads the shelf and
+  // the editor as they are when the answer lands rather than as they were.
+  const latest = useRef({ library, song: state.song })
+  useEffect(() => {
+    latest.current = { library, song: state.song }
+  })
+
+  /**
+   * Typing during a sync is not lost: the merge runs on what is here now, and
+   * the editor is only reloaded when the open song is one the sync replaced or
+   * deleted. A sync that brought nothing newer leaves the shelf as it was,
+   * which is what keeps this from triggering itself forever.
+   */
+  const sync = async (to: Settings) => {
+    setSyncNote('Syncing…')
+    const { pulled, tooLong } = await syncLibrary(to, latest.current.library)
+    if (!pulled.ok) {
+      setSyncNote(pulled.error)
+      return
+    }
+    const { library: here, song } = latest.current
+    const merged = merge(withOpenSong(here, song, Date.now()), pulled.records)
+    setLibrary(merged)
+    const open = openEntry(merged).song
+    if (open !== song) dispatch({ kind: 'load', song: open })
+    const synced = `Synced at ${new Date().toLocaleTimeString()}.`
+    setSyncNote(
+      tooLong.length === 0
+        ? synced
+        : `${synced} Too long to sync, kept on this device: ${tooLong.join(', ')}.`,
+    )
+  }
+
+  // Coming back to the tab is when another device is most likely to have
+  // written something, so that syncs straight away rather than on the next edit.
+  useEffect(() => {
+    if (syncWith === null) return
+    const run = () => void sync(syncWith)
+    const timer = window.setTimeout(run, SYNC_DELAY)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') run()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [library, syncWith])
+
+  const connect = (to: Settings | null) => {
+    saveSettings(to)
+    setSyncWith(to)
+    setSyncNote(null)
+  }
 
   /**
    * A song can arrive in the address bar. It is shown rather than shelved: a
@@ -117,11 +179,15 @@ export default function App() {
 
   /**
    * Every way a song reaches the shelf goes through here, so whatever is being
-   * edited is written back before the shelf changes under it.
+   * edited is written back before the shelf changes under it. An import arrives
+   * after reading a file, and a sync may have landed meanwhile, so it adds to
+   * the shelf as it is then.
    */
   const shelve = (song: Song) => {
-    const entry = { id: newId(), song }
-    setLibrary(addEntry(withOpenSong(library, state.song), entry))
+    const entry = { id: newId(), song, updatedAt: Date.now() }
+    setLibrary((current) =>
+      addEntry(withOpenSong(current, state.song, Date.now()), entry),
+    )
     dispatch({ kind: 'load', song })
     setError(null)
   }
@@ -129,12 +195,12 @@ export default function App() {
   const switchTo = (id: string) => {
     const next = library.songs.find((entry) => entry.id === id)
     if (next === undefined || id === library.open) return
-    setLibrary(openSong(withOpenSong(library, state.song), id))
+    setLibrary(openSong(withOpenSong(library, state.song, Date.now()), id))
     dispatch({ kind: 'load', song: next.song })
   }
 
   const deleteSong = (id: string) => {
-    const saved = withOpenSong(library, state.song)
+    const saved = withOpenSong(library, state.song, Date.now())
     const entry = saved.songs.find((candidate) => candidate.id === id)
     if (entry === undefined) return
     if (
@@ -143,7 +209,7 @@ export default function App() {
     ) {
       return
     }
-    const next = removeEntry(saved, id)
+    const next = removeEntry(saved, id, Date.now())
     setLibrary(next)
     if (next.open !== saved.open) dispatch({ kind: 'load', song: openEntry(next).song })
   }
@@ -324,6 +390,12 @@ export default function App() {
         onShare={() => void share()}
         copied={copied}
         onClear={clear}
+        syncWith={syncWith}
+        syncNote={syncNote}
+        onConnect={connect}
+        onSync={() => {
+          if (syncWith !== null) void sync(syncWith)
+        }}
       />
     </main>
   )
