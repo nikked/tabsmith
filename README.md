@@ -10,6 +10,8 @@ to see a song already written.
 Songs live in the browser and are saved as you type. **Songs** is the shelf they sit on: start
 one, paste one in from a chord sheet, or export it as a file. **Copy link** puts a whole song in
 a URL, so sending someone a chart needs no account and no server.
+To keep the shelf the same on your phone and laptop, it can sync through a Google Sheet you own —
+see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).
 
 **Practice** is the reading view — the whole window, type you can read from a music stand, and
 the screen held awake.

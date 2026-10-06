@@ -39,8 +39,10 @@ the app down. It is in `.prettierignore` because its shape is `encode`'s rather 
 prettier's, and a downloaded file would otherwise fail the format check.
 
 Nothing in the app or its tests depends on which song that is — the tests assert the file
-decodes and holds something, and stop there, because a test that named the notes would fail the
-first time the file was swapped.
+decodes, holds something and is titled `DEMO_TITLE`, and stop there, because a test that named
+the notes would fail the first time the file was swapped. The title is the one thing a swapped-in
+file has to keep: a song with that title never goes to the sheet (§5), so every new device's demo
+does not add another copy there. Renaming it is how the demo becomes one of your songs.
 
 The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
 note would. It sits with the name in a single bordered chip so the app announces itself as one
@@ -502,8 +504,9 @@ refuses or lacks it is not worth a message — the page reads fine, it just dims
 
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
 knows the format; `share.ts` reuses its `encode` and `decode` for links. The other side effects
-are the clipboard writes — Copy in `Output.tsx`, Copy link in `App.tsx` — the save dialog, and
-Practice's screen wake lock.
+are the clipboard writes — Copy in `Output.tsx`, Copy link in `App.tsx` — the save dialog,
+Practice's screen wake lock, and the sync request in `sync.ts`, which also keeps its own
+settings under `tabsmith.sync`.
 
 Two documents live there, under two keys and two version counters:
 
@@ -592,10 +595,70 @@ offer the same song twice and the URL cannot be mistaken for what is open.
 Read on mount and on `hashchange` both. Pasting a link into a tab that already has tabsmith open
 changes only the fragment, which is not a navigation — on mount alone, nothing would happen.
 
+### Syncing to a Google Sheet
+
+The shelf can be kept in step across your own devices through a Google Sheet, with an Apps
+Script web app in front of it (`apps-script/Code.gs`). Without it set up, nothing changes: the
+shelf lives in `localStorage` as above.
+
+One round trip does both directions. The app POSTs every song and every deletion it knows of;
+the sheet keeps the newest record of each id and answers with all of them; the app runs the
+same newest-wins merge (`core/sync.ts`) on its side. Each song carries `updatedAt`, stamped when
+an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` so a device that
+still has the old copy cannot bring it back. An edit made after a delete elsewhere does bring a
+song back — the newer intent wins either way. Clocks are trusted, which is fine for one person's
+devices.
+
+Nothing is ever deleted from the sheet. A deleted song goes up whole with `active: false`, the
+tombstone keeps the song so it can, and the sheet keeps it in its row marked inactive; the app
+just stops showing it. Getting one back is flipping `active` to `TRUE` in the sheet and bumping
+`at`. A deletion made before songs were kept arrives with no song, and `Code.gs` never lets that
+blank the song a row already holds.
+
+A song titled `DEMO_TITLE` (`Slow Machine (Demo)`, §1) is left out of what goes up, edited or
+deleted, so the sheet only ever holds songs someone wrote or adopted by renaming.
+
+The song goes up as the same document a file holds (`encode`), deflated and base64url'd as a
+link is, so the sheet never needs to know what a song is and an old row still opens after the
+format moves on. Packing is for room, not secrecy: a cell holds at most 50,000 characters and
+indented JSON spends about 300 of them on each column of tab, so a song with a solo would
+outgrow it. Packed, the demo goes from 11,152 characters to under 1,000. A row written before
+songs were packed still reads. The title is a separate column only for whoever opens the sheet.
+
+Sync runs three seconds after the last change, when the tab becomes visible again, and from
+**Sync now**. A sync that brought nothing newer leaves the shelf untouched, which is what stops
+it from triggering itself. The answer is merged into the shelf and editor as they are when it
+lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
+one replaced or deleted.
+
+The URL and a token are typed into the Songs dialog on each device and kept in `localStorage`
+under `tabsmith.sync`. They are not built into the site: it is public, and a URL in its bundle
+would let anyone read and overwrite every song. The script refuses any request without the
+token. The app calls it a database and never names Google Sheets: what sits behind the URL is
+this section's business, not the user's.
+
+Setting it up:
+
+1. In the Google Sheet, Extensions > Apps Script, replace the editor's contents with
+   `apps-script/Code.gs` and save.
+2. Project Settings > Script properties: add `TOKEN` with a long random value
+   (`openssl rand -hex 32`).
+3. Deploy > New deployment > Web app, executing as you, with access for Anyone. Copy the `/exec`
+   URL.
+4. On each device: Songs > Database sync, paste the URL and the token, Connect.
+
+After changing `Code.gs`, update the existing deployment (Deploy > Manage deployments > Edit >
+New version); saving alone does not change what the URL runs. The script creates a `songs` tab
+on first use. One value longer than a cell makes the script refuse the whole write, so a song
+still too long once packed is not sent: it stays on its device, the sync note names it, and
+everything else syncs. Its deletion still goes up, without the song.
+
 ## 6. Deliberately absent
 
 Named here so they don't creep in: custom tunings beyond the three presets, a capo stored with
-the song, multiple songs open at once, rhythm and time signatures, playback, accounts.
+the song, multiple songs open at once, rhythm and time signatures, playback, accounts, and live
+sync between devices that are both open
+— a device picks up changes when it syncs, not the moment they are made (§5).
 
 One song is open at a time. The shelf holds the rest (§5); a file or a link is how a song
 leaves.
@@ -616,8 +679,8 @@ you can see it.
 - Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin for the palette:
   Latte in the light, Macchiato in the dark.
 - oxlint and prettier, driven by the Makefile so CI and a terminal run the same commands.
-- zod, for validating documents at the edge (§5). The only runtime dependency besides React,
-  and the only place it is used.
+- zod, for validating documents and sync replies at the edge (§5). The only runtime dependency
+  besides React, and used nowhere else.
 
 ## 8. Layout
 
@@ -630,6 +693,7 @@ src/
     render.ts     renderSong, renderScore and their helpers
     library.ts    the shelf: Library, Entry and the functions over them
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
+    sync.ts       records, merge — newest wins per song (§5)
   ui/
     App.tsx
     Chart.tsx     title, tempo and the sections
@@ -641,7 +705,10 @@ src/
     Practice.tsx  the reading view (§4b), also how a shared link opens
   storage.ts      the document format: encode, decode, migrations, load/save
   share.ts        a song in a link, and back
+  sync.ts         the request to the sheet, its wire format and settings
   demo.ts         the demo song, decoded from demo.json
+apps-script/
+  Code.gs         the web app bound to the sheet: token check and the same merge
 ```
 
 `core/` has no React import and no I/O.

@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { openEntry, titleOf, type Library } from '../core/library.ts'
+import type { Settings } from '../sync.ts'
 
 type Props = {
   readonly shelf: RefObject<HTMLDialogElement | null>
@@ -14,6 +15,10 @@ type Props = {
   readonly onShare: () => void
   readonly copied: boolean
   readonly onClear: () => void
+  readonly syncWith: Settings | null
+  readonly syncNote: string | null
+  readonly onConnect: (to: Settings | null) => void
+  readonly onSync: () => void
 }
 
 /**
@@ -38,6 +43,10 @@ export function Songbook({
   onShare,
   copied,
   onClear,
+  syncWith,
+  syncNote,
+  onConnect,
+  onSync,
 }: Props) {
   const open = openEntry(library)
 
@@ -95,6 +104,35 @@ export function Songbook({
           Clear
         </button>
       </div>
+
+      <h3>Database sync</h3>
+      {syncWith === null ? (
+        <form
+          className="sync"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const data = new FormData(event.currentTarget)
+            onConnect({
+              url: String(data.get('url')),
+              token: String(data.get('token')),
+            })
+          }}
+        >
+          <input name="url" type="url" placeholder="Database URL" required />
+          <input name="token" type="password" placeholder="Token" required />
+          <button type="submit">Connect</button>
+        </form>
+      ) : (
+        <div className="shelf-actions">
+          <button type="button" onClick={onSync}>
+            Sync now
+          </button>
+          <button type="button" className="quiet" onClick={() => onConnect(null)}>
+            Disconnect
+          </button>
+        </div>
+      )}
+      {syncNote !== null && <p className="sync-note">{syncNote}</p>}
 
       <form method="dialog">
         <button type="submit">Done</button>

@@ -29,24 +29,29 @@ const through = async (data: BlobPart, transform: ReadableWritablePair) =>
   )
 
 /**
- * The link is the song: it holds the whole document, so there is no server to
- * ask and nothing of yours leaves this machine except what you send. Deflate
- * first, because the document is indented JSON and repetition is most of it.
+ * Deflate first, because a document is indented JSON and repetition is most of
+ * it. `unpack` throws on text that `pack` did not make.
  */
-export const toLink = async (song: Song): Promise<string> => {
-  const packed = await through(encode(song), new CompressionStream('deflate-raw'))
-  return `${location.origin}${location.pathname}${MARKER}${toBase64Url(packed)}`
-}
+export const pack = async (text: string): Promise<string> =>
+  toBase64Url(await through(text, new CompressionStream('deflate-raw')))
+
+export const unpack = async (packed: string): Promise<string> =>
+  new TextDecoder().decode(
+    await through(fromBase64Url(packed), new DecompressionStream('deflate-raw')),
+  )
+
+/**
+ * The link is the song: it holds the whole document, so there is no server to
+ * ask and nothing of yours leaves this machine except what you send.
+ */
+export const toLink = async (song: Song): Promise<string> =>
+  `${location.origin}${location.pathname}${MARKER}${await pack(encode(song))}`
 
 /** Null when the fragment is not a shared song at all, which is the usual case. */
 export const linkedSong = async (hash: string): Promise<Loaded | null> => {
   if (!hash.startsWith(MARKER)) return null
   try {
-    const raw = await through(
-      fromBase64Url(hash.slice(MARKER.length)),
-      new DecompressionStream('deflate-raw'),
-    )
-    return decode(new TextDecoder().decode(raw))
+    return decode(await unpack(hash.slice(MARKER.length)))
   } catch {
     return { ok: false, error: 'That link is not a tabsmith song.' }
   }

@@ -7,6 +7,20 @@ import type { Song } from './model.ts'
 export type Entry = {
   readonly id: string
   readonly song: Song
+  /** Epoch ms of the last edit, which is all another device has to compare by. */
+  readonly updatedAt: number
+}
+
+/**
+ * A deleted song, remembered so a sync cannot bring it back from a device that
+ * still has the copy from before it was deleted. The song goes with it, because
+ * deleting only takes a song off the shelf: the sheet keeps it, marked inactive.
+ * Null only for a deletion made before songs were kept.
+ */
+export type Removed = {
+  readonly id: string
+  readonly at: number
+  readonly song: Song | null
 }
 
 /**
@@ -19,6 +33,7 @@ export type Songs = readonly [Entry, ...Entry[]]
 export type Library = {
   readonly songs: Songs
   readonly open: string
+  readonly removed: readonly Removed[]
 }
 
 /** `open` can only dangle if something built a library without `repair`. */
@@ -28,16 +43,22 @@ export const openEntry = (library: Library): Entry =>
 export const titleOf = (entry: Entry): string =>
   entry.song.title === '' ? 'Untitled' : entry.song.title
 
-/** The editor holds the open song; this is how it gets back to the shelf. */
-export const withOpenSong = (library: Library, song: Song): Library => {
+/**
+ * The editor holds the open song; this is how it gets back to the shelf. The
+ * same song coming back is not an edit, so it changes nothing — not even the
+ * timestamp a sync would read as newer.
+ */
+export const withOpenSong = (library: Library, song: Song, at: number): Library => {
+  if (openEntry(library).song === song) return library
   const [first, ...rest] = library.songs
   const update = (entry: Entry): Entry =>
-    entry.id === library.open ? { ...entry, song } : entry
+    entry.id === library.open ? { ...entry, song, updatedAt: at } : entry
   return { ...library, songs: [update(first), ...rest.map(update)] }
 }
 
 /** A song is added at the end and opened, because you added it to work on it. */
 export const addEntry = (library: Library, entry: Entry): Library => ({
+  ...library,
   songs: [...library.songs, entry],
   open: entry.id,
 })
@@ -47,14 +68,20 @@ export const addEntry = (library: Library, entry: Entry): Library => ({
  * when it was the last. The final song is never removed — Clear is what empties
  * a song, and the button that calls this is disabled there.
  */
-export const removeEntry = (library: Library, id: string): Library => {
+export const removeEntry = (library: Library, id: string, at: number): Library => {
   const index = library.songs.findIndex((entry) => entry.id === id)
-  if (index < 0) return library
+  const gone = library.songs[index]
+  if (gone === undefined) return library
   const [first, ...rest] = library.songs.filter((entry) => entry.id !== id)
   if (first === undefined) return library
   const songs: Songs = [first, ...rest]
-  if (library.open !== id) return { ...library, songs }
-  return { songs, open: (songs[Math.min(index, songs.length - 1)] ?? first).id }
+  const removed = [...library.removed, { id, at, song: gone.song }]
+  if (library.open !== id) return { ...library, songs, removed }
+  return {
+    songs,
+    open: (songs[Math.min(index, songs.length - 1)] ?? first).id,
+    removed,
+  }
 }
 
 export const openSong = (library: Library, id: string): Library =>
@@ -65,9 +92,17 @@ export const openSong = (library: Library, id: string): Library =>
  * is repaired rather than refused — the songs in it are still perfectly good —
  * but one with no songs at all cannot be anything.
  */
-export const repair = (songs: readonly Entry[], open: string): Library | null => {
+export const repair = (
+  songs: readonly Entry[],
+  open: string,
+  removed: readonly Removed[],
+): Library | null => {
   const [first, ...rest] = songs
   if (first === undefined) return null
   const all: Songs = [first, ...rest]
-  return { songs: all, open: all.some((entry) => entry.id === open) ? open : first.id }
+  return {
+    songs: all,
+    open: all.some((entry) => entry.id === open) ? open : first.id,
+    removed,
+  }
 }
