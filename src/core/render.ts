@@ -1,4 +1,15 @@
-import type { Bar, Cell, Column, Decoration, Row, Score, Section, Song } from './model.ts'
+import { scoreHasContent } from './edit.ts'
+import type {
+  Bar,
+  Cell,
+  Column,
+  Decoration,
+  Row,
+  Score,
+  Section,
+  Song,
+  Spacing,
+} from './model.ts'
 
 const PAD = '-'
 
@@ -17,19 +28,21 @@ export const cellText = (cell: Cell | null | undefined): string => {
 type SizedColumn = { readonly column: Column; readonly width: number }
 
 /**
- * Every column but the last carries one pad character beyond its widest cell.
+ * Every column but the last carries a pad beyond its widest cell: one character
+ * dense, two sparse.
  * That keeps digits in neighbouring columns apart (`2` then `2` reads `2-2`,
  * never `22`) while leaving an empty column a width of its own, so `2 _ 2` stays
  * distinguishable from `2 2` — the gap is what carries timing (§2). The last
  * column needs no pad because the bar line already separates it.
  */
-const sizeColumns = (bar: Bar): readonly SizedColumn[] => {
+const sizeColumns = (bar: Bar, spacing: Spacing): readonly SizedColumn[] => {
   const last = bar.columns.length - 1
+  const pad = spacing === 'sparse' ? 2 : 1
   return bar.columns.map((column, index) => ({
     column,
     width:
       Math.max(1, ...column.cells.map((cell) => cellText(cell).length)) +
-      (index === last ? 0 : 1),
+      (index === last ? 0 : pad),
   }))
 }
 
@@ -101,36 +114,86 @@ const withAside = (
   ]
 }
 
+/** A bar's width in characters, its closing bar line included. */
+const barWidth = ({ sized }: MeasuredBar): number =>
+  sized.reduce((sum, { width }) => sum + width, 0) + 1
+
+/**
+ * Bars in order, broken into lines of at most `width` characters with the
+ * string labels counted in. A break only ever falls at a bar line, and a bar
+ * wider than the line gets a line to itself rather than being cut.
+ */
+const wrapBars = (
+  bars: readonly MeasuredBar[],
+  labelWidth: number,
+  width: number,
+): readonly (readonly MeasuredBar[])[] => {
+  const start = labelWidth + 1
+  const lines: MeasuredBar[][] = []
+  let used = start
+  for (const bar of bars) {
+    const current = lines.at(-1)
+    if (current === undefined || used + barWidth(bar) > width) {
+      lines.push([bar])
+      used = start + barWidth(bar)
+    } else {
+      current.push(bar)
+      used += barWidth(bar)
+    }
+  }
+  return lines
+}
+
+/**
+ * A row's staff, its aside and the chord names under it: everything but its
+ * heading. Given a width, the staff is broken at bar lines into as many lines
+ * as fit, each with its own string labels and the chord names of its own bars,
+ * so a narrow screen shows the next bars under the first rather than cutting
+ * them off. The aside belongs to the closing bar line, so it goes with the last.
+ */
+export const staffText = (
+  score: Score,
+  row: Row,
+  spacing: Spacing = 'dense',
+  width = Infinity,
+): string => {
+  const { strings } = score.tuning
+  const labelWidth = Math.max(0, ...strings.map((label) => label.length))
+  const bars: readonly MeasuredBar[] = row.bars.map((bar) => ({
+    sized: sizeColumns(bar, spacing),
+  }))
+  const lines = wrapBars(bars, labelWidth, width)
+  return lines
+    .map((system, index) => {
+      const staff = strings.map(
+        (label, slot) =>
+          `${label.padEnd(labelWidth)}|${system.map(({ sized }) => barRow(sized, slot)).join('')}`,
+      )
+      const chords = chordRow(system)
+      return [
+        ...(index === lines.length - 1 ? withAside(staff, row.aside) : staff),
+        ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
+      ].join('\n')
+    })
+    .join('\n\n')
+}
+
 /**
  * One string per system. A system is the unit that must not be broken across a
  * page, so the caller needs them apart before it can say so.
  */
-export const renderSystems = (score: Score): readonly string[] => {
-  const { strings } = score.tuning
-  const labelWidth = Math.max(0, ...strings.map((label) => label.length))
-  return score.rows.map((row) => {
-    const system: readonly MeasuredBar[] = row.bars.map((bar) => ({
-      sized: sizeColumns(bar),
-    }))
-    const staff = withAside(
-      strings.map(
-        (label, slot) =>
-          `${label.padEnd(labelWidth)}|${system
-            .map(({ sized }) => barRow(sized, slot))
-            .join('')}`,
-      ),
-      row.aside,
-    )
-    const chords = chordRow(system)
-    return [
-      ...rowHeading(row),
-      ...staff,
-      ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
-    ].join('\n')
-  })
-}
+/**
+ * Plain text is dense unless asked otherwise: it is the form Paste reads back
+ * (§3b), and how sparse a song is shown is Practice's choice, not the song's.
+ */
+export const renderSystems = (
+  score: Score,
+  spacing: Spacing = 'dense',
+): readonly string[] =>
+  score.rows.map((row) => [...rowHeading(row), staffText(score, row, spacing)].join('\n'))
 
-export const renderScore = (score: Score): string => renderSystems(score).join('\n\n')
+export const renderScore = (score: Score, spacing: Spacing = 'dense'): string =>
+  renderSystems(score, spacing).join('\n\n')
 
 /**
  * An unnamed section is just a heading-less block of chords, and playing
@@ -145,31 +208,51 @@ export const sectionHeading = (section: Section): string => {
 
 /**
  * What each block is, for a view that sets a title or a heading apart from the
- * text under it rather than showing everything as one face. Everything but the
+ * text under it rather than showing everything as one face. A tab system's
+ * title and note come apart from its staff for the same reason. Everything but the
  * tab is passed on as typed: the chart carries chords over lyrics by the spaces
  * the writer put there, so reflowing or trimming it would destroy the only thing
  * holding a chord above its word.
  */
 export type Part =
-  | { readonly kind: 'title' | 'tempo' | 'system'; readonly text: string }
+  | { readonly kind: 'tempo'; readonly text: string }
   | { readonly kind: 'section'; readonly section: Section }
+  | {
+      readonly kind: 'system'
+      readonly title: string
+      readonly note: string
+      readonly row: Row
+    }
 
-const isBlank = (part: Part): boolean =>
-  part.kind === 'section'
-    ? part.section.name === '' && part.section.body === ''
-    : part.text === ''
+const isBlank = (part: Part): boolean => {
+  switch (part.kind) {
+    case 'section':
+      return part.section.name === '' && part.section.body === ''
+    case 'system':
+      return false
+    default:
+      return part.text === ''
+  }
+}
 
 /**
- * The song in reading order: the header lines, each section, and each system of
- * the tab, with the tab first when the song asks for it.
+ * The song in reading order: the tempo, each section, and each system of the
+ * tab, with the tab first when the song asks for it. The title is not a part:
+ * Practice keeps it in its bar, always in sight, rather than above the song.
  */
 export const songParts = (song: Song): readonly Part[] => {
-  const header: readonly Part[] = [
-    { kind: 'title', text: song.title },
-    { kind: 'tempo', text: song.tempo },
-  ]
+  const header: readonly Part[] = [{ kind: 'tempo', text: song.tempo }]
   const chart = song.chart.map((section): Part => ({ kind: 'section', section }))
-  const tab = renderSystems(song.tab).map((text): Part => ({ kind: 'system', text }))
+  // A tab nothing has been written into is a staff of dashes, which is nothing
+  // to read; every new song has one.
+  const tab = scoreHasContent(song.tab)
+    ? song.tab.rows.map((row): Part => ({
+        kind: 'system',
+        title: row.title ?? '',
+        note: row.note ?? '',
+        row,
+      }))
+    : []
   const parts = song.tabFirst
     ? [...header, ...tab, ...chart]
     : [...header, ...chart, ...tab]

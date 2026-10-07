@@ -15,7 +15,8 @@ To keep the shelf the same on your phone and laptop, it can sync through a Googl
 see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).
 
 **Practice** is the reading view — the whole window, type you can read from a music stand, and
-the screen held awake.
+the screen held awake, sized to fit the whole song on the screen. A song opened from a setlist
+steps to the next one from the bar.
 
 ## Running it
 

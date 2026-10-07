@@ -15,6 +15,39 @@ export const songsOf = (library: Library, setlist: Setlist): readonly Entry[] =>
 export const setlistsWith = (library: Library, song: string): readonly Setlist[] =>
   activeSetlists(library).filter((setlist) => setlist.songs.includes(song))
 
+/** Where a song sits in a setlist, and the songs either side of it. */
+export type Place = {
+  readonly setlist: Setlist
+  readonly index: number
+  readonly count: number
+  readonly previous: string | null
+  readonly next: string | null
+}
+
+/**
+ * A song's place in the setlist it was opened from, counting only songs that
+ * are on the shelf — the same list the setlist shows. Null when there is no
+ * such setlist any more, or the song is not in it.
+ */
+export const placeOf = (
+  library: Library,
+  setlist: string,
+  song: string,
+): Place | null => {
+  const found = activeSetlists(library).find((each) => each.id === setlist)
+  if (found === undefined) return null
+  const songs = songsOf(library, found).map((entry) => entry.id)
+  const index = songs.indexOf(song)
+  if (index < 0) return null
+  return {
+    setlist: found,
+    index,
+    count: songs.length,
+    previous: songs[index - 1] ?? null,
+    next: songs[index + 1] ?? null,
+  }
+}
+
 export const addSetlist = (library: Library, setlist: Setlist): Library => ({
   ...library,
   setlists: [...library.setlists, setlist],

@@ -8,6 +8,7 @@ import {
   deleteSetlist,
   moveInSetlist,
   placeInSetlist,
+  placeOf,
   removeFromSetlist,
   renameSetlist,
   setlistsWith,
@@ -58,6 +59,24 @@ describe('setlists', () => {
       active: false,
     })
     expect(setlistsWith(library, 'a').map((setlist) => setlist.id)).toEqual(['one'])
+  })
+
+  it('places a song in its setlist, with the songs either side of it', () => {
+    const library = shelf(set('gig', ['c', 'gone', 'a', 'b']))
+    expect(placeOf(library, 'gig', 'a')).toMatchObject({
+      index: 1,
+      count: 3,
+      previous: 'c',
+      next: 'b',
+    })
+    expect(placeOf(library, 'gig', 'c')).toMatchObject({ previous: null, next: 'a' })
+    expect(placeOf(library, 'gig', 'b')).toMatchObject({ index: 2, next: null })
+  })
+
+  it('has no place for a song not in the setlist, or in a deleted one', () => {
+    expect(placeOf(shelf(set('gig', ['a'])), 'gig', 'b')).toBeNull()
+    expect(placeOf(shelf({ ...set('gig', ['a']), active: false }), 'gig', 'a')).toBeNull()
+    expect(placeOf(shelf(), 'gig', 'a')).toBeNull()
   })
 
   it('adds a setlist at the end', () => {

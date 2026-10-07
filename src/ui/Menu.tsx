@@ -4,6 +4,12 @@ export type MenuItem = {
   readonly label: string
   readonly onSelect: () => void
   readonly quiet?: boolean
+  /** Drawn left of the label, in the column a check box takes. */
+  readonly icon?: ReactNode
+  /** For an action pressed several times running, like stepping through songs. */
+  readonly keepsOpen?: boolean
+  /** Shown but greyed out, so the menu keeps its shape at the end of a list. */
+  readonly disabled?: boolean
 }
 
 type Props = {
@@ -61,9 +67,15 @@ export function MenuItems({ items }: { readonly items: readonly MenuItem[] }) {
       key={item.label}
       type="button"
       className={item.quiet === true ? 'quiet' : undefined}
-      data-closes-menu
+      data-closes-menu={item.keepsOpen === true ? undefined : true}
+      disabled={item.disabled}
       onClick={item.onSelect}
     >
+      {item.icon !== undefined && (
+        <span className="menu-icon" aria-hidden="true">
+          {item.icon}
+        </span>
+      )}
       {item.label}
     </button>
   ))

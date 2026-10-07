@@ -6,6 +6,7 @@ import {
   addToSetlist,
   deleteSetlist,
   placeInSetlist,
+  placeOf,
   removeFromSetlist,
   renameSetlist,
 } from '../core/setlists.ts'
@@ -50,6 +51,7 @@ import { SongTree } from './SongList.tsx'
 import { SongsPage } from './SongsPage.tsx'
 import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
+import { Toggle } from './Toggle.tsx'
 
 /**
  * Asking where to put a file is Chromium-only, and no other browser has an
@@ -91,6 +93,11 @@ export default function App() {
   const [syncWith, setSyncWith] = useState<Settings | null>(loadSettings)
   const [syncNote, setSyncNote] = useState<string | null>(null)
   const [asking, setAsking] = useState<Asking | null>(null)
+  // The setlist the open song was opened from, so Practice can step through it.
+  const [activeSetlist, setActiveSetlist] = useState<string | null>(null)
+  const [full, setFull] = useState(false)
+  // Full screen is Practice's alone: leaving it brings the header back.
+  const focused = full && mode === 'practice'
   const guide = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
@@ -205,6 +212,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const reading = shared ?? state.song
+
+  /**
+   * Full screen hides the header and the sidebar so the song has the whole
+   * window, and takes the browser's full screen too where it offers one — an
+   * iPhone does not, and there hiding them is still most of the room. A
+   * refusal is not worth a message: the page is still the song.
+   */
+  const goFull = (on: boolean) => {
+    setFull(on)
+    if (on) void document.documentElement.requestFullscreen?.().catch(() => undefined)
+    else if (document.fullscreenElement !== null) {
+      void document.exitFullscreen().catch(() => undefined)
+    }
+  }
+
+  // Escape, or the browser's own way out, ends the browser's full screen
+  // without asking this page, so the header comes back with it.
+  useEffect(() => {
+    const sync = () => {
+      if (document.fullscreenElement === null) setFull(false)
+    }
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+
   /**
    * showModal throws on a dialog that is already open, so ask first. Its first
    * field is focused by hand: Safari focuses the dialog itself, which leaves a
@@ -238,6 +271,16 @@ export default function App() {
     dispatch({ kind: 'load', song: next.song })
   }
 
+  /**
+   * Picking a song is mostly to play it, so it opens in Practice. Opening from a
+   * setlist makes it the one Practice steps through; from All songs, none.
+   */
+  const openFrom = (song: string, setlist: string | null) => {
+    switchTo(song)
+    setActiveSetlist(setlist)
+    setMode('practice')
+  }
+
   /** A song as it is now: the open one as the editor holds it, the rest as shelved. */
   const songOf = (id: string): Song | undefined =>
     id === library.open
@@ -253,9 +296,7 @@ export default function App() {
     const saved = withOpenSong(library, state.song, Date.now())
     const next = removeEntry(saved, id, Date.now())
     setLibrary(next)
-    if (next.open !== saved.open) {
-      dispatch({ kind: 'load', song: openEntry(next).song })
-    }
+    if (next.open !== saved.open) dispatch({ kind: 'load', song: openEntry(next).song })
   }
 
   /** The open song is the editor's, so its title goes through the editor too. */
@@ -367,7 +408,9 @@ export default function App() {
   if (shared !== null) {
     return (
       <Practice
-        song={shared}
+        song={reading}
+        // A linked song is the only one this view ever shows.
+        songId="shared"
         onLeave={() => setShared(null)}
         onKeep={() => {
           shelve(shared)
@@ -379,69 +422,58 @@ export default function App() {
 
   return (
     <main>
-      <header>
-        <h1>
-          <img
-            src={`${import.meta.env.BASE_URL}favicon.svg`}
-            alt=""
-            width="20"
-            height="20"
-          />
-          tabsmith
-        </h1>
-        <Menu label="+ New" title="New song">
-          <MenuItems items={adding} />
-        </Menu>
-        <input
-          ref={picker}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ''
-            if (file !== undefined) void loadFromDisk(file)
-          }}
-        />
-        <div className="view-toggle" data-mode={mode} role="group" aria-label="View">
-          <button
-            type="button"
-            aria-pressed={mode === 'songs'}
-            onClick={() => setMode('songs')}
-          >
-            Songs
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'edit'}
-            onClick={() => setMode('edit')}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'practice'}
-            onClick={() => setMode('practice')}
-          >
-            Practice
-          </button>
-        </div>
-        <div className="settings">
-          <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
-            <MenuItems
-              items={[
-                { label: 'Copy song as link', onSelect: () => void share(state.song) },
-                { label: 'Export file…', onSelect: () => void saveToDisk(state.song) },
-                { label: 'Back up all songs…', onSelect: () => void backUp() },
-                {
-                  label: 'Database sync…',
-                  onSelect: () => show(syncDialog.current),
-                },
-              ]}
+      {!focused && (
+        <header>
+          <h1>
+            <img
+              src={`${import.meta.env.BASE_URL}favicon.svg`}
+              alt=""
+              width="20"
+              height="20"
             />
+            <span className="brand-name">tabsmith</span>
+          </h1>
+          <Menu label="+ New" title="New song">
+            <MenuItems items={adding} />
           </Menu>
-        </div>
-      </header>
+          <input
+            ref={picker}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file !== undefined) void loadFromDisk(file)
+            }}
+          />
+          <Toggle
+            label="View"
+            options={[
+              { value: 'songs', label: 'Songs' },
+              { value: 'practice', label: 'Practice' },
+              { value: 'edit', label: 'Edit' },
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
+          <div className="settings">
+            <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
+              <MenuItems
+                items={[
+                  { label: 'Copy song as link', onSelect: () => void share(state.song) },
+                  { label: 'Export file…', onSelect: () => void saveToDisk(state.song) },
+                  { label: 'Back up all songs…', onSelect: () => void backUp() },
+                  {
+                    label: 'Database sync…',
+                    onSelect: () => show(syncDialog.current),
+                  },
+                ]}
+              />
+            </Menu>
+          </div>
+        </header>
+      )}
       {error !== null && (
         <p className="error" role="alert">
           {error}
@@ -453,10 +485,7 @@ export default function App() {
       {mode === 'songs' ? (
         <SongsPage
           library={library}
-          onOpen={(id) => {
-            switchTo(id)
-            setMode('edit')
-          }}
+          onOpen={openFrom}
           onRename={(song) => setAsking({ kind: 'rename', song })}
           onCopy={(song) => setAsking({ kind: 'copy', song })}
           onCopyLink={(id) => {
@@ -482,12 +511,26 @@ export default function App() {
           }
         />
       ) : (
-        <div className="workspace">
-          <aside className="shelf-side" aria-label="Songs">
-            <SongTree library={library} onOpen={switchTo} />
-          </aside>
+        <div className={focused ? 'workspace focused' : 'workspace'}>
+          {!focused && (
+            <aside className="shelf-side" aria-label="Songs">
+              <SongTree library={library} onOpen={openFrom} />
+            </aside>
+          )}
           {mode === 'practice' ? (
-            <Practice song={state.song} onLeave={() => setMode('edit')} />
+            <Practice
+              song={reading}
+              songId={library.open}
+              onLeave={() => (focused ? goFull(false) : setMode('edit'))}
+              full={focused}
+              onFull={goFull}
+              place={
+                activeSetlist === null
+                  ? null
+                  : placeOf(library, activeSetlist, library.open)
+              }
+              onStep={switchTo}
+            />
           ) : (
             <div className="editing">
               <Chart song={state.song} dispatch={dispatch} />

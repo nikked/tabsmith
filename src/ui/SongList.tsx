@@ -5,7 +5,8 @@ import { activeSetlists, songsOf } from '../core/setlists.ts'
 
 type Props = {
   readonly library: Library
-  readonly onOpen: (id: string) => void
+  /** The setlist it was opened from, or null from All songs. */
+  readonly onOpen: (song: string, setlist: string | null) => void
 }
 
 /** All songs is a group like the setlists, with an id none of them can have. */
@@ -79,7 +80,7 @@ export function SongTree({ library, onOpen }: Props) {
                   type="button"
                   className="pick"
                   aria-current={entry.id === open}
-                  onClick={() => onOpen(entry.id)}
+                  onClick={() => onOpen(entry.id, id === ALL ? null : id)}
                 >
                   {titleOf(entry)}
                 </button>

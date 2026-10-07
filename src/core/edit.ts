@@ -254,7 +254,7 @@ export const retune = (score: Score, tuning: Tuning): Score => {
   }
 }
 
-/** Empty bars are not work, so clearing a score that holds none loses nothing. */
+/** Empty bars are not work: a score that holds nothing else has nothing to lose or to show. */
 export const scoreHasContent = (score: Score): boolean => score.rows.some(rowHasContent)
 
 /**

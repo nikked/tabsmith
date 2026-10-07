@@ -13,10 +13,12 @@ import {
 } from '../core/library.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Menu, MenuChecks, MenuItems } from './Menu.tsx'
+import { Toggle } from './Toggle.tsx'
 
 type Props = {
   readonly library: Library
-  readonly onOpen: (song: string) => void
+  /** The setlist it was opened from, or null from All songs. */
+  readonly onOpen: (song: string, setlist: string | null) => void
   readonly onRename: (song: string) => void
   readonly onCopy: (song: string) => void
   readonly onCopyLink: (song: string) => void
@@ -215,7 +217,7 @@ export function SongsPage(props: Props) {
                       <button
                         type="button"
                         className="pick"
-                        onClick={() => onOpen(entry.id)}
+                        onClick={() => onOpen(entry.id, setlist.id)}
                       >
                         {titleOf(entry)}
                       </button>
@@ -266,22 +268,16 @@ export function SongsPage(props: Props) {
           >
             Has structure
           </button>
-          <div className="segmented" role="group" aria-label="Order">
-            <button
-              type="button"
-              aria-pressed={order === 'name'}
-              onClick={() => setOrder('name')}
-            >
-              Name
-            </button>
-            <button
-              type="button"
-              aria-pressed={order === 'edited'}
-              onClick={() => setOrder('edited')}
-            >
-              Last edited
-            </button>
-          </div>
+          <Toggle
+            small
+            label="Order"
+            options={[
+              { value: 'name', label: 'Name' },
+              { value: 'edited', label: 'Last edited' },
+            ]}
+            value={order}
+            onChange={setOrder}
+          />
         </div>
         {shown.length === 0 ? (
           <p className="panel-empty">
@@ -299,7 +295,11 @@ export function SongsPage(props: Props) {
                   <button type="button" {...grip(entry.id, null, title)}>
                     ⠿
                   </button>
-                  <button type="button" className="pick" onClick={() => onOpen(entry.id)}>
+                  <button
+                    type="button"
+                    className="pick"
+                    onClick={() => onOpen(entry.id, null)}
+                  >
                     <span className="song-title">{title}</span>
                     {entry.song.tempo !== '' && (
                       <span className="song-tempo">{entry.song.tempo}</span>
@@ -316,7 +316,7 @@ export function SongsPage(props: Props) {
                   <Menu label="⋯" title={`${title} actions`}>
                     <MenuItems
                       items={[
-                        { label: 'Open', onSelect: () => onOpen(entry.id) },
+                        { label: 'Open', onSelect: () => onOpen(entry.id, null) },
                         { label: 'Rename…', onSelect: () => props.onRename(entry.id) },
                         { label: 'Copy…', onSelect: () => props.onCopy(entry.id) },
                         {
