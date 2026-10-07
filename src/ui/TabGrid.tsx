@@ -17,6 +17,7 @@ import {
 import { keyToAction } from '../core/keymap.ts'
 import { TUNINGS, type EditorState } from '../core/model.ts'
 import { cellText } from '../core/render.ts'
+import { Toggle } from './Toggle.tsx'
 
 type Props = {
   readonly state: EditorState
@@ -197,22 +198,18 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
             ))}
           </select>
         </span>
-        <div className="segmented" role="group" aria-label="Where the tab goes">
-          <button
-            type="button"
-            aria-pressed={state.song.tabFirst}
-            onClick={() => dispatch({ kind: 'setTabFirst', tabFirst: true })}
-          >
-            Before chart
-          </button>
-          <button
-            type="button"
-            aria-pressed={!state.song.tabFirst}
-            onClick={() => dispatch({ kind: 'setTabFirst', tabFirst: false })}
-          >
-            After chart
-          </button>
-        </div>
+        <Toggle
+          small
+          label="Where the tab goes"
+          options={[
+            { value: 'before', label: 'Before chart' },
+            { value: 'after', label: 'After chart' },
+          ]}
+          value={state.song.tabFirst ? 'before' : 'after'}
+          onChange={(place) =>
+            dispatch({ kind: 'setTabFirst', tabFirst: place === 'before' })
+          }
+        />
       </div>
       <div ref={staff} className="staff" tabIndex={0} onKeyDown={onKeyDown}>
         {score.rows.map((row, rowIndex) => (

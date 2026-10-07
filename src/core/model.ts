@@ -33,6 +33,14 @@ export type Row = {
   readonly bars: readonly Bar[]
 }
 
+/**
+ * How much air the rendered tab has between notes: dense is `2-2`, sparse is
+ * `2--2`. Only the text changes; the grid and the timing it carries do not. It
+ * is how a song is shown rather than what it is, so it is not part of the song:
+ * Practice keeps it per song on each device (§4b).
+ */
+export type Spacing = 'dense' | 'sparse'
+
 export type Score = {
   readonly tuning: Tuning
   readonly rows: readonly Row[]

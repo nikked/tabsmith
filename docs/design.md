@@ -26,7 +26,7 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, **+ New**, the **Songs | Edit | Practice** toggle (§4b, §5) and, at
+The header carries the logo, **+ New**, the **Songs | Practice | Edit** toggle (§4b, §5) and, at
 the right, a `⋯` settings menu (§5). Nothing in it is loud: none of it is reached for while
 writing.
 
@@ -62,15 +62,15 @@ section's controls wait until it is hovered or focused, and the keymap is a mute
 foot. A chord chart is prose and gets a measure to read at; the tab is as wide as its rows need
 and scrolls, so the two deliberately do not line up.
 
-Neither mode wraps. Rows are part of the document (§2), so how the tab is broken up is a
-decision you make once and both modes obey: the same bars sit together in the grid and in the
-ASCII. Nothing reflows when the window changes size, which is the point — a row you arranged
-stays arranged.
+The editor never wraps. Rows are part of the document (§2), so how the tab is broken up is a
+decision you make once: the same bars sit together in the grid and in the ASCII. Nothing reflows
+when the window changes size, which is the point — a row you arranged stays arranged.
 
 The cost is that a row with more bars than the window is wide scrolls sideways. That is the
-honest failure: the row really is that wide, and it will be that wide on the printed page too.
-Wrapping it would hide the one thing you need to see. Nothing warns about width — the page is
-as wide as you made it, and paper is the only thing that has an opinion.
+honest failure: the row really is that wide, and wrapping it would hide the one thing you need
+to see while arranging it. Practice is the exception, because it is read at arm's length on a
+tablet or a phone rather than arranged: there a row wider than the screen breaks at its bar
+lines, never inside a bar (§4b).
 
 The ASCII is a pure function of the document. It is never edited directly, and the editor
 never reads it back. That's the single most important constraint in the design: alignment
@@ -273,11 +273,24 @@ songParts(song) => readonly Part[]
 sectionHeading(section) => string
 ```
 
-**A song** is `songParts`: its title, its tempo, each section, and each system of the tab, in
-reading order — the tab first or last per `tabFirst` — each tagged with what it is, so Practice
-can set the title and section names as headings. A blank title or tempo, or a section with
-neither a name nor a body, is left out. Everything but the tab is passed on as typed; the chart
-is never reflowed, re-spaced or trimmed (§2).
+**A song** is `songParts`: its tempo, each section, and each system of the tab, in reading order
+— the tab first or last per `tabFirst` — each tagged with what it is, so Practice can set the
+section names and each tab row's title and note in the UI's face, apart from the monospace text
+under them. The song's title is not a part: Practice keeps it in its bar. A blank tempo, a
+section with neither a name nor a body, or a tab with nothing written into it
+(`scoreHasContent`, §4) — a staff of dashes every new song has — is left out. Everything but the
+tab is passed on as typed; the chart is never reflowed, re-spaced or trimmed (§2).
+
+Tab is shown **dense** or **sparse**: dense pads each column by one dash, `2-2`, and sparse by
+two, `2--2`, empty columns included, so the gaps still carry the same timing. Only the text
+changes; the grid is the same either way. It is how a song is read rather than what it is, so it
+is not part of the song and never goes to the sheet: `renderScore` and `staffText` take it as an
+argument, and Practice keeps it per song on each device (§4b). Practice shows sparse unless a
+song is set dense, because it is the easier of the two to read at a glance. Plain text is dense
+unless asked otherwise — it is what Paste (§3b) reads back, which is what makes this app's own
+output round-trip; sparse text pasted back reads its extra dashes as rests. A song saved while
+spacing was still part of it has the field dropped on reading, like any field this build does
+not know.
 
 The rest of this section is the tab.
 
@@ -494,11 +507,35 @@ link (§5) opens the same view without the header, since nothing in it acts on a
 yours yet.
 
 It renders `songParts` (§3): the chart and the tab in monospace, the title and section names as
-headings, in a column as wide as the widest line and centred on a wide screen. What it adds is a
-size control, `Escape` to leave, and a screen wake lock, which is the one thing paper on a stand
-does better than a screen. The lock is re-taken on `visibilitychange`, because coming back from
-another app releases it. A browser that refuses or lacks it is not worth a message — the page
-reads fine, it just dims.
+headings in the UI's face, since they are names rather than text that has to line up, in a
+column as wide as the widest line, set in a little from the left on a desktop screen and
+starting where the header does on a tablet or a phone, where every column counts. A tab row
+wider than the column is broken at its bar lines into as many lines as fit (`staffText` with a
+width), each with its own string labels and the chord names of its own bars, rather than running
+off the side of an iPad or a phone; the width is measured in characters of the song's own face,
+so the size buttons and turning the device re-break it, and a single bar wider than the screen
+keeps a line to itself and scrolls. The song's title is in the bar, always in sight while the
+song scrolls under it, rather than above the song, so the song starts right under the bar. The
+text starts as large as lets the whole song fit on the first screen, no line running off the
+side: it is shrunk a step at a time from the normal size (1×), so a short song is not blown up
+past it, down to the smallest still readable on an iPad (0.7×), and a song that does not fit
+even then scrolls rather than shrinking past reading. A new song, or a screen that changed size,
+is fitted again; A− and A+ take over from there. A song opened from a setlist shows the
+setlist's name and its place in it beside the title, e.g. 2/7, with ‹ and › to step to the songs
+either side (`placeOf`); one opened from All songs shows none. A full-screen button, an icon at
+the end of the bar, hides the header and the sidebar so the song has the whole window, and takes
+the browser's full screen too where there is one; Escape or the button brings them back, and
+only a second Escape leaves Practice. On a phone the bar is a single line — the title, small
+arrows through the setlist, full screen — and the rest folds into a `⋯` menu: the size buttons,
+the setlist's place and its steps again, and Dense. Stepping and Dense leave the menu open, so
+songs can be stepped through quickly. What it adds is a size control, a Dense | Sparse toggle
+(sparse being the default) that is only there when the song has tab, `Escape` to leave, and a
+screen wake lock, which is the one thing paper on a stand does better than a screen. The lock is
+re-taken on `visibilitychange`, because coming back from another app releases it. A browser that
+refuses or lacks it is not worth a message — the page reads fine, it just dims. A size chosen
+with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`, `viewing.ts`)
+rather than with the song: a phone and an iPad want different sizes for the same song, so they
+stay off the sheet. A song with no size chosen is fitted to the screen.
 
 ## 5. Persistence
 
@@ -569,8 +606,9 @@ them, since every song starts with an empty Verse 1), filters that stay on in th
 turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
 song's tempo, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
-setlists it is in. Picking a song opens it in Edit. Renaming the open song goes through the
-editor, which is what holds it; any other is renamed on the shelf (`retitle`).
+setlists it is in. Picking a song, here or in the sidebar, opens it in Practice, since a song is
+mostly picked to be played. Renaming the open song goes through the editor, which is what holds
+it; any other is renamed on the shelf (`retitle`).
 
 On a screen wide enough to spare the room, the setlists and every song also sit beside the
 editor and Practice as a tree, since switching songs is then one click. That tree only switches:
@@ -754,11 +792,13 @@ src/
     SongList.tsx  the setlist tree beside the editor, for switching songs
     SongsPage.tsx setlists and every song, arranged: search, sort, drag into setlists
     Menu.tsx      a button and the popover it opens
+    Toggle.tsx    a choice of two or three, with a thumb that slides to the one in force
     Paste.tsx     the Paste… dialog
     Sync.tsx      the Database sync dialog
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
   storage.ts      the document format: encode, decode, migrations, load/save
+  viewing.ts      how each song is shown on this device: chosen size and dense
   share.ts        a song in a link, and back
   sync.ts         the request to the sheet, its wire format and settings
   demo.ts         the demo song, decoded from demo.json

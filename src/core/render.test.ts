@@ -9,10 +9,11 @@ import {
   type Cell,
   type Score,
   type Song,
+  type Spacing,
   type Tuning,
 } from './model.ts'
 import type { Row } from './model.ts'
-import { renderScore, sectionHeading, songParts } from './render.ts'
+import { renderScore, sectionHeading, songParts, staffText } from './render.ts'
 
 type Placement = readonly [column: number, slot: number, cell: Cell]
 
@@ -176,13 +177,22 @@ describe('renderScore', () => {
 })
 
 describe('column spacing', () => {
-  const onG = (...frets: readonly (number | null)[]): string => {
+  const onG = (...frets: readonly (number | null)[]): string => onGSpaced('dense', frets)
+
+  const onGSpaced = (spacing: Spacing, frets: readonly (number | null)[]): string => {
     const placements = frets.flatMap((fret, column): readonly Placement[] =>
       fret === null ? [] : [[column, 2, { kind: 'fret', fret }] as const],
     )
     const bar = place(emptyBar(frets.length, 6), ...placements)
-    return renderScore(scoreOf(STANDARD, bar)).split('\n')[2] ?? ''
+    return renderScore(scoreOf(STANDARD, bar), spacing).split('\n')[2] ?? ''
   }
+
+  it('puts one more dash between notes when sparse, empty columns included', () => {
+    expect(onGSpaced('sparse', [2, 2])).toBe('G|2--2|')
+    expect(onGSpaced('sparse', [12, 2])).toBe('G|12--2|')
+    expect(onGSpaced('sparse', [2, null, 2])).toBe('G|2-----2|')
+    expect(onGSpaced('sparse', [2])).toBe('G|2|')
+  })
 
   it('never lets two frets run together', () => {
     expect(onG(2, 2)).toBe('G|2-2|')
@@ -363,15 +373,12 @@ describe('songParts', () => {
   const song = (parts: Partial<Song>): Song => ({ ...emptySong(), ...parts })
   const kinds = (s: Song) => songParts(s).map((part) => part.kind)
 
-  it('leads with the title and tempo, and skips either when blank', () => {
-    expect(
-      songParts(song({ title: 'Endless Skies', tempo: '70 bpm' })).slice(0, 2),
-    ).toEqual([
-      { kind: 'title', text: 'Endless Skies' },
-      { kind: 'tempo', text: '70 bpm' },
-    ])
-    expect(kinds(song({ tempo: '70 bpm' }))[0]).toBe('tempo')
-    expect(kinds(song({}))[0]).toBe('section')
+  it('leads with the tempo and skips it when blank, leaving the title to the page', () => {
+    expect(songParts(song({ title: 'Endless Skies', tempo: '70 bpm' }))[0]).toEqual({
+      kind: 'tempo',
+      text: '70 bpm',
+    })
+    expect(kinds(song({ title: 'Endless Skies' }))[0]).toBe('section')
   })
 
   it('passes a section on as typed, spacing and all', () => {
@@ -387,9 +394,31 @@ describe('songParts', () => {
 
   it('gives one part per system of the tab', () => {
     const s = song({
-      tab: { ...emptyScore(), rows: [emptyRow(1, 2, 6), emptyRow(1, 2, 6)] },
+      tab: {
+        ...emptyScore(),
+        rows: [{ ...emptyRow(1, 2, 6), title: 'Riff' }, emptyRow(1, 2, 6)],
+      },
     })
     expect(kinds(s).filter((kind) => kind === 'system')).toHaveLength(2)
+  })
+
+  it('hands over a tab row title and note apart from its staff', () => {
+    const riff = { ...emptyRow(1, 2, 6), title: 'Main riff', note: 'let ring' }
+    const [system] = songParts(
+      song({ chart: [], tab: { ...emptyScore(), rows: [riff] } }),
+    )
+    if (system?.kind !== 'system') throw new Error('expected a system')
+    expect(system.title).toBe('Main riff')
+    expect(system.note).toBe('let ring')
+    expect(staffText(emptyScore(), system.row)).not.toContain('Main riff')
+    expect(staffText(emptyScore(), system.row).split('\n')[0]).toMatch(/^e\|/)
+  })
+
+  it('leaves out a tab that holds nothing but empty bars', () => {
+    const s = song({
+      tab: { ...emptyScore(), rows: [emptyRow(1, 2, 6), emptyRow(1, 2, 6)] },
+    })
+    expect(kinds(s)).not.toContain('system')
   })
 
   it('leaves out a section that holds neither a name nor a body', () => {
@@ -404,7 +433,10 @@ describe('songParts', () => {
   })
 
   it('puts the tab after the chart by default, and before it when asked', () => {
-    const s = song({ chart: [{ name: 'Intro', body: 'Am' }] })
+    const s = song({
+      chart: [{ name: 'Intro', body: 'Am' }],
+      tab: { ...emptyScore(), rows: [{ ...emptyRow(1, 2, 6), title: 'Riff' }] },
+    })
     expect(kinds(s)).toEqual(['section', 'system'])
     expect(kinds({ ...s, tabFirst: true })).toEqual(['system', 'section'])
   })
@@ -419,5 +451,62 @@ describe('sectionHeading', () => {
 
   it('gives an unnamed section no heading, repeat or not', () => {
     expect(sectionHeading({ name: '', repeat: 2, body: 'Am' })).toBe('')
+  })
+})
+
+describe('staffText', () => {
+  // Three dense bars of two columns, `---|` each after `e|`: 14 characters in all.
+  const row: Row = {
+    bars: [
+      chords(emptyBar(2, 6), [0, 'Am']),
+      chords(emptyBar(2, 6), [0, 'C']),
+      chords(emptyBar(2, 6), [0, 'G']),
+    ],
+    aside: 'x2',
+  }
+  const score: Score = scoreOfRows(STANDARD, row)
+  const staves = (width: number) => staffText(score, row, 'dense', width).split('\n\n')
+
+  it('keeps a row on one line when no width is given or it fits', () => {
+    expect(staves(Number.POSITIVE_INFINITY)).toHaveLength(1)
+    expect(staves(14)).toHaveLength(1)
+  })
+
+  it('breaks at bar lines into as many lines as the width allows', () => {
+    const lines = staves(12)
+    expect(lines).toHaveLength(2)
+    expect(lines.map((staff) => staff.split('\n')[0])).toEqual([
+      'e|---|---|',
+      'e|---| x2',
+    ])
+  })
+
+  it('gives each line its own labels and the chord names of its own bars', () => {
+    const [first, second] = staves(12)
+    expect(first?.split('\n').map((line) => line[0])).toEqual([
+      'e',
+      'B',
+      'G',
+      'D',
+      'A',
+      'E',
+      ' ',
+    ])
+    expect(first?.split('\n').at(-1)?.trim()).toBe('Am  C')
+    expect(second?.split('\n').at(-1)?.trim()).toBe('G')
+  })
+
+  it('hangs the aside off the last line only', () => {
+    const [first, second] = staves(12)
+    expect(first).not.toContain('x2')
+    expect(second?.split('\n')[0]).toBe('e|---| x2')
+  })
+
+  it('gives a bar wider than the line a line of its own rather than cutting it', () => {
+    expect(staves(1).map((staff) => staff.split('\n')[0])).toEqual([
+      'e|---|',
+      'e|---|',
+      'e|---| x2',
+    ])
   })
 })

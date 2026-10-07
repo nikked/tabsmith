@@ -44,6 +44,15 @@ main {
   gap: 1.5rem;
 }
 
+/* An iPad or a phone has no room to spare above the song, so the page's margin
+   and the gap under the header shrink to what keeps the header off the edge. */
+@media (max-width: 64rem) {
+  main {
+    padding: 0.6rem 0.75rem;
+    gap: 0.6rem;
+  }
+}
+
 /* Centred, not baseline-aligned: the name sits in a padded chip whose baseline
    is not the text's, so baselines would hang it above the buttons. */
 header {
@@ -459,10 +468,10 @@ h1 img {
 .practice {
   display: flex;
   flex-direction: column;
-  gap: 1.4em;
+  gap: 1em;
   min-height: 100dvh;
   box-sizing: border-box;
-  padding: 1rem 1rem 40vh;
+  padding: 0 1rem 40vh;
   font-family: ui-monospace, monospace;
   tab-size: 8;
   line-height: 1.5;
@@ -474,27 +483,61 @@ h1 img {
   overflow-x: auto;
 }
 
-/* As wide as the widest line and centred, so a big screen does not leave the
-   song pinned to its left edge, while every line still starts in one column —
-   chords hang over their words by position. */
+/* As wide as the widest line, and set in a little from the left only on a wide
+   screen, rather than pinned to the edge or floated in the middle. On a tablet
+   or a phone every column counts, so it starts where the header does. Every
+   line still starts in one column: chords hang over their words by position. */
 .practice-song {
   display: flex;
   flex-direction: column;
   gap: 1.4em;
   width: fit-content;
   max-width: 100%;
-  margin-inline: auto;
 }
 
-.practice-song h2 {
+/* Past the widest iPad held sideways (1366px). */
+@media (min-width: 90rem) {
+  .practice-song,
+  .practice-width,
+  .practice-bar .bar-title {
+    margin-left: clamp(0rem, 6vw, 6rem);
+  }
+}
+
+/* As wide as the song is allowed to be and no taller than nothing, so the tab
+   can be broken to fit it (Practice.tsx measures it). The negative margin
+   takes back the gap the column puts after it. */
+.practice-width {
+  position: relative;
+  height: 0;
+  margin-bottom: -1em;
+  overflow: hidden;
+}
+
+.practice-ruler {
+  position: absolute;
+  white-space: pre;
+  visibility: hidden;
+}
+
+/* Under the header the page already has its margin. A song opened from a link
+   is the whole window with no page around it, so it keeps its own. */
+@media (max-width: 64rem) {
+  main .practice {
+    padding-inline: 0;
+  }
+}
+
+/* Headings are names, not text that has to line up, so they take the UI's face
+   and leave monospace to the chords, lyrics and tab under them. */
+.practice-song h3,
+.practice-song h4,
+.practice-song .tab-note {
+  font-family: system-ui, sans-serif;
+}
+
+.practice-song > p {
   margin: 0;
-  font-size: 1.6em;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.practice-song p {
-  margin: -1em 0 0;
   color: var(--muted);
 }
 
@@ -502,6 +545,20 @@ h1 img {
   margin: 0 0 0.3em;
   font-size: 1.2em;
   font-weight: 700;
+}
+
+/* A tab row's name and note: smaller than a section's heading, since they name
+   one figure within the song rather than a part of it. */
+.practice-song h4 {
+  margin: 0 0 0.25em;
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+.practice-song .tab-note {
+  margin: 0 0 0.3em;
+  font-size: 0.9em;
+  color: var(--muted);
 }
 
 /* Stays put while the song scrolls under it, because reaching the controls
@@ -512,12 +569,140 @@ h1 img {
   top: 0;
   z-index: 1;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
   font-family: system-ui, sans-serif;
   font-size: 1rem;
   background: var(--bg);
+}
+
+/* The song's name, kept in the bar so it is always in sight while the song
+   scrolls under it: the left of the bar to itself, as wide as the controls on
+   the right leave room for. */
+.bar-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0 auto 0 0;
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stepping through the setlist is one control in the toggles' shell, last in
+   the bar: arrows either side of where you are in it. */
+.setlist-step {
+  display: flex;
+  flex-shrink: 1;
+  align-items: center;
+  box-sizing: border-box;
+  height: 2rem;
+  min-width: 0;
+  margin-left: 0.4rem;
+  padding: 2px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* Wide enough to hit without looking, since it is pressed between songs. */
+.setlist-step button {
+  min-width: 2.6rem;
+  height: 100%;
+  padding: 0 0.8rem;
+  font-size: 1.05rem;
+  color: var(--muted);
+  border: none;
+  border-radius: 6px;
+}
+
+.setlist-step button:hover:not(:disabled) {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.setlist-step button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.step-where {
+  max-width: 10rem;
+  padding: 0 0.2rem;
+  overflow: hidden;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* The bar's controls sit side by side, so they share one height rather than
+   each taking its own padding's. */
+.practice-bar > button,
+.practice-bar > .toggle.small {
+  box-sizing: border-box;
+  height: 2rem;
+}
+
+.practice-bar > .toggle.small button {
+  padding-block: 0;
+}
+
+.practice-bar > button {
+  padding: 0 0.7rem;
+  font-size: 0.9rem;
+}
+
+/* An icon, square, and no wider than it has to be: it only gives room back. */
+.practice-bar > .full-toggle {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  padding: 0;
+  color: var(--muted);
+}
+
+.practice-bar > .full-toggle:hover {
+  color: var(--fg);
+}
+
+/* Practice's controls folded into one menu, for a phone: hidden until then. */
+.bar-more {
+  display: none;
+}
+
+.bar-more .menu-open {
+  box-sizing: border-box;
+  height: 2rem;
+  padding: 0 0.7rem;
+  color: var(--muted);
+}
+
+/* The size buttons head that menu, side by side, and leave it open, since the
+   size is found by pressing them more than once. */
+.menu-row {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem 0.35rem;
+}
+
+.menu .menu-row button {
+  flex: 1;
+  text-align: center;
+  border: 1px solid var(--line);
+}
+
+/* With the sidebar hidden the song takes the full width. */
+.workspace.focused {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 button {
@@ -891,39 +1076,44 @@ header .menu-open:has(+ .menu:popover-open) {
   color: var(--fg);
 }
 
-/* One control with two ends rather than two buttons: the thumb slides to the
-   view you are in, so where you are reads at a glance. */
-.view-toggle {
+/* The thumb is drawn behind the buttons and slid to the one in force, so the
+   change of state is a movement rather than a swap of colours. */
+.toggle {
   position: relative;
   display: inline-grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   padding: 3px;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 10px;
 }
 
-.view-toggle::before {
+.toggle::before {
   content: '';
   position: absolute;
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 3);
+  width: calc((100% - 6px) / 2);
   background: var(--fg);
   border-radius: 7px;
   transition: transform 220ms cubic-bezier(0.3, 0.7, 0.4, 1);
 }
 
-.view-toggle[data-mode='edit']::before {
+.toggle[data-count='3']::before {
+  width: calc((100% - 6px) / 3);
+}
+
+.toggle[data-index='1']::before {
   transform: translateX(100%);
 }
 
-.view-toggle[data-mode='practice']::before {
+.toggle[data-index='2']::before {
   transform: translateX(200%);
 }
 
-.view-toggle button {
+.toggle button {
   position: relative;
   padding: 0.25rem 0.95rem;
   font-size: 0.9rem;
@@ -934,17 +1124,39 @@ header .menu-open:has(+ .menu:popover-open) {
   transition: color 220ms;
 }
 
-.view-toggle button:hover {
+.toggle button:hover {
   color: var(--fg);
 }
 
-.view-toggle button[aria-pressed='true'] {
+.toggle button[aria-pressed='true'] {
   color: var(--bg);
 }
 
+/* A setting on the tab rather than where you are: the same control, quieter,
+   at the size of the caption it sits in. */
+.toggle.small {
+  padding: 2px;
+  border-radius: 8px;
+}
+
+.toggle.small::before {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / 2);
+  background: var(--muted);
+  border-radius: 6px;
+}
+
+.toggle.small button {
+  padding: 0.15rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .view-toggle::before,
-  .view-toggle button {
+  .toggle::before,
+  .toggle button {
     transition: none;
   }
 }
@@ -1015,6 +1227,32 @@ header .menu-open:has(+ .menu:popover-open) {
 
 .menu button:hover {
   background: var(--raised);
+}
+
+/* An item with an icon lines it up in the column a check box takes, so arrows,
+   ticks and icons read down one edge of the menu. */
+.menu button:has(> .menu-icon) {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.menu-icon {
+  display: grid;
+  place-items: center;
+  width: 13px;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.menu-icon svg {
+  width: 13px;
+  height: 13px;
 }
 
 .menu-check {
@@ -1158,19 +1396,6 @@ kbd {
   white-space: nowrap;
 }
 
-/* Both choices stay on screen with the live one pressed, so the control never
-   has to be read as "what will happen" rather than "what is". */
-.segmented {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.segmented button[aria-pressed='true'] {
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
-}
-
 .quiet {
   color: var(--muted);
 }
@@ -1194,24 +1419,6 @@ kbd {
   gap: 0.75rem;
   font-size: 0.85rem;
   color: var(--muted);
-}
-
-.tab-strip button {
-  padding: 0.15rem 0.55rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  border-color: transparent;
-}
-
-.tab-strip button:hover {
-  color: var(--fg);
-  border-color: var(--line);
-}
-
-.tab-strip .segmented button[aria-pressed='true'] {
-  color: var(--bg);
-  background: var(--muted);
-  border-color: var(--muted);
 }
 
 .tab-strip select {
@@ -1276,11 +1483,6 @@ kbd {
  * is set in. The tab still scrolls sideways, which is what it does anywhere.
  */
 @media (max-width: 40rem) {
-  main {
-    padding: 0.9rem;
-    gap: 1.1rem;
-  }
-
   .chart input,
   .chart textarea,
   .chord,
@@ -1558,4 +1760,79 @@ kbd {
   border-radius: 6px;
   box-shadow: 0 4px 16px color-mix(in srgb, #000 25%, transparent);
   transform: translate(14px, -50%);
+}
+
+/* An iPhone has room for the header on one row only if every control gives a
+   little: the logo keeps its mark and lets its name go to screen readers only,
+   and the controls and the gaps between them shrink. In Practice the song's
+   title takes a line of its own, so it is never squeezed to a letter, and the
+   controls sit compactly on the line under it. */
+@media (max-width: 40rem) {
+  header {
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  h1 {
+    padding: 0.35rem;
+  }
+
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  header .menu-open {
+    padding: calc(0.2rem + 3px) 0.6rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  header .toggle button {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .practice-bar {
+    justify-content: flex-start;
+    gap: 0.35rem;
+  }
+
+  /* The bar is one line: the song's title, small arrows through the setlist,
+     then full screen, then a menu holding the rest, so the song gets every line
+     they would take. */
+  .bar-more {
+    display: block;
+    order: 2;
+  }
+
+  .practice-bar > .full-toggle {
+    order: 1;
+  }
+
+  .practice-bar > .size,
+  .practice-bar > .toggle.small {
+    display: none;
+  }
+
+  .practice-bar > .setlist-step {
+    margin-left: 0;
+  }
+
+  .setlist-step button {
+    min-width: 2rem;
+    padding: 0 0.45rem;
+  }
+
+  .step-where {
+    display: none;
+  }
+
+  .practice-bar > button {
+    padding: 0 0.55rem;
+  }
 }
