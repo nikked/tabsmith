@@ -8,7 +8,11 @@ so renumbering a section means fixing those references too.
 
 ## 1. Shape of the thing
 
-Two views. The editor is the page; **Practice** (§4b) is how the finished song is read.
+Three views. **Songs** (§5) keeps the shelf and the setlists in order, the editor is the page,
+and **Practice** (§4b) is how the finished song is read.
+
+- **Songs** — setlists on one side and every song on the other, searched, sorted and dragged
+  into the order a gig needs.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
   grouped into rows. Fixed-width boxes, current cell highlighted. This is _not_ ASCII; it's a
@@ -22,7 +26,7 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, **+ New**, **Songs**, the **Edit | Practice** toggle (§4b) and, at
+The header carries the logo, **+ New**, the **Songs | Edit | Practice** toggle (§4b, §5) and, at
 the right, a `⋯` settings menu (§5). Nothing in it is loud: none of it is reached for while
 writing.
 
@@ -547,18 +551,57 @@ without reading which song it was. A file that will not decode leaves the shelf 
 why, in a dismissible line under the header — `localStorage` can discard a bad blob silently
 because nobody chose it, but a file is something you picked on purpose.
 
-Adding a song is one **+ New** menu, first in the header: Blank, Paste and Import. The list
-drops down from **Songs**. Copy song as link, Export, Back up all songs and Google
-Sheets sync are the `⋯` menu at the right. A backup is the rows the sheet holds, deleted songs
-included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
-once per device and then left alone, so it is a dialog of its own behind that menu. On a phone
-the header is the scarcest space on the page, so each is one button there. On a screen wide
-enough to spare the room, the list also sits beside the editor, since switching songs is then
-one click.
+Adding a song is one **+ New** menu, first in the header: Blank, Paste and Import. Copy song as
+link, Export, Back up all songs and Database sync are the `⋯` menu at the right. A backup
+is the rows the sheet holds, deleted songs included, written to one file: a copy of the sheet
+that does not need the sheet. Sync is set up once per device and then left alone, so it is a
+dialog of its own behind that menu. On a phone the header is the scarcest space on the page, so
+each is one button there.
 
-**Copy song…** and **Delete song…** are at the foot of the page, after the keys, and act on the
-open song. Copy asks for a name, then the copy joins the shelf and opens. Deleting is only from
-there, never from the list, so the list is only for switching.
+**Copy song…** and **Delete song…** are at the foot of the editor, after the keys, and act on
+the open song. Copy asks for a name, then the copy joins the shelf and opens.
+
+**Songs** is the page for arranging rather than writing (`SongsPage.tsx`): setlists on one side,
+every song on the other, stacked on a phone. All songs can be searched — case and accents do not
+matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Practice
+uses) or **Have structure** (`hasStructure`: at least two sections with something written under
+them, since every song starts with an empty Verse 1), filters that stay on in this browser until
+turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
+song's tempo, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
+exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
+setlists it is in. Picking a song opens it in Edit. Renaming the open song goes through the
+editor, which is what holds it; any other is renamed on the shelf (`retitle`).
+
+On a screen wide enough to spare the room, the setlists and every song also sit beside the
+editor and Practice as a tree, since switching songs is then one click. That tree only switches:
+arranging is the Songs page's job, and keeping the grips and deletes out of it keeps them out of
+the way while writing.
+
+### Setlists
+
+A setlist is songs in the order they are played: a name and a list of song ids
+(`core/setlists.ts`). It holds ids rather than songs, so one song can be in any number of
+setlists — the same song is in most gigs — and an edit shows up in all of them. A song that has
+been deleted, or has not reached this device yet, is left out of a setlist rather than shown as
+a gap.
+
+On the Songs page a song is dragged by its grip — from All songs into a setlist, within a
+setlist to reorder it, or from one setlist into another, which adds it there too — and lands
+where it is dropped (`placeInSetlist`). It is the same pointer-event drag a tab row uses, read
+from the page rather than one list, since a song crosses from one list to another. × takes a
+song out of a setlist and leaves it on the shelf, and a setlist's `⋯` renames or deletes it. All
+songs is in alphabetical order in the sidebar tree, since there it is for finding one. Every
+group there starts folded, so the sidebar is a short list of names to open rather than every
+song at once; opening or folding one is remembered per browser (`tabsmith.sidebarOpen`, open or
+not by id): it is how this person likes the sidebar, not something about the songs, so it does
+not sync. Which setlists the open song is in is **Setlists** at the foot of the page: a checkbox
+per setlist, ticked where the song is in it. Ticking adds and unticking takes out, and the menu
+stays open, since putting a song in three setlists should be three ticks. Deleting a setlist
+asks for its name like deleting a song does, and only marks it inactive: it is kept, and synced,
+like a deleted song.
+
+A change that changes nothing — moving a song to where it already is — leaves the library as it
+was, so it is not stamped as an edit for sync to carry.
 
 ### Old files still open
 
@@ -615,6 +658,10 @@ still has the old copy cannot bring it back. An edit made after a delete elsewhe
 song back — the newer intent wins either way. Clocks are trusted, which is fine for one person's
 devices.
 
+Setlists sync the same way, newest wins per setlist, in a `setlists` tab of their own. A
+deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
+tombstone. A script deployed before setlists answers without them, which changes nothing here.
+
 Nothing is ever deleted from the sheet. A deleted song goes up whole with `active: false`, the
 tombstone keeps the song so it can, and the sheet keeps it in its row marked inactive; the app
 just stops showing it. Getting one back is flipping `active` to `TRUE` in the sheet and bumping
@@ -654,10 +701,10 @@ Setting it up:
 4. On each device: `⋯` > Database sync…, paste the URL and the token, Connect.
 
 After changing `Code.gs`, update the existing deployment (Deploy > Manage deployments > Edit >
-New version); saving alone does not change what the URL runs. The script creates a `songs` tab
-on first use. One value longer than a cell makes the script refuse the whole write, so a song
-still too long once packed is not sent: it stays on its device, the sync note names it, and
-everything else syncs. Its deletion still goes up, without the song.
+New version); saving alone does not change what the URL runs. The script creates the `songs` and
+`setlists` tabs on first use. One value longer than a cell makes the script refuse the whole
+write, so a song still too long once packed is not sent: it stays on its device, the sync note
+names it, and everything else syncs. Its deletion still goes up, without the song.
 
 ## 6. Deliberately absent
 
@@ -695,15 +742,17 @@ src/
     edit.ts       Action, apply, step — every state transition and the undo timeline
     keymap.ts     keyToAction
     render.ts     renderScore, songParts and their helpers
-    library.ts    the shelf: Library, Entry and the functions over them
+    library.ts    the shelf: Library, Entry, Setlist and the functions over them
+    setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
-    sync.ts       records, merge — newest wins per song (§5)
+    sync.ts       records, merge, mergeSetlists — newest wins per song and setlist (§5)
   ui/
     App.tsx
     Chart.tsx     title, tempo and the sections
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
-    SongList.tsx  the song list, under Songs and in the sidebar
+    SongList.tsx  the setlist tree beside the editor, for switching songs
+    SongsPage.tsx setlists and every song, arranged: search, sort, drag into setlists
     Menu.tsx      a button and the popover it opens
     Paste.tsx     the Paste… dialog
     Sync.tsx      the Database sync dialog

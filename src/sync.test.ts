@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { Library } from './core/library.ts'
 import { emptySong } from './core/model.ts'
 import { DEMO_TITLE } from './demo.ts'
-import { fromWire, toSheet, toWire } from './sync.ts'
+import { fromWire, setlistsToWire, toSheet, toWire } from './sync.ts'
 
 const library: Library = {
   songs: [{ id: 'a', song: { ...emptySong(), title: 'Slow Machine' }, updatedAt: 1 }],
   open: 'a',
   removed: [{ id: 'b', at: 2, song: { ...emptySong(), title: 'Old Riff' } }],
+  setlists: [
+    { id: 'gig', name: 'Friday', songs: ['a', 'b'], active: true, updatedAt: 3 },
+    { id: 'old', name: 'Spring tour', songs: [], active: false, updatedAt: 4 },
+  ],
 }
 
 describe('sync wire format', () => {
@@ -18,13 +22,18 @@ describe('sync wire format', () => {
       ['a', 1, 'Slow Machine', true],
       ['b', 2, 'Old Riff', false],
     ])
-    const pulled = await fromWire({ ok: true, records: sent })
+    const pulled = await fromWire({
+      ok: true,
+      records: sent,
+      setlists: setlistsToWire(library),
+    })
     expect(pulled).toEqual({
       ok: true,
       records: [
         { id: 'a', at: 1, active: true, song: library.songs[0].song },
         { id: 'b', at: 2, active: false, song: library.removed[0]?.song },
       ],
+      setlists: library.setlists,
     })
   })
 
@@ -42,7 +51,7 @@ describe('sync wire format', () => {
     expect(sent.map(({ id }) => id)).toEqual(['mine'])
   })
 
-  it('reads a sheet from before songs were packed or deleted songs were kept', async () => {
+  it('reads a sheet from before songs were packed, deleted songs kept or setlists existed', async () => {
     const [kept] = toWire(library)
     const pulled = await fromWire({
       ok: true,
@@ -57,6 +66,7 @@ describe('sync wire format', () => {
         { id: 'a', at: 1, active: true, song: library.songs[0].song },
         { id: 'b', at: 2, active: false, song: null },
       ],
+      setlists: [],
     })
   })
 
@@ -71,12 +81,19 @@ describe('sync wire format', () => {
         { id: 'e', at: 4, song: null, active: true },
         { id: 'f', at: 5, song: 'not json', active: false },
       ],
+      setlists: [
+        { id: 'gig', at: 1, name: 'Friday', songs: 'a,b', active: true },
+        { id: 'ok', at: 1, name: 'Rehearsal', songs: ['a'], active: true },
+      ],
     })
     expect(pulled).toEqual({
       ok: true,
       records: [
         { id: 'd', at: 3, active: false, song: null },
         { id: 'f', at: 5, active: false, song: null },
+      ],
+      setlists: [
+        { id: 'ok', name: 'Rehearsal', songs: ['a'], active: true, updatedAt: 1 },
       ],
     })
   })

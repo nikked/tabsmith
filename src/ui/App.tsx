@@ -1,16 +1,26 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
+  activeSetlists,
+  addSetlist,
+  addToSetlist,
+  deleteSetlist,
+  placeInSetlist,
+  removeFromSetlist,
+  renameSetlist,
+} from '../core/setlists.ts'
+import {
   addEntry,
   openEntry,
   openSong,
   removeEntry,
+  retitle,
   titleOf,
   withOpenSong,
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
-import { merge } from '../core/sync.ts'
+import { merge, mergeSetlists } from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -25,17 +35,19 @@ import { forgetLink, linkedSong, toLink } from '../share.ts'
 import {
   loadSettings,
   saveSettings,
+  setlistsToWire,
   syncLibrary,
   toWire,
   type Settings,
 } from '../sync.ts'
 import { Chart } from './Chart.tsx'
-import { Menu, MenuItems, type MenuItem } from './Menu.tsx'
+import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Paste } from './Paste.tsx'
 import { Prompt } from './Prompt.tsx'
 import { Practice } from './Practice.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
-import { SongList } from './SongList.tsx'
+import { SongTree } from './SongList.tsx'
+import { SongsPage } from './SongsPage.tsx'
 import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 
@@ -57,19 +69,28 @@ const openingLibrary = (): Library =>
 /** Long enough that a burst of typing is one sync rather than one per key. */
 const SYNC_DELAY = 3000
 
+/** What a Prompt is open for, and which song or setlist it is about. */
+type Asking =
+  | { readonly kind: 'copy'; readonly song: string }
+  | { readonly kind: 'rename'; readonly song: string }
+  | { readonly kind: 'delete'; readonly song: string }
+  | { readonly kind: 'newSetlist'; readonly adding: string | null }
+  | { readonly kind: 'renameSetlist'; readonly id: string }
+  | { readonly kind: 'deleteSetlist'; readonly id: string }
+
 export default function App() {
   const [library, setLibrary] = useState<Library>(openingLibrary)
   const [timeline, dispatch] = useReducer(step, undefined, () =>
     initialTimeline(openEntry(library).song),
   )
   const state = timeline.present
-  const [mode, setMode] = useState<'edit' | 'practice'>('edit')
+  const [mode, setMode] = useState<'songs' | 'edit' | 'practice'>('edit')
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
   const [syncWith, setSyncWith] = useState<Settings | null>(loadSettings)
   const [syncNote, setSyncNote] = useState<string | null>(null)
-  const [asking, setAsking] = useState<'copy' | 'delete' | null>(null)
+  const [asking, setAsking] = useState<Asking | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
@@ -106,7 +127,10 @@ export default function App() {
       return
     }
     const { library: here, song } = latest.current
-    const merged = merge(withOpenSong(here, song, Date.now()), pulled.records)
+    const merged = mergeSetlists(
+      merge(withOpenSong(here, song, Date.now()), pulled.records),
+      pulled.setlists,
+    )
     setLibrary(merged)
     const open = openEntry(merged).song
     if (open !== song) dispatch({ kind: 'load', song: open })
@@ -214,19 +238,54 @@ export default function App() {
     dispatch({ kind: 'load', song: next.song })
   }
 
-  const openTitle = titleOf(openEntry(library))
+  /** A song as it is now: the open one as the editor holds it, the rest as shelved. */
+  const songOf = (id: string): Song | undefined =>
+    id === library.open
+      ? state.song
+      : library.songs.find((entry) => entry.id === id)?.song
 
-  const deleteOpen = () => {
-    const saved = withOpenSong(library, state.song, Date.now())
-    const next = removeEntry(saved, saved.open, Date.now())
-    setLibrary(next)
-    dispatch({ kind: 'load', song: openEntry(next).song })
+  const titleById = (id: string): string => {
+    const entry = library.songs.find((each) => each.id === id)
+    return entry === undefined ? '' : titleOf(entry)
   }
 
+  const deleteSong = (id: string) => {
+    const saved = withOpenSong(library, state.song, Date.now())
+    const next = removeEntry(saved, id, Date.now())
+    setLibrary(next)
+    if (next.open !== saved.open) {
+      dispatch({ kind: 'load', song: openEntry(next).song })
+    }
+  }
+
+  /** The open song is the editor's, so its title goes through the editor too. */
+  const renameSong = (id: string, title: string) => {
+    if (id === library.open) dispatch({ kind: 'setTitle', title })
+    else setLibrary((current) => retitle(current, id, title, Date.now()))
+  }
+
+  /** Setlist edits leave the songs alone, so they never need the editor's copy. */
+  const changeSetlists = (edit: (library: Library, at: number) => Library) =>
+    setLibrary((current) => edit(current, Date.now()))
+
+  const asked =
+    asking?.kind === 'renameSetlist' || asking?.kind === 'deleteSetlist'
+      ? library.setlists.find((setlist) => setlist.id === asking.id)
+      : undefined
+
+  const toggleSetlist = (setlist: string, song: string) =>
+    changeSetlists((current, at) =>
+      current.setlists.some((each) => each.id === setlist && each.songs.includes(song))
+        ? removeFromSetlist(current, setlist, song, at)
+        : addToSetlist(current, setlist, song, at),
+    )
+
   /** An empty song has nothing in it to lose, so it goes without the question. */
-  const askToDelete = () => {
-    if (songHasContent(state.song)) setAsking('delete')
-    else deleteOpen()
+  const askToDelete = (id: string) => {
+    const song = songOf(id)
+    if (song === undefined) return
+    if (songHasContent(song)) setAsking({ kind: 'delete', song: id })
+    else deleteSong(id)
   }
 
   const saveFile = async (text: string, name: string, description: string) => {
@@ -256,15 +315,16 @@ export default function App() {
     }
   }
 
-  const saveToDisk = () =>
-    saveFile(encode(state.song), filenameFor(state.song), 'tabsmith song')
+  const saveToDisk = (song: Song) =>
+    saveFile(encode(song), filenameFor(song), 'tabsmith song')
 
   /**
-   * The rows the sheet holds, deleted songs included, so a backup is a copy of
-   * the sheet that does not need the sheet.
+   * The rows the sheet holds, deleted songs and setlists included, so a backup
+   * is a copy of the sheet that does not need the sheet.
    */
   const backUp = () => {
-    const rows = toWire(withOpenSong(library, state.song, Date.now()))
+    const saved = withOpenSong(library, state.song, Date.now())
+    const rows = { songs: toWire(saved), setlists: setlistsToWire(saved) }
     const day = new Date().toISOString().slice(0, 10)
     return saveFile(
       JSON.stringify(rows, null, 2),
@@ -277,9 +337,9 @@ export default function App() {
    * Copied rather than opened: the whole song is in the link, so there is
    * nothing to visit and nothing to wait for.
    */
-  const share = async () => {
+  const share = async (song: Song) => {
     try {
-      await navigator.clipboard.writeText(await toLink(state.song))
+      await navigator.clipboard.writeText(await toLink(song))
       setError(null)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
@@ -332,9 +392,6 @@ export default function App() {
         <Menu label="+ New" title="New song">
           <MenuItems items={adding} />
         </Menu>
-        <Menu label="Songs ▾" title="Songs">
-          <SongList library={library} onOpen={switchTo} />
-        </Menu>
         <input
           ref={picker}
           type="file"
@@ -347,6 +404,13 @@ export default function App() {
           }}
         />
         <div className="view-toggle" data-mode={mode} role="group" aria-label="View">
+          <button
+            type="button"
+            aria-pressed={mode === 'songs'}
+            onClick={() => setMode('songs')}
+          >
+            Songs
+          </button>
           <button
             type="button"
             aria-pressed={mode === 'edit'}
@@ -366,8 +430,8 @@ export default function App() {
           <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
             <MenuItems
               items={[
-                { label: 'Copy song as link', onSelect: () => void share() },
-                { label: 'Export file…', onSelect: () => void saveToDisk() },
+                { label: 'Copy song as link', onSelect: () => void share(state.song) },
+                { label: 'Export file…', onSelect: () => void saveToDisk(state.song) },
                 { label: 'Back up all songs…', onSelect: () => void backUp() },
                 {
                   label: 'Database sync…',
@@ -386,68 +450,200 @@ export default function App() {
           </button>
         </p>
       )}
-      <div className="workspace">
-        <aside className="shelf-side" aria-label="Songs">
-          <SongList library={library} onOpen={switchTo} />
-        </aside>
-        {mode === 'practice' ? (
-          <Practice song={state.song} onLeave={() => setMode('edit')} />
-        ) : (
-          <div className="editing">
-            <Chart song={state.song} dispatch={dispatch} />
-            <TabGrid
-              state={state}
-              dispatch={dispatch}
-              onShowKeys={() => show(guide.current)}
-            />
-            <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
-            <div className="song-actions">
-              <button type="button" onClick={() => setAsking('copy')}>
-                Copy song…
-              </button>
-              <button
-                type="button"
-                className="danger"
-                disabled={library.songs.length <= 1}
-                title={
-                  library.songs.length <= 1
-                    ? 'Your only song cannot be deleted'
-                    : undefined
-                }
-                onClick={askToDelete}
-              >
-                Delete song…
-              </button>
+      {mode === 'songs' ? (
+        <SongsPage
+          library={library}
+          onOpen={(id) => {
+            switchTo(id)
+            setMode('edit')
+          }}
+          onRename={(song) => setAsking({ kind: 'rename', song })}
+          onCopy={(song) => setAsking({ kind: 'copy', song })}
+          onCopyLink={(id) => {
+            const song = songOf(id)
+            if (song !== undefined) void share(song)
+          }}
+          onExport={(id) => {
+            const song = songOf(id)
+            if (song !== undefined) void saveToDisk(song)
+          }}
+          onDelete={askToDelete}
+          onToggleSetlist={toggleSetlist}
+          onNewSetlist={() => setAsking({ kind: 'newSetlist', adding: null })}
+          onRenameSetlist={(id) => setAsking({ kind: 'renameSetlist', id })}
+          onDeleteSetlist={(id) => setAsking({ kind: 'deleteSetlist', id })}
+          onRemoveFromSetlist={(setlist, song) =>
+            changeSetlists((current, at) => removeFromSetlist(current, setlist, song, at))
+          }
+          onPlace={(setlist, song, to) =>
+            changeSetlists((current, at) =>
+              placeInSetlist(current, setlist, song, to, at),
+            )
+          }
+        />
+      ) : (
+        <div className="workspace">
+          <aside className="shelf-side" aria-label="Songs">
+            <SongTree library={library} onOpen={switchTo} />
+          </aside>
+          {mode === 'practice' ? (
+            <Practice song={state.song} onLeave={() => setMode('edit')} />
+          ) : (
+            <div className="editing">
+              <Chart song={state.song} dispatch={dispatch} />
+              <TabGrid
+                state={state}
+                dispatch={dispatch}
+                onShowKeys={() => show(guide.current)}
+              />
+              <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
+              <div className="song-actions">
+                <Menu label="Setlists ▾" title="Setlists this song is in">
+                  <MenuChecks
+                    items={activeSetlists(library).map((setlist) => ({
+                      id: setlist.id,
+                      label: setlist.name,
+                      checked: setlist.songs.includes(library.open),
+                      onToggle: () => toggleSetlist(setlist.id, library.open),
+                    }))}
+                  />
+                  <MenuItems
+                    items={[
+                      {
+                        label: 'New setlist…',
+                        onSelect: () =>
+                          setAsking({ kind: 'newSetlist', adding: library.open }),
+                        quiet: true,
+                      },
+                    ]}
+                  />
+                </Menu>
+                <button
+                  type="button"
+                  onClick={() => setAsking({ kind: 'copy', song: library.open })}
+                >
+                  Copy song…
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={library.songs.length <= 1}
+                  title={
+                    library.songs.length <= 1
+                      ? 'Your only song cannot be deleted'
+                      : undefined
+                  }
+                  onClick={() => askToDelete(library.open)}
+                >
+                  Delete song…
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       <Paste paste={paste} onImport={shelve} />
-      {asking === 'copy' && (
+      {asking?.kind === 'copy' && (
         <Prompt
           heading="Copy song"
           label="Name of the copy"
-          initial={`${openTitle} (copy)`}
+          initial={`${titleById(asking.song)} (copy)`}
           confirm="Copy"
           accepts={(name) => name.trim() !== ''}
-          onConfirm={(name) => shelve({ ...state.song, title: name.trim() })}
+          onConfirm={(name) => {
+            const song = songOf(asking.song)
+            if (song !== undefined) shelve({ ...song, title: name.trim() })
+          }}
           onClose={() => setAsking(null)}
         >
-          The copy joins your songs and opens; {openTitle} stays as it is.
+          The copy joins your songs and opens; {titleById(asking.song)} stays as it is.
         </Prompt>
       )}
-      {asking === 'delete' && (
+      {asking?.kind === 'rename' && (
         <Prompt
-          heading={`Delete ${openTitle}`}
+          heading="Rename song"
+          label="Song name"
+          initial={songOf(asking.song)?.title ?? ''}
+          confirm="Rename"
+          accepts={(name) => name.trim() !== songOf(asking.song)?.title}
+          onConfirm={(name) => renameSong(asking.song, name.trim())}
+          onClose={() => setAsking(null)}
+        >
+          Every setlist it is in shows the new name.
+        </Prompt>
+      )}
+      {asking?.kind === 'delete' && (
+        <Prompt
+          heading={`Delete ${titleById(asking.song)}`}
           label="Song name"
           initial=""
           confirm="Delete this song"
           danger
-          accepts={(name) => name === openTitle}
-          onConfirm={deleteOpen}
+          accepts={(name) => name === titleById(asking.song)}
+          onConfirm={() => deleteSong(asking.song)}
           onClose={() => setAsking(null)}
         >
-          This cannot be undone. Type <strong>{openTitle}</strong> to confirm.
+          It leaves your songs and every setlist. Type{' '}
+          <strong>{titleById(asking.song)}</strong> to confirm.
+        </Prompt>
+      )}
+      {asking?.kind === 'newSetlist' && (
+        <Prompt
+          heading="New setlist"
+          label="Setlist name"
+          initial=""
+          confirm="Create"
+          accepts={(name) => name.trim() !== ''}
+          onConfirm={(name) =>
+            changeSetlists((current, at) =>
+              addSetlist(current, {
+                id: newId(),
+                name: name.trim(),
+                songs: asking.adding === null ? [] : [asking.adding],
+                active: true,
+                updatedAt: at,
+              }),
+            )
+          }
+          onClose={() => setAsking(null)}
+        >
+          {asking.adding === null
+            ? 'A list of songs in the order you play them.'
+            : `A list of songs in the order you play them, starting with ${titleById(asking.adding)}.`}
+        </Prompt>
+      )}
+      {asking?.kind === 'renameSetlist' && asked !== undefined && (
+        <Prompt
+          heading="Rename setlist"
+          label="Setlist name"
+          initial={asked.name}
+          confirm="Rename"
+          accepts={(name) => name.trim() !== '' && name.trim() !== asked.name}
+          onConfirm={(name) =>
+            changeSetlists((current, at) =>
+              renameSetlist(current, asked.id, name.trim(), at),
+            )
+          }
+          onClose={() => setAsking(null)}
+        >
+          The songs in it stay as they are.
+        </Prompt>
+      )}
+      {asking?.kind === 'deleteSetlist' && asked !== undefined && (
+        <Prompt
+          heading={`Delete ${asked.name}`}
+          label="Setlist name"
+          initial=""
+          confirm="Delete this setlist"
+          danger
+          accepts={(name) => name === asked.name}
+          onConfirm={() =>
+            changeSetlists((current, at) => deleteSetlist(current, asked.id, at))
+          }
+          onClose={() => setAsking(null)}
+        >
+          The songs in it stay in your songs. Type <strong>{asked.name}</strong> to
+          confirm.
         </Prompt>
       )}
       <Sync

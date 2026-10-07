@@ -1,3 +1,4 @@
+import { scoreHasContent } from './edit.ts'
 import type { Song } from './model.ts'
 
 /**
@@ -29,11 +30,25 @@ export type Removed = {
  */
 export type Songs = readonly [Entry, ...Entry[]]
 
+/**
+ * Songs in the order they are played. A setlist holds ids rather than songs, so
+ * one song can be in any number of them and an edit shows up in all. Deleting
+ * one only marks it inactive, the same way a deleted song is kept in the sheet.
+ */
+export type Setlist = {
+  readonly id: string
+  readonly name: string
+  readonly songs: readonly string[]
+  readonly active: boolean
+  readonly updatedAt: number
+}
+
 /** The whole shelf, in the order it is shown, and which of them is open. */
 export type Library = {
   readonly songs: Songs
   readonly open: string
   readonly removed: readonly Removed[]
+  readonly setlists: readonly Setlist[]
 }
 
 /** `open` can only dangle if something built a library without `repair`. */
@@ -42,6 +57,60 @@ export const openEntry = (library: Library): Entry =>
 
 export const titleOf = (entry: Entry): string =>
   entry.song.title === '' ? 'Untitled' : entry.song.title
+
+/**
+ * By name, the way a person looks one up: case and accents do not reorder it,
+ * and an untitled song sorts as Untitled because that is what it shows as.
+ */
+export const byTitle = (entries: readonly Entry[]): readonly Entry[] =>
+  [...entries].sort((a, b) =>
+    titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' }),
+  )
+
+/** Newest edit first, for finding what you were working on. */
+export const byEdited = (entries: readonly Entry[]): readonly Entry[] =>
+  [...entries].sort((a, b) => b.updatedAt - a.updatedAt)
+
+/** Case and accents folded away, so `smor` finds Smör. */
+const folded = (text: string): string =>
+  text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+
+/** Songs whose shown name contains the query; a blank query is every song. */
+export const matching = (entries: readonly Entry[], query: string): readonly Entry[] => {
+  const wanted = folded(query.trim())
+  return wanted === ''
+    ? entries
+    : entries.filter((entry) => folded(titleOf(entry)).includes(wanted))
+}
+
+/** A tab something has been written into, rather than the empty staff every song starts with. */
+export const hasTab = (entry: Entry): boolean => scoreHasContent(entry.song.tab)
+
+/**
+ * A chart worked out into parts: at least two sections with something written
+ * under them. A name alone is not a part — every song starts with a Verse 1.
+ */
+export const hasStructure = (entry: Entry): boolean =>
+  entry.song.chart.filter((section) => section.body.trim() !== '').length >= 2
+
+/**
+ * Renaming a song that is not open. The open one is renamed through the editor
+ * instead, which is what holds it while it is open.
+ */
+export const retitle = (
+  library: Library,
+  id: string,
+  title: string,
+  at: number,
+): Library => {
+  const [first, ...rest] = library.songs
+  const update = (entry: Entry): Entry =>
+    entry.id === id ? { ...entry, song: { ...entry.song, title }, updatedAt: at } : entry
+  return { ...library, songs: [update(first), ...rest.map(update)] }
+}
 
 /**
  * The editor holds the open song; this is how it gets back to the shelf. The
@@ -78,6 +147,7 @@ export const removeEntry = (library: Library, id: string, at: number): Library =
   const removed = [...library.removed, { id, at, song: gone.song }]
   if (library.open !== id) return { ...library, songs, removed }
   return {
+    ...library,
     songs,
     open: (songs[Math.min(index, songs.length - 1)] ?? first).id,
     removed,
@@ -96,6 +166,7 @@ export const repair = (
   songs: readonly Entry[],
   open: string,
   removed: readonly Removed[],
+  setlists: readonly Setlist[],
 ): Library | null => {
   const [first, ...rest] = songs
   if (first === undefined) return null
@@ -104,5 +175,6 @@ export const repair = (
     songs: all,
     open: all.some((entry) => entry.id === open) ? open : first.id,
     removed,
+    setlists,
   }
 }

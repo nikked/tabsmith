@@ -658,23 +658,157 @@ button {
   font-size: 1.1rem;
 }
 
+/* Hung off its setlist's name by a guide line, like a folder's contents: enough
+   to read as a tree, not so much that it reads as a file manager. The left
+   margin puts the line under the caret. */
 .song-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin: 0;
-  padding: 0;
+  margin: 0 0 0 0.6rem;
+  padding: 0 0 0 0.4rem;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border-left: 1px solid var(--line);
   overflow: hidden auto;
 }
 
 /* Under Songs the menu is the frame, so the list drops its own. */
-.menu .song-list {
+/* Setlists, each a heading over its songs, then every song. The heading is a
+   button so a group can fold away, with the setlist's own menu beside it. */
+.song-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.menu .song-tree {
   width: min(20rem, 85vw);
-  max-height: 60vh;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.setlist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.setlist-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.setlist-toggle,
+.menu .setlist-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.25rem 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: none;
   border: none;
+}
+
+.setlist-toggle .caret {
+  display: inline-block;
+  width: 0.75rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  transition: transform 150ms;
+}
+
+.setlist-toggle[aria-expanded='true'] .caret {
+  transform: rotate(90deg);
+}
+
+.setlist-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setlist-toggle .count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.setlist-head .menu-open {
+  padding: 0.1rem 0.5rem;
+  color: var(--muted);
+  border: none;
+}
+
+.setlist-empty {
+  margin: 0;
+  /* Lined up with the titles of a list's songs: its margin, padding and pick. */
+  padding: 0.3rem 0 0.3rem 1.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.new-setlist {
+  align-self: flex-start;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.new-setlist:hover {
+  color: var(--fg);
+}
+
+.song-list .grip {
+  padding: 0 0.1rem 0 0.4rem;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  background: none;
+  border: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.song-list .drop {
+  padding: 0 0.75rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  visibility: hidden;
+}
+
+/* Out of the way until the row is pointed at, or always on a touch screen,
+   where nothing is ever pointed at. */
+.song-list li:hover .drop,
+.song-list .drop:focus-visible {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .song-list .drop {
+    visibility: visible;
+  }
+}
+
+.song-list .drop:hover {
+  color: var(--alert);
+}
+
+.song-list li.lifted {
+  opacity: 0.45;
+}
+
+.song-list li.drop-above {
+  box-shadow: inset 0 2px 0 var(--cursor);
+}
+
+.song-list li.drop-below {
+  box-shadow: inset 0 -2px 0 var(--cursor);
 }
 
 /* The row, not the button in it, carries the hover and the mark, so the two
@@ -684,19 +818,27 @@ button {
   align-items: stretch;
 }
 
+/* Rounded rows inside the guide line, so a highlight reads as the row and not
+   as a band across the whole tree. The open song is a shade brighter than a
+   hovered one, in the text colour rather than the cursor's yellow, which is
+   kept for the cell being edited. */
+.song-list li {
+  border-radius: 5px;
+}
+
 .song-list li:hover {
-  background: var(--raised);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
 }
 
 .song-list li.current {
-  background: color-mix(in srgb, var(--cursor) 18%, transparent);
+  background: color-mix(in srgb, var(--fg) 9%, transparent);
 }
 
 /* The whole row is the target, so a thumb can land anywhere on the title. */
 .song-list .pick {
   flex: 1;
   min-width: 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.4rem 0.6rem;
   font: inherit;
   text-align: left;
   color: inherit;
@@ -710,7 +852,7 @@ button {
 }
 
 .song-list li.current .pick {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Pinned under the button that opened it where the browser can anchor; where it
@@ -754,7 +896,7 @@ header .menu-open:has(+ .menu:popover-open) {
 .view-toggle {
   position: relative;
   display: inline-grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   padding: 3px;
   background: var(--raised);
   border: 1px solid var(--line);
@@ -767,14 +909,18 @@ header .menu-open:has(+ .menu:popover-open) {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc(50% - 3px);
+  width: calc((100% - 6px) / 3);
   background: var(--fg);
   border-radius: 7px;
   transition: transform 220ms cubic-bezier(0.3, 0.7, 0.4, 1);
 }
 
-.view-toggle[data-mode='practice']::before {
+.view-toggle[data-mode='edit']::before {
   transform: translateX(100%);
+}
+
+.view-toggle[data-mode='practice']::before {
+  transform: translateX(200%);
 }
 
 .view-toggle button {
@@ -871,6 +1017,24 @@ header .menu-open:has(+ .menu:popover-open) {
   background: var(--raised);
 }
 
+.menu-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.menu-check:hover {
+  background: var(--raised);
+}
+
+.menu-check input {
+  margin: 0;
+  accent-color: var(--fg);
+}
+
 /* The editor and, where there is room for both, the songs beside it. Below that
    the list is behind Songs, because a phone has no room to spare for it. */
 .workspace,
@@ -900,9 +1064,10 @@ header .menu-open:has(+ .menu:popover-open) {
     gap: 0.6rem;
   }
 
-  .shelf-side .song-list {
+  .shelf-side .song-tree {
     align-self: stretch;
     max-height: calc(100dvh - 6rem);
+    overflow-y: auto;
   }
 }
 
@@ -1154,4 +1319,243 @@ kbd {
   .shortcuts dd {
     margin-bottom: 0.5rem;
   }
+}
+
+/* The Songs page: setlists beside every song where there is room for both,
+   stacked where there is not. */
+.songs-page {
+  display: grid;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .songs-page {
+    grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  }
+}
+
+.songs-page.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.setlists-panel,
+.all-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.panel-head h2 {
+  margin: 0 auto 0 0;
+  font-size: 1.15rem;
+}
+
+.panel-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* A setlist is a card you can drop songs into, and lights up when one is over it. */
+.setlist-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.setlist-card.drop-into {
+  border-color: color-mix(in srgb, var(--fg) 45%, transparent);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.setlist-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.setlist-card-head h3 {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setlist-card-head .count {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.setlist-card-head .menu-open,
+.song-rows .menu-open {
+  padding: 0.1rem 0.5rem;
+  color: var(--muted);
+  border: none;
+}
+
+.setlist-card .song-list {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.setlist-card .setlist-empty {
+  padding: 0.75rem;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+}
+
+.song-search {
+  min-width: 0;
+  flex: 1 1 12rem;
+  max-width: 20rem;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/* On or off, each on its own: a filter is a narrowing you add, not one of a
+   set of choices, so it is a pressable chip rather than a toggle. */
+.filter {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border-radius: 999px;
+}
+
+.filter:hover {
+  color: var(--fg);
+}
+
+.filter[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--muted);
+  border-color: var(--muted);
+}
+
+/* One row per song: what it is on the left, where it is used and when it was
+   last touched on the right, its actions at the end. */
+.song-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.song-rows li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+}
+
+.song-rows li:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.song-rows li.current {
+  background: color-mix(in srgb, var(--fg) 9%, transparent);
+}
+
+.song-rows .grip {
+  align-self: stretch;
+  padding: 0 0.1rem 0 0.5rem;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  background: none;
+  border: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.song-rows .pick {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.song-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-tempo,
+.song-edited {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.song-setlists {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.chip {
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+/* A phone has room for the name and the menu; the rest is a tap away. */
+@media (max-width: 40rem) {
+  .song-setlists,
+  .song-edited {
+    display: none;
+  }
+}
+
+.menu-label {
+  margin: 0.4rem 0.7rem 0.1rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Follows the pointer while a song is dragged, so it is clear what is moving
+   and where it would land. */
+.drag-label {
+  position: fixed;
+  z-index: 10;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.9rem;
+  pointer-events: none;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px color-mix(in srgb, #000 25%, transparent);
+  transform: translate(14px, -50%);
 }
