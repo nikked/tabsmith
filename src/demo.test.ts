@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { songHasContent } from './core/edit.ts'
-import { renderSong } from './core/render.ts'
+import { songParts } from './core/render.ts'
 import { DEMO, DEMO_TITLE } from './demo.ts'
 
 /**
@@ -17,7 +17,7 @@ describe('the demo song', () => {
   it('has something in it, so the button is worth pressing', () => {
     if (!DEMO.ok) throw new Error(DEMO.error)
     expect(songHasContent(DEMO.song)).toBe(true)
-    expect(renderSong(DEMO.song).trim()).not.toBe('')
+    expect(songParts(DEMO.song)).not.toHaveLength(0)
   })
 
   it('carries the title that keeps it off the sheet', () => {

@@ -133,36 +133,46 @@ export const renderSystems = (score: Score): readonly string[] => {
 export const renderScore = (score: Score): string => renderSystems(score).join('\n\n')
 
 /**
- * An unnamed section is just a block of chords, so it gets no empty brackets,
- * and playing something once is not a repeat.
+ * An unnamed section is just a heading-less block of chords, and playing
+ * something once is not a repeat.
  */
-const sectionText = (section: Section): string => {
+export const sectionHeading = (section: Section): string => {
+  if (section.name === '') return ''
   const repeat =
     section.repeat === undefined || section.repeat < 2 ? '' : ` (x${section.repeat})`
-  const heading = section.name === '' ? '' : `[${section.name}]${repeat}`
-  return [heading, section.body].filter((line) => line !== '').join('\n')
+  return `${section.name}${repeat}`
 }
 
 /**
- * Everything but the tab is written out as typed. The chart carries chords over
- * lyrics by the spaces the writer put there, so reflowing or trimming it would
- * destroy the only thing holding a chord above its word.
+ * What each block is, for a view that sets a title or a heading apart from the
+ * text under it rather than showing everything as one face. Everything but the
+ * tab is passed on as typed: the chart carries chords over lyrics by the spaces
+ * the writer put there, so reflowing or trimming it would destroy the only thing
+ * holding a chord above its word.
  */
+export type Part =
+  | { readonly kind: 'title' | 'tempo' | 'system'; readonly text: string }
+  | { readonly kind: 'section'; readonly section: Section }
+
+const isBlank = (part: Part): boolean =>
+  part.kind === 'section'
+    ? part.section.name === '' && part.section.body === ''
+    : part.text === ''
+
 /**
- * The song as the blocks a blank line separates: the header lines, each section,
- * and each system of the tab. Printing needs them apart, because a staff split
- * down the middle by a page break is unreadable; everything else joins them
- * back up.
+ * The song in reading order: the header lines, each section, and each system of
+ * the tab, with the tab first when the song asks for it.
  */
-export const songBlocks = (song: Song): readonly string[] => {
-  const header = [song.title, song.tempo]
-  const chart = song.chart.map(sectionText)
-  const tab = renderSystems(song.tab)
+export const songParts = (song: Song): readonly Part[] => {
+  const header: readonly Part[] = [
+    { kind: 'title', text: song.title },
+    { kind: 'tempo', text: song.tempo },
+  ]
+  const chart = song.chart.map((section): Part => ({ kind: 'section', section }))
+  const tab = renderSystems(song.tab).map((text): Part => ({ kind: 'system', text }))
   const parts = song.tabFirst
     ? [...header, ...tab, ...chart]
     : [...header, ...chart, ...tab]
-  // A section with neither a name nor a body would otherwise print as a gap.
-  return parts.filter((part) => part !== '')
+  // A section with neither a name nor a body would otherwise show as a gap.
+  return parts.filter((part) => !isBlank(part))
 }
-
-export const renderSong = (song: Song): string => songBlocks(song).join('\n\n')

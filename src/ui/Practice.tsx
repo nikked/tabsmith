@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Song } from '../core/model.ts'
-import { songBlocks } from '../core/render.ts'
+import { sectionHeading, songParts, type Part } from '../core/render.ts'
 
 const STEPS = [0.8, 0.9, 1, 1.15, 1.35, 1.6] as const
 
@@ -39,6 +39,24 @@ const useWakeLock = (): void => {
       void lock?.release()
     }
   }, [])
+}
+
+const partView = (part: Part, index: number) => {
+  switch (part.kind) {
+    case 'title':
+      return <h2 key={index}>{part.text}</h2>
+    case 'tempo':
+      return <p key={index}>{part.text}</p>
+    case 'system':
+      return <pre key={index}>{part.text}</pre>
+    case 'section':
+      return (
+        <div key={index}>
+          {part.section.name !== '' && <h3>{sectionHeading(part.section)}</h3>}
+          {part.section.body !== '' && <pre>{part.section.body}</pre>}
+        </div>
+      )
+  }
 }
 
 /**
@@ -87,17 +105,17 @@ export function Practice({ song, onLeave, onKeep }: Props) {
           A+
         </button>
         {onKeep !== undefined && (
-          <button type="button" onClick={onKeep}>
-            Add to my songs
-          </button>
+          <>
+            <button type="button" onClick={onKeep}>
+              Add to my songs
+            </button>
+            <button type="button" onClick={onLeave}>
+              Not now
+            </button>
+          </>
         )}
-        <button type="button" onClick={onLeave}>
-          {onKeep === undefined ? 'Done' : 'Not now'}
-        </button>
       </div>
-      {songBlocks(song).map((block, index) => (
-        <pre key={index}>{block}</pre>
-      ))}
+      <div className="practice-song">{songParts(song).map(partView)}</div>
     </section>
   )
 }
