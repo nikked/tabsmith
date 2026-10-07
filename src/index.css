@@ -39,9 +39,23 @@ main {
   max-width: 120rem;
   margin: 0 auto;
   padding: 1.5rem;
+  /* Opened from a home screen the page runs under the status bar; outside one
+     the inset is nothing, so this is the plain padding everywhere else. */
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* A strip of the page's own colour behind the status bar, so the song does not
+   scroll visibly under the clock. Nothing outside a home-screen app. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
 }
 
 /* An iPad or a phone has no room to spare above the song, so the page's margin
@@ -49,6 +63,7 @@ main {
 @media (max-width: 64rem) {
   main {
     padding: 0.6rem 0.75rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top, 0px));
     gap: 0.6rem;
   }
 }
@@ -566,7 +581,7 @@ h1 img {
 .practice-bar {
   position: sticky;
   flex-wrap: wrap;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 1;
   display: flex;
   align-items: center;

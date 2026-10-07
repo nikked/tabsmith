@@ -1,0 +1,13 @@
+{
+  "name": "tabsmith",
+  "short_name": "tabsmith",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#24273a",
+  "theme_color": "#24273a",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

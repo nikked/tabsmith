@@ -18,6 +18,11 @@ see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).
 the screen held awake, sized to fit the whole song on the screen. A song opened from a setlist
 steps to the next one from the bar.
 
+On an iPad or a phone, **Share → Add to Home Screen** (from Safari, or Firefox on iPadOS 16.4+)
+puts tabsmith on the home screen as an app of its own, without the browser's bars. It keeps its
+own storage, separate from the browser's, so connect Database sync inside it once to bring
+your songs along.
+
 ## Running it
 
 ```sh

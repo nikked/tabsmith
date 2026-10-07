@@ -537,6 +537,14 @@ with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`
 rather than with the song: a phone and an iPad want different sizes for the same song, so they
 stay off the sheet. A song with no size chosen is fitted to the screen.
 
+On a stand the browser's bars are lost room, so the page can be added to a home screen and
+opened as an app of its own: a manifest (`public/manifest.webmanifest`, `display: standalone`),
+a square icon for the home screen (`apple-touch-icon.png`, the favicon without its rounded
+corners, since the home screen rounds them itself) and Apple's tags for the same. Opened that
+way the page draws under the status bar, so the top padding, the sticky bar and a strip behind
+the clock all add `env(safe-area-inset-top)`, which is nothing anywhere else. Such an app keeps
+its own storage, apart from the browser's: sync (§5) is how its songs arrive.
+
 ## 5. Persistence
 
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
