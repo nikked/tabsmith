@@ -8,29 +8,28 @@ so renumbering a section means fixing those references too.
 
 ## 1. Shape of the thing
 
-Two modes, toggled in the header. Only one is on screen at a time — the ASCII is the thing you
-leave with, not something you watch while typing.
+Two views. The editor is the page; **Practice** (§4b) is how the finished song is read.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
   grouped into rows. Fixed-width boxes, current cell highlighted. This is _not_ ASCII; it's a
   grid of boxes, so alignment is free. Under it runs a quiet legend of the four §4 bindings you
   could not guess, because a keyboard-driven editor has to be discoverable without this
   document; the rest are a keypress away in a dialog rather than taking up permanent room.
-- **ASCII** — the rendered song, read-only, with Copy and Print buttons.
+- **Practice** — the rendered song, read-only, at a size readable from a music stand.
 
 Edit mode always shows the chart first and the tab below it, whatever the placement control
 says. Where the tab goes is a question about the finished page, not about editing, and moving
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, **Songs**, **Practice** (§4b) and the mode toggle. Everything that
-acts on a whole song is behind Songs (§5) rather than here. Nothing in it is loud except the mode
-toggle, which is the one control you reach for constantly.
+The header carries the logo, **+ New**, **Songs**, the **Edit | Practice** toggle (§4b) and, at
+the right, a `⋯` settings menu (§5). Nothing in it is loud: none of it is reached for while
+writing.
 
-Demo loads a song already written, because the fastest way to say what the app does is to show
-one. It joins the shelf rather than replacing what is open, so it needs no confirmation — and
-it is the song a first visit's shelf starts with, since an empty editor and nothing saved to
-restore says nothing about what any of this is for.
+A first visit's shelf starts with a demo song already written, because an empty editor and
+nothing saved to restore says nothing about what any of this is for, and the fastest way to say
+what the app does is to show one. It is not offered again after that: once there are songs of
+your own, a demo is one more thing to delete.
 
 That song is `src/demo.json`, a file in exactly the format Export writes (§5). To change the
 demo, save a song out of the app and drop it in over that file: it is decoded on the way in
@@ -266,18 +265,15 @@ own undo stack for what is typed there, and it is the finer of the two.
 ```
 renderScore(score) => string
 renderSystems(score) => readonly string[]
-renderSong(song) => string
-songBlocks(song) => readonly string[]
+songParts(song) => readonly Part[]
+sectionHeading(section) => string
 ```
 
-`songBlocks` is the song as the blocks a blank line separates — the header lines, each section,
-and each system of the tab — and `renderSong` is those joined back up. The ASCII view renders
-one element per block so a page break can fall between them: a staff split down the middle is
-unreadable, and a single block of text gives the browser nowhere safe to break.
-
-**A song** is its title, its tempo, each section, and the tab, joined by blank lines — the tab
-first or last per `tabFirst`. A blank title or tempo contributes no line. Everything but the
-tab is written out as typed; the chart is never reflowed, re-spaced or trimmed (§2).
+**A song** is `songParts`: its title, its tempo, each section, and each system of the tab, in
+reading order — the tab first or last per `tabFirst` — each tagged with what it is, so Practice
+can set the title and section names as headings. A blank title or tempo, or a section with
+neither a name nor a body, is left out. Everything but the tab is passed on as typed; the chart
+is never reflowed, re-spaced or trimmed (§2).
 
 The rest of this section is the tab.
 
@@ -464,23 +460,21 @@ removeBarDropsContent(score, { row, bar }) => boolean   // true only when the re
 removeRowDropsContent(score, row) => boolean            // same, for a whole row, heading included, heading included
 ```
 
-Clear is gated the same way. It resets the document to `emptySong` — title, tempo, sections,
-notes, chord names and bars all go — but keeps the current tuning, because the tuning is which
-instrument you are holding, not something you wrote. `songHasContent` decides whether to ask;
-empty bars and untouched headings are not work, so a song nothing has been typed into is
-cleared without a prompt.
+Deleting a song (§5) is gated the same way. `songHasContent` decides whether to ask; empty bars
+and untouched headings are not work, so a song nothing has been typed into is deleted without a
+prompt.
 
 ```ts
 songHasContent(song) => boolean     // anything typed: title, tempo, chart or tab
 scoreHasContent(score) => boolean   // any note, mute, chord name or row heading
 ```
 
-All three answer the same question — _is there work here?_ — from one definition, so the Clear
-prompt and the delete prompts cannot drift apart about whether a chord name or a row heading
-is worth asking about. Both `removeBar`/`removeRow` predicates fold in their last-one guard
-deliberately, so the UI cannot prompt about a removal the reducer is going to refuse. `removeBarDropsContent` counts bars across the whole score, not within
-the row: the last bar of a row is removable — the row goes with it — while the last bar of the
-score is not.
+All three answer the same question — _is there work here?_ — from one definition, so the Delete
+song prompt and the bar and row prompts cannot drift apart about whether a chord name or a row
+heading is worth asking about. Both `removeBar`/`removeRow` predicates fold in their last-one
+guard deliberately, so the UI cannot prompt about a removal the reducer is going to refuse.
+`removeBarDropsContent` counts bars across the whole score, not within the row: the last bar of
+a row is removable — the row goes with it — while the last bar of the score is not.
 
 ```ts
 keyToAction(e: KeyboardEvent): Action | null   // pure
@@ -489,22 +483,24 @@ apply(state: EditorState, action: Action): EditorState   // pure
 
 ## 4b. Practice mode
 
-The editor and the ASCII view are two readings of the same page; **Practice** replaces it. It is
-the whole window, the song at a size readable from a music stand, and nothing else: no header,
-no keys, no chrome. That is why it is a plain button rather than a third segment beside Edit and
-ASCII — you cannot see the header while you are in it, so there is no state for it to show.
+**Practice** replaces the editor under the same header and beside the same song list, so
+switching songs or going back to Edit is where it always is. Below the header it is the song at
+a size readable from a music stand and nothing else: no keys, no chrome. A song that arrived by
+link (§5) opens the same view without the header, since nothing in it acts on a song that is not
+yours yet.
 
-It renders `songBlocks` the same way the ASCII view does, so there is no third rendering of a
-song to keep in step. What it adds is a size control, `Escape` and Done to leave, and a screen
-wake lock, which is the one thing paper on a stand does better than a screen. The lock is
-re-taken on `visibilitychange`, because coming back from another app releases it. A browser that
-refuses or lacks it is not worth a message — the page reads fine, it just dims.
+It renders `songParts` (§3): the chart and the tab in monospace, the title and section names as
+headings, in a column as wide as the widest line and centred on a wide screen. What it adds is a
+size control, `Escape` to leave, and a screen wake lock, which is the one thing paper on a stand
+does better than a screen. The lock is re-taken on `visibilitychange`, because coming back from
+another app releases it. A browser that refuses or lacks it is not worth a message — the page
+reads fine, it just dims.
 
 ## 5. Persistence
 
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
 knows the format; `share.ts` reuses its `encode` and `decode` for links. The other side effects
-are the clipboard writes — Copy in `Output.tsx`, Copy link in `App.tsx` — the save dialog,
+are the clipboard write for Copy song as link in `App.tsx`, the save dialog,
 Practice's screen wake lock, and the sync request in `sync.ts`, which also keeps its own
 settings under `tabsmith.sync`.
 
@@ -545,14 +541,24 @@ filenameFor(song) => string
 ```
 
 Importing adds to the shelf rather than replacing what is open, so it needs no confirmation —
-nothing is lost by it. Deleting a song does, and asks by `songHasContent`, the same predicate
-Clear uses. A file that will not decode leaves the shelf alone and says why, in a dismissible
-line under the header — `localStorage` can discard a bad blob silently because nobody chose it,
-but a file is something you picked on purpose.
+nothing is lost by it. Deleting a song does. It asks by `songHasContent` (§4), and the asking is
+the GitHub kind: type the song's name to confirm, because a one-click yes is easy to give
+without reading which song it was. A file that will not decode leaves the shelf alone and says
+why, in a dismissible line under the header — `localStorage` can discard a bad blob silently
+because nobody chose it, but a file is something you picked on purpose.
 
-Everything that acts on a whole song — the list, New, Paste, Import, Export, Demo, Copy link,
-Clear — is in one dialog behind **Songs**, not the header. On a phone the header is the scarcest space on the
-page, and none of those is something you reach for while writing.
+Adding a song is one **+ New** menu, first in the header: Blank, Paste and Import. The list
+drops down from **Songs**. Copy song as link, Export, Back up all songs and Google
+Sheets sync are the `⋯` menu at the right. A backup is the rows the sheet holds, deleted songs
+included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
+once per device and then left alone, so it is a dialog of its own behind that menu. On a phone
+the header is the scarcest space on the page, so each is one button there. On a screen wide
+enough to spare the room, the list also sits beside the editor, since switching songs is then
+one click.
+
+**Copy song…** and **Delete song…** are at the foot of the page, after the keys, and act on the
+open song. Copy asks for a name, then the copy joins the shelf and opens. Deleting is only from
+there, never from the list, so the list is only for switching.
 
 ### Old files still open
 
@@ -631,11 +637,11 @@ it from triggering itself. The answer is merged into the shelf and editor as the
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
 one replaced or deleted.
 
-The URL and a token are typed into the Songs dialog on each device and kept in `localStorage`
-under `tabsmith.sync`. They are not built into the site: it is public, and a URL in its bundle
-would let anyone read and overwrite every song. The script refuses any request without the
-token. The app calls it a database and never names Google Sheets: what sits behind the URL is
-this section's business, not the user's.
+The URL and a token are typed into the sync dialog (`⋯` > Database sync…) on each device
+and kept in `localStorage` under `tabsmith.sync`. They are not built into the site: it is
+public, and a URL in its bundle would let anyone read and overwrite every song. The script
+refuses any request without the token. The app calls it a database and never names Google
+Sheets: what sits behind the URL is this section's business, not the user's.
 
 Setting it up:
 
@@ -645,7 +651,7 @@ Setting it up:
    (`openssl rand -hex 32`).
 3. Deploy > New deployment > Web app, executing as you, with access for Anyone. Copy the `/exec`
    URL.
-4. On each device: Songs > Database sync, paste the URL and the token, Connect.
+4. On each device: `⋯` > Database sync…, paste the URL and the token, Connect.
 
 After changing `Code.gs`, update the existing deployment (Deploy > Manage deployments > Edit >
 New version); saving alone does not change what the URL runs. The script creates a `songs` tab
@@ -663,14 +669,12 @@ sync between devices that are both open
 One song is open at a time. The shelf holds the rest (§5); a file or a link is how a song
 leaves.
 
-Printing is the browser's: the ASCII view has a Print button and a `@media print` block that
-strips the chrome and puts black text on white paper. Saving a PDF is the browser's print
-dialog, not a feature here.
+Printing and copying the song as text. Practice is how a song is read, and a link or a file is
+how it leaves; a plain-text view alongside them was a third rendering nobody used.
 
 Lyrics are supported the only way they need to be — typed into a section body under their
 chords. Nothing helps keep a chord above its word as the words change, and nothing needs to:
-the ASCII view shows exactly what will print, and nudging a chord a space over is easy once
-you can see it.
+the body is monospace, and nudging a chord a space over is easy once you can see it.
 
 ## 7. Stack
 
@@ -690,7 +694,7 @@ src/
     model.ts      types, emptySong, emptyScore, emptyBar, emptyColumn
     edit.ts       Action, apply, step — every state transition and the undo timeline
     keymap.ts     keyToAction
-    render.ts     renderSong, renderScore and their helpers
+    render.ts     renderScore, songParts and their helpers
     library.ts    the shelf: Library, Entry and the functions over them
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge — newest wins per song (§5)
@@ -698,10 +702,12 @@ src/
     App.tsx
     Chart.tsx     title, tempo and the sections
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
-    Output.tsx    <pre> of the rendered song + copy and print
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
-    Songbook.tsx  the shelf dialog behind Songs
+    SongList.tsx  the song list, under Songs and in the sidebar
+    Menu.tsx      a button and the popover it opens
     Paste.tsx     the Paste… dialog
+    Sync.tsx      the Database sync dialog
+    Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
   storage.ts      the document format: encode, decode, migrations, load/save
   share.ts        a song in a link, and back

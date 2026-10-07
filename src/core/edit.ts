@@ -3,7 +3,6 @@ import {
   emptyCells,
   emptyColumn,
   emptyRow,
-  emptyScore,
   emptySection,
   emptySong,
   type Bar,
@@ -55,7 +54,6 @@ export type Action =
   | { readonly kind: 'addColumn' }
   | { readonly kind: 'removeColumn' }
   | { readonly kind: 'retune'; readonly tuning: Tuning }
-  | { readonly kind: 'reset' }
   | { readonly kind: 'load'; readonly song: Song }
   | { readonly kind: 'setTitle'; readonly title: string }
   | { readonly kind: 'setTempo'; readonly tempo: string }
@@ -93,9 +91,9 @@ const barAt = (score: Score, row: number, bar: number): Bar | undefined =>
 const allBars = (score: Score): readonly Bar[] => score.rows.flatMap((row) => row.bars)
 
 /**
- * One definition of what counts as work, so the Clear prompt and the delete
- * prompts cannot drift apart about it. A chord name is as much typing as a
- * note, and a row's heading belongs to the row that carries it.
+ * One definition of what counts as work, so the Delete song prompt and the
+ * bar and row prompts cannot drift apart about it. A chord name is as much
+ * typing as a note, and a row's heading belongs to the row that carries it.
  */
 const columnHasContent = (column: Column): boolean =>
   column.chord !== undefined || column.cells.some((cell) => cell !== null)
@@ -572,12 +570,6 @@ export const apply = (state: EditorState, action: Action): EditorState => {
 
     case 'load':
       return initialState(action.song)
-
-    case 'reset':
-      return initialState({
-        ...emptySong(),
-        tab: retune(emptyScore(), state.song.tab.tuning),
-      })
 
     case 'retune': {
       const shift = stringCount(state.song.tab) - action.tuning.strings.length

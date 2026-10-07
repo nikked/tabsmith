@@ -54,29 +54,32 @@ header {
 }
 
 /**
- * The mark and the name sit in one bordered chip, so the app's name reads as a
- * single object rather than as loose text among the file actions. The mark is
- * the favicon itself — one file, so the two cannot drift apart.
+ * The mark and the name sit in one pill, so the app's name reads as a single
+ * object rather than as loose text among the controls. The mark is the favicon
+ * itself — one file, so the two cannot drift apart.
  *
- * The song's title is the biggest thing on the page and the app's name is not,
- * so the chip stays at the volume of the buttons beside it.
+ * Same shell as the header's controls, a size up and in the full text colour:
+ * it is the one thing in the header that is not a control.
  */
 h1 {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.3rem 0.7rem 0.3rem 0.4rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem 0.35rem 0.55rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--fg);
-  background: color-mix(in srgb, var(--fg) 7%, transparent);
-  border: 1px solid var(--muted);
-  border-radius: 9px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   margin: 0;
 }
 
 h1 img {
   display: block;
+  width: 24px;
+  height: 24px;
 }
 
 .staff {
@@ -374,10 +377,10 @@ h1 img {
 
 /* Short by nature, so it sits beside its repeat rather than stretching the row
    and stranding it at the far margin. */
-.section-name {
+.chart .section-name {
   flex: 0 1 16rem;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
 /* The × belongs to the number, so they hide and show as one thing. */
@@ -451,34 +454,6 @@ h1 img {
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--line) 55%, transparent);
 }
 
-.output {
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  gap: 0.5rem;
-}
-
-.output-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* One block per thing a blank line separates, so a page break can fall between
-   them and never through the middle of a staff. The gap stands in for the blank
-   line the blocks were split on. */
-.page {
-  display: flex;
-  flex-direction: column;
-  tab-size: 8;
-  gap: 1.4em;
-  align-self: stretch;
-  padding: 0.75rem;
-  font-family: ui-monospace, monospace;
-  background: color-mix(in srgb, var(--fg) 5%, transparent);
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
 /* The reading view: the whole window, nothing but the song. Padded at the
    bottom so the last line can still be scrolled clear of a phone's home bar. */
 .practice {
@@ -499,10 +474,41 @@ h1 img {
   overflow-x: auto;
 }
 
+/* As wide as the widest line and centred, so a big screen does not leave the
+   song pinned to its left edge, while every line still starts in one column —
+   chords hang over their words by position. */
+.practice-song {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4em;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.practice-song h2 {
+  margin: 0;
+  font-size: 1.6em;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.practice-song p {
+  margin: -1em 0 0;
+  color: var(--muted);
+}
+
+.practice-song h3 {
+  margin: 0 0 0.3em;
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
 /* Stays put while the song scrolls under it, because reaching the controls
    should never mean scrolling back to the top mid-song. */
 .practice-bar {
   position: sticky;
+  flex-wrap: wrap;
   top: 0;
   z-index: 1;
   display: flex;
@@ -512,11 +518,6 @@ h1 img {
   font-family: system-ui, sans-serif;
   font-size: 1rem;
   background: var(--bg);
-}
-
-.output pre {
-  margin: 0;
-  font-family: inherit;
 }
 
 button {
@@ -579,7 +580,8 @@ button {
 
 .guide::backdrop,
 .paste::backdrop,
-.songbook::backdrop {
+.sync-dialog::backdrop,
+.prompt::backdrop {
   background: rgb(0 0 0 / 55%);
 }
 
@@ -640,7 +642,8 @@ button {
   color: var(--alert);
 }
 
-.songbook {
+.sync-dialog,
+.prompt {
   width: min(26rem, 92vw);
   max-height: 80vh;
   padding: 1.5rem;
@@ -650,71 +653,257 @@ button {
   border-radius: 6px;
 }
 
-.songbook h2 {
+.sync-dialog h2 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
 }
 
-.songbook h3 {
-  margin: 1.5rem 0 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.songbook ul {
+.song-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin: 0 0 1rem;
+  margin: 0;
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
   border-radius: 5px;
   overflow: hidden auto;
-  max-height: 40vh;
 }
 
-.songbook li {
+/* Under Songs the menu is the frame, so the list drops its own. */
+.menu .song-list {
+  width: min(20rem, 85vw);
+  max-height: 60vh;
+  border: none;
+}
+
+/* The row, not the button in it, carries the hover and the mark, so the two
+   are one shape. */
+.song-list li {
   display: flex;
   align-items: stretch;
-  background: var(--bg);
+}
+
+.song-list li:hover {
+  background: var(--raised);
+}
+
+.song-list li.current {
+  background: color-mix(in srgb, var(--cursor) 18%, transparent);
 }
 
 /* The whole row is the target, so a thumb can land anywhere on the title. */
-.songbook .pick {
+.song-list .pick {
   flex: 1;
+  min-width: 0;
   padding: 0.6rem 0.75rem;
   font: inherit;
   text-align: left;
   color: inherit;
   background: none;
   border: none;
+  border-radius: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.songbook li.current .pick {
+.song-list li.current .pick {
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--cursor);
 }
 
-.songbook .pick:hover,
-.songbook .drop:hover:not(:disabled) {
+/* Pinned under the button that opened it where the browser can anchor; where it
+   cannot, it is still a popover, just centred. */
+.menu {
+  position-area: bottom span-right;
+  position-try-fallbacks: flip-inline;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  min-width: 11rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 4px 16px color-mix(in srgb, #000 25%, transparent);
+}
+
+.settings {
+  margin-left: auto;
+}
+
+/* The header's menus wear the toggle's shell, so the row reads as one set of
+   controls. The padding adds the toggle's 3px inset, so the heights match. */
+header .menu-open {
+  padding: calc(0.25rem + 3px) 0.95rem;
+  font-size: 0.9rem;
+  color: var(--muted);
   background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: color 220ms;
 }
 
-.songbook .drop {
-  padding: 0 0.85rem;
-  font: inherit;
+header .menu-open:hover,
+header .menu-open:has(+ .menu:popover-open) {
+  color: var(--fg);
+}
+
+/* One control with two ends rather than two buttons: the thumb slides to the
+   view you are in, so where you are reads at a glance. */
+.view-toggle {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.view-toggle::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: var(--fg);
+  border-radius: 7px;
+  transition: transform 220ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.view-toggle[data-mode='practice']::before {
+  transform: translateX(100%);
+}
+
+.view-toggle button {
+  position: relative;
+  padding: 0.25rem 0.95rem;
+  font-size: 0.9rem;
   color: var(--muted);
   background: none;
   border: none;
-  cursor: pointer;
+  border-radius: 7px;
+  transition: color 220ms;
 }
 
-.songbook .drop:disabled {
-  opacity: 0.35;
+.view-toggle button:hover {
+  color: var(--fg);
+}
+
+.view-toggle button[aria-pressed='true'] {
+  color: var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-toggle::before,
+  .view-toggle button {
+    transition: none;
+  }
+}
+
+/* At the foot of the page, after the keys: acting on the whole song is the
+   last thing you do with it, not something to reach for while writing. */
+.song-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.danger {
+  color: var(--alert);
+}
+
+.danger:hover:not(:disabled) {
+  border-color: var(--alert);
+}
+
+.song-actions button:disabled,
+.prompt button:disabled {
+  opacity: 0.4;
   cursor: default;
+}
+
+.prompt form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prompt h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.prompt p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.prompt strong {
+  color: var(--fg);
+}
+
+.prompt input {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.menu:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu button {
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+  border: none;
+}
+
+.menu button:hover {
+  background: var(--raised);
+}
+
+/* The editor and, where there is room for both, the songs beside it. Below that
+   the list is behind Songs, because a phone has no room to spare for it. */
+.workspace,
+.editing {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.shelf-side {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .workspace {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .shelf-side {
+    position: sticky;
+    top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .shelf-side .song-list {
+    align-self: stretch;
+    max-height: calc(100dvh - 6rem);
+  }
 }
 
 .shelf-actions {
@@ -723,11 +912,11 @@ button {
   gap: 0.5rem;
 }
 
-.songbook form {
+.sync-dialog form {
   margin-top: 1.5rem;
 }
 
-.songbook form.sync {
+.sync-dialog form.sync {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -735,7 +924,7 @@ button {
   margin-top: 0;
 }
 
-.songbook .sync input {
+.sync-dialog .sync input {
   font: inherit;
   box-sizing: border-box;
   width: 100%;
@@ -746,7 +935,7 @@ button {
   border-radius: 4px;
 }
 
-.songbook .sync-note {
+.sync-dialog .sync-note {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
@@ -817,31 +1006,6 @@ kbd {
   border-color: var(--fg);
 }
 
-/* Everything in the header is machinery except the view switch, which is the
-   one control you reach for constantly. The machinery still looks pressable —
-   a borderless control reads as a label until you happen to hover it. */
-.files {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.files button {
-  color: var(--muted);
-}
-
-.files button:hover {
-  color: var(--fg);
-  border-color: var(--muted);
-}
-
-/* Demo and Clear both replace the whole document rather than acting on a file,
-   so they sit together, and a gap keeps them off the end of the file actions. */
-.document {
-  display: flex;
-  gap: 0.25rem;
-  margin-left: 1rem;
-}
-
 .quiet {
   color: var(--muted);
 }
@@ -849,10 +1013,6 @@ kbd {
 .quiet:hover {
   color: var(--fg);
   border-color: var(--muted);
-}
-
-.modes {
-  margin-left: auto;
 }
 
 .tab {
@@ -942,72 +1102,6 @@ kbd {
   letter-spacing: 0.09em;
   text-transform: uppercase;
   margin: 0;
-}
-
-/* Print strips the chrome: what is left on paper is the song itself. */
-@media print {
-  /* Paper is white whatever the screen was. */
-  body {
-    background: #fff;
-    color: #000;
-  }
-
-  header,
-  .error,
-  .output-actions {
-    display: none;
-  }
-
-  main {
-    padding: 0;
-    max-width: none;
-  }
-
-  .page {
-    padding: 0;
-    font-size: 10pt;
-    background: none;
-  }
-
-  /* A staff split down the middle by a page break is unreadable. */
-  /* The reading view: the whole window, nothing but the song. Padded at the
-   bottom so the last line can still be scrolled clear of a phone's home bar. */
-  .practice {
-    display: flex;
-    flex-direction: column;
-    gap: 1.4em;
-    min-height: 100dvh;
-    box-sizing: border-box;
-    padding: 1rem 1rem 40vh;
-    font-family: ui-monospace, monospace;
-    tab-size: 8;
-    line-height: 1.5;
-  }
-
-  .practice pre {
-    margin: 0;
-    font-family: inherit;
-    overflow-x: auto;
-  }
-
-  /* Stays put while the song scrolls under it, because reaching the controls
-   should never mean scrolling back to the top mid-song. */
-  .practice-bar {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    font-family: system-ui, sans-serif;
-    font-size: 1rem;
-    background: var(--bg);
-  }
-
-  .output pre {
-    break-inside: avoid;
-  }
 }
 
 /**

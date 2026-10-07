@@ -22,13 +22,21 @@ import {
   startingLibrary,
 } from '../storage.ts'
 import { forgetLink, linkedSong, toLink } from '../share.ts'
-import { loadSettings, saveSettings, syncLibrary, type Settings } from '../sync.ts'
+import {
+  loadSettings,
+  saveSettings,
+  syncLibrary,
+  toWire,
+  type Settings,
+} from '../sync.ts'
 import { Chart } from './Chart.tsx'
-import { Output } from './Output.tsx'
+import { Menu, MenuItems, type MenuItem } from './Menu.tsx'
 import { Paste } from './Paste.tsx'
+import { Prompt } from './Prompt.tsx'
 import { Practice } from './Practice.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
-import { Songbook } from './Songbook.tsx'
+import { SongList } from './SongList.tsx'
+import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 
 /**
@@ -55,16 +63,17 @@ export default function App() {
     initialTimeline(openEntry(library).song),
   )
   const state = timeline.present
-  const [mode, setMode] = useState<'edit' | 'ascii' | 'practice'>('edit')
+  const [mode, setMode] = useState<'edit' | 'practice'>('edit')
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
   const [syncWith, setSyncWith] = useState<Settings | null>(loadSettings)
   const [syncNote, setSyncNote] = useState<string | null>(null)
+  const [asking, setAsking] = useState<'copy' | 'delete' | null>(null)
   const guide = useRef<HTMLDialogElement>(null)
-  const shelf = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
+  const syncDialog = useRef<HTMLDialogElement>(null)
 
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
@@ -172,9 +181,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  /** showModal throws on a dialog that is already open, so ask first. */
+  /**
+   * showModal throws on a dialog that is already open, so ask first. Its first
+   * field is focused by hand: Safari focuses the dialog itself, which leaves a
+   * hardware keyboard — an iPad's folio — typing into nothing.
+   */
   const show = (dialog: HTMLDialogElement | null) => {
-    if (dialog !== null && !dialog.open) dialog.showModal()
+    if (dialog === null || dialog.open) return
+    dialog.showModal()
+    dialog.querySelector<HTMLElement>('input, textarea')?.focus()
   }
 
   /**
@@ -199,43 +214,22 @@ export default function App() {
     dispatch({ kind: 'load', song: next.song })
   }
 
-  const deleteSong = (id: string) => {
+  const openTitle = titleOf(openEntry(library))
+
+  const deleteOpen = () => {
     const saved = withOpenSong(library, state.song, Date.now())
-    const entry = saved.songs.find((candidate) => candidate.id === id)
-    if (entry === undefined) return
-    if (
-      songHasContent(entry.song) &&
-      !window.confirm(`Delete ${titleOf(entry)}? This cannot be undone.`)
-    ) {
-      return
-    }
-    const next = removeEntry(saved, id, Date.now())
+    const next = removeEntry(saved, saved.open, Date.now())
     setLibrary(next)
-    if (next.open !== saved.open) dispatch({ kind: 'load', song: openEntry(next).song })
+    dispatch({ kind: 'load', song: openEntry(next).song })
   }
 
-  const loadDemo = () => {
-    if (!DEMO.ok) {
-      setError(DEMO.error)
-      return
-    }
-    shelve(DEMO.song)
+  /** An empty song has nothing in it to lose, so it goes without the question. */
+  const askToDelete = () => {
+    if (songHasContent(state.song)) setAsking('delete')
+    else deleteOpen()
   }
 
-  const clear = () => {
-    if (
-      songHasContent(state.song) &&
-      !window.confirm('Clear the song and everything in it? This cannot be undone.')
-    ) {
-      return
-    }
-    dispatch({ kind: 'reset' })
-  }
-
-  const saveToDisk = async () => {
-    const text = encode(state.song)
-    const name = filenameFor(state.song)
-
+  const saveFile = async (text: string, name: string, description: string) => {
     if (pickPath === undefined) {
       const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
       const link = document.createElement('a')
@@ -249,9 +243,7 @@ export default function App() {
     try {
       const handle = await pickPath({
         suggestedName: name,
-        types: [
-          { description: 'tabsmith song', accept: { 'application/json': ['.json'] } },
-        ],
+        types: [{ description, accept: { 'application/json': ['.json'] } }],
       })
       const file = await handle.createWritable()
       await file.write(text)
@@ -262,6 +254,23 @@ export default function App() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setError('Could not save that file.')
     }
+  }
+
+  const saveToDisk = () =>
+    saveFile(encode(state.song), filenameFor(state.song), 'tabsmith song')
+
+  /**
+   * The rows the sheet holds, deleted songs included, so a backup is a copy of
+   * the sheet that does not need the sheet.
+   */
+  const backUp = () => {
+    const rows = toWire(withOpenSong(library, state.song, Date.now()))
+    const day = new Date().toISOString().slice(0, 10)
+    return saveFile(
+      JSON.stringify(rows, null, 2),
+      `tabsmith-backup-${day}.json`,
+      'tabsmith backup',
+    )
   }
 
   /**
@@ -289,6 +298,12 @@ export default function App() {
     shelve(result.song)
   }
 
+  const adding: readonly MenuItem[] = [
+    { label: 'Blank song', onSelect: () => shelve(emptySong()) },
+    { label: 'Paste from text…', onSelect: () => show(paste.current) },
+    { label: 'Import file…', onSelect: () => picker.current?.click() },
+  ]
+
   if (shared !== null) {
     return (
       <Practice
@@ -300,10 +315,6 @@ export default function App() {
         }}
       />
     )
-  }
-
-  if (mode === 'practice') {
-    return <Practice song={state.song} onLeave={() => setMode('edit')} />
   }
 
   return (
@@ -318,9 +329,12 @@ export default function App() {
           />
           tabsmith
         </h1>
-        <button type="button" className="shelf-open" onClick={() => show(shelf.current)}>
-          Songs
-        </button>
+        <Menu label="+ New" title="New song">
+          <MenuItems items={adding} />
+        </Menu>
+        <Menu label="Songs ▾" title="Songs">
+          <SongList library={library} onOpen={switchTo} />
+        </Menu>
         <input
           ref={picker}
           type="file"
@@ -332,10 +346,7 @@ export default function App() {
             if (file !== undefined) void loadFromDisk(file)
           }}
         />
-        <button type="button" onClick={() => setMode('practice')}>
-          Practice
-        </button>
-        <div className="segmented modes" role="group" aria-label="View">
+        <div className="view-toggle" data-mode={mode} role="group" aria-label="View">
           <button
             type="button"
             aria-pressed={mode === 'edit'}
@@ -345,11 +356,26 @@ export default function App() {
           </button>
           <button
             type="button"
-            aria-pressed={mode === 'ascii'}
-            onClick={() => setMode('ascii')}
+            aria-pressed={mode === 'practice'}
+            onClick={() => setMode('practice')}
           >
-            ASCII
+            Practice
           </button>
+        </div>
+        <div className="settings">
+          <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
+            <MenuItems
+              items={[
+                { label: 'Copy song as link', onSelect: () => void share() },
+                { label: 'Export file…', onSelect: () => void saveToDisk() },
+                { label: 'Back up all songs…', onSelect: () => void backUp() },
+                {
+                  label: 'Database sync…',
+                  onSelect: () => show(syncDialog.current),
+                },
+              ]}
+            />
+          </Menu>
         </div>
       </header>
       {error !== null && (
@@ -360,36 +386,72 @@ export default function App() {
           </button>
         </p>
       )}
-      {mode === 'edit' ? (
-        <>
-          <Chart song={state.song} dispatch={dispatch} />
-          <TabGrid
-            state={state}
-            dispatch={dispatch}
-            onShowKeys={() => show(guide.current)}
-          />
-          <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
-        </>
-      ) : (
-        <Output song={state.song} />
-      )}
+      <div className="workspace">
+        <aside className="shelf-side" aria-label="Songs">
+          <SongList library={library} onOpen={switchTo} />
+        </aside>
+        {mode === 'practice' ? (
+          <Practice song={state.song} onLeave={() => setMode('edit')} />
+        ) : (
+          <div className="editing">
+            <Chart song={state.song} dispatch={dispatch} />
+            <TabGrid
+              state={state}
+              dispatch={dispatch}
+              onShowKeys={() => show(guide.current)}
+            />
+            <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
+            <div className="song-actions">
+              <button type="button" onClick={() => setAsking('copy')}>
+                Copy song…
+              </button>
+              <button
+                type="button"
+                className="danger"
+                disabled={library.songs.length <= 1}
+                title={
+                  library.songs.length <= 1
+                    ? 'Your only song cannot be deleted'
+                    : undefined
+                }
+                onClick={askToDelete}
+              >
+                Delete song…
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       <Paste paste={paste} onImport={shelve} />
-      <Songbook
-        shelf={shelf}
-        library={library}
-        onOpen={switchTo}
-        onDelete={deleteSong}
-        onNew={() => shelve(emptySong())}
-        onImport={() => picker.current?.click()}
-        onPaste={() => {
-          shelf.current?.close()
-          show(paste.current)
-        }}
-        onDemo={loadDemo}
-        onExport={() => void saveToDisk()}
-        onShare={() => void share()}
-        copied={copied}
-        onClear={clear}
+      {asking === 'copy' && (
+        <Prompt
+          heading="Copy song"
+          label="Name of the copy"
+          initial={`${openTitle} (copy)`}
+          confirm="Copy"
+          accepts={(name) => name.trim() !== ''}
+          onConfirm={(name) => shelve({ ...state.song, title: name.trim() })}
+          onClose={() => setAsking(null)}
+        >
+          The copy joins your songs and opens; {openTitle} stays as it is.
+        </Prompt>
+      )}
+      {asking === 'delete' && (
+        <Prompt
+          heading={`Delete ${openTitle}`}
+          label="Song name"
+          initial=""
+          confirm="Delete this song"
+          danger
+          accepts={(name) => name === openTitle}
+          onConfirm={deleteOpen}
+          onClose={() => setAsking(null)}
+        >
+          This cannot be undone. Type <strong>{openTitle}</strong> to confirm.
+        </Prompt>
+      )}
+      <Sync
+        dialog={syncDialog}
         syncWith={syncWith}
         syncNote={syncNote}
         onConnect={connect}

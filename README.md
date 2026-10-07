@@ -1,14 +1,15 @@
 # tabsmith
 
 A keyboard-driven web editor for songs: a chord chart you can take to band practice, and a
-guitar or bass tab beside it for the parts you need written out. The output is plain ASCII,
-printed to paper or a PDF, and copied to the clipboard when it needs to go somewhere else.
+guitar or bass tab beside it for the parts you need written out. **Practice** shows the
+finished song large enough to read from a music stand.
 
-**[nikked.github.io/tabsmith](https://nikked.github.io/tabsmith/)** — open it and press _Demo_
-to see a song already written.
+**[nikked.github.io/tabsmith](https://nikked.github.io/tabsmith/)** — a first visit opens on a
+song already written.
 
 Songs live in the browser and are saved as you type. **Songs** is the shelf they sit on: start
-one, paste one in from a chord sheet, or export it as a file. **Copy link** puts a whole song in
+one, or paste one in from a chord sheet. The `⋯` menu at the right exports the open
+song as a file. **Copy link** puts a whole song in
 a URL, so sending someone a chart needs no account and no server.
 To keep the shelf the same on your phone and laptop, it can sync through a Google Sheet you own —
 see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).

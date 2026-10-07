@@ -65,8 +65,8 @@ export const addEntry = (library: Library, entry: Entry): Library => ({
 
 /**
  * Removing the open song opens the one that took its place, or the last one
- * when it was the last. The final song is never removed — Clear is what empties
- * a song, and the button that calls this is disabled there.
+ * when it was the last. The final song is never removed, and the button that
+ * calls this is disabled there.
  */
 export const removeEntry = (library: Library, id: string, at: number): Library => {
   const index = library.songs.findIndex((entry) => entry.id === id)

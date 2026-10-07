@@ -542,35 +542,6 @@ describe('setChord', () => {
   })
 })
 
-describe('reset', () => {
-  const chordAt = (state: EditorState, column: number): string | undefined =>
-    state.song.tab.rows[0]?.bars[0]?.columns[column]?.chord
-
-  it('drops notes, chord names, added bars and rows, and rewinds the cursor', () => {
-    const state = run(
-      initialState(),
-      digit(9),
-      { kind: 'setChord', row: 0, bar: 0, column: 0, chord: 'Am' },
-      { kind: 'addBar' },
-      digit(7),
-      { kind: 'addRow' },
-      digit(3),
-    )
-    const after = apply(state, { kind: 'reset' })
-    expect(after.song.tab).toEqual(emptyScore())
-    expect(cellAt(after, 0, 0, 0)).toBeNull()
-    expect(chordAt(after, 0)).toBeUndefined()
-    expect(after.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
-  })
-
-  it('keeps the tuning, so clearing a bass tab leaves four strings', () => {
-    const bass = apply(initialState(), { kind: 'retune', tuning: BASS })
-    const after = apply(run(bass, digit(5)), { kind: 'reset' })
-    expect(after.song.tab.tuning).toBe(BASS)
-    expect(after.song.tab.rows[0]?.bars[0]?.columns[0]?.cells).toHaveLength(4)
-  })
-})
-
 describe('scoreHasContent', () => {
   it('is false for a fresh score, whatever its shape', () => {
     expect(scoreHasContent(emptyScore())).toBe(false)
@@ -799,7 +770,7 @@ describe('row headings', () => {
     expect(rowAt(state)?.title).toBeUndefined()
   })
 
-  it('counts as content, so clearing it asks first', () => {
+  it('counts as content, so deleting the song asks first', () => {
     expect(songHasContent(set(initialState(), 'Main Riff', '').song)).toBe(true)
     expect(songHasContent(set(initialState(), '', 'let ring').song)).toBe(true)
     expect(songHasContent(set(initialState(), '', '').song)).toBe(false)
@@ -936,18 +907,6 @@ describe('songHasContent', () => {
     expect(state.song).toEqual(loaded)
     expect(state.cursor).toEqual({ row: 0, bar: 0, column: 0, slot: 0 })
   })
-
-  it('resets the whole song but keeps the tuning', () => {
-    const state = run(
-      initialState(),
-      { kind: 'retune', tuning: BASS },
-      { kind: 'setTitle', title: 'Endless Skies' },
-      digit(3),
-      { kind: 'reset' },
-    )
-    expect(songHasContent(state.song)).toBe(false)
-    expect(state.song.tab.tuning).toEqual(BASS)
-  })
 })
 
 describe('what counts as content', () => {
@@ -991,7 +950,7 @@ describe('what counts as content', () => {
     expect(removeRowDropsContent(empty, 0)).toBe(false)
   })
 
-  it('agrees with the Clear prompt about every one of those', () => {
+  it('agrees with the Delete song prompt about every one of those', () => {
     const cases: readonly Row[] = [
       { bars: [chorded('Cmaj7')] },
       { title: 'Main Riff', bars: [emptyBar(4, 6)] },

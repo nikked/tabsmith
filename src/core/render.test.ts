@@ -12,7 +12,7 @@ import {
   type Tuning,
 } from './model.ts'
 import type { Row } from './model.ts'
-import { renderScore, renderSong, songBlocks } from './render.ts'
+import { renderScore, sectionHeading, songParts } from './render.ts'
 
 type Placement = readonly [column: number, slot: number, cell: Cell]
 
@@ -359,85 +359,65 @@ describe('row headings', () => {
   })
 })
 
-describe('renderSong', () => {
+describe('songParts', () => {
   const song = (parts: Partial<Song>): Song => ({ ...emptySong(), ...parts })
+  const kinds = (s: Song) => songParts(s).map((part) => part.kind)
 
   it('leads with the title and tempo, and skips either when blank', () => {
-    expect(renderSong(song({ title: 'Endless Skies', tempo: '70 bpm' }))).toMatch(
-      /^Endless Skies\n\n70 bpm\n\n/,
-    )
-    expect(renderSong(song({ tempo: '70 bpm' }))).toMatch(/^70 bpm\n\n/)
-    expect(renderSong(song({}))).toMatch(/^\[Verse 1]\n\n/)
+    expect(
+      songParts(song({ title: 'Endless Skies', tempo: '70 bpm' })).slice(0, 2),
+    ).toEqual([
+      { kind: 'title', text: 'Endless Skies' },
+      { kind: 'tempo', text: '70 bpm' },
+    ])
+    expect(kinds(song({ tempo: '70 bpm' }))[0]).toBe('tempo')
+    expect(kinds(song({}))[0]).toBe('section')
   })
 
-  it('marks a repeat next to the section name', () => {
-    const rendered = renderSong(
-      song({ chart: [{ name: 'Intro', repeat: 4, body: 'A9 A4' }] }),
-    )
-    expect(rendered).toContain('[Intro] (x4)\nA9 A4')
+  it('passes a section on as typed, spacing and all', () => {
+    const verse = {
+      name: 'Verse 1',
+      body: 'Em      D        Em\nWe sail through endless skies',
+    }
+    expect(songParts(song({ chart: [verse] }))).toContainEqual({
+      kind: 'section',
+      section: verse,
+    })
   })
 
-  it('breaks into the blocks a blank line separates, and joins back up', () => {
+  it('gives one part per system of the tab', () => {
     const s = song({
-      title: 'Endless Skies',
-      tempo: '70 bpm',
-      chart: [{ name: 'Intro', body: 'Am' }],
       tab: { ...emptyScore(), rows: [emptyRow(1, 2, 6), emptyRow(1, 2, 6)] },
     })
-    const blocks = songBlocks(s)
-    expect(blocks.join('\n\n')).toBe(renderSong(s))
-    // Title, tempo, one section, and one block per system.
-    expect(blocks).toHaveLength(5)
-    expect(blocks.filter((b) => b.includes('|')).every((b) => !b.includes('\n\n'))).toBe(
-      true,
-    )
+    expect(kinds(s).filter((kind) => kind === 'system')).toHaveLength(2)
   })
 
   it('leaves out a section that holds neither a name nor a body', () => {
-    const rendered = renderSong(
-      song({
-        chart: [
-          { name: 'Intro', body: 'Am' },
-          { name: '', body: '' },
-        ],
-      }),
-    )
-    expect(rendered).not.toMatch(/\n\n\n/)
-  })
-
-  it('prints no repeat for a section played once', () => {
-    expect(
-      renderSong(song({ chart: [{ name: 'Intro', repeat: 1, body: 'Am' }] })),
-    ).toContain('[Intro]\nAm')
-    expect(
-      renderSong(song({ chart: [{ name: 'Intro', repeat: 2, body: 'Am' }] })),
-    ).toContain('[Intro] (x2)')
-  })
-
-  it('drops the brackets from an unnamed section', () => {
-    const rendered = renderSong(song({ chart: [{ name: '', body: 'Am C' }] }))
-    expect(rendered).not.toContain('[]')
-    expect(rendered).toContain('Am C')
-  })
-
-  it('leaves a heading alone when the section has no body', () => {
-    expect(renderSong(song({ chart: [{ name: 'Intro', body: '' }] }))).toContain(
-      '[Intro]\n\n',
-    )
-  })
-
-  it('keeps the spacing that holds a chord above its word', () => {
-    const body = 'Em      D        Em\nWe sail through endless skies'
-    expect(renderSong(song({ chart: [{ name: 'Verse 1', body }] }))).toContain(body)
+    const s = song({
+      chart: [
+        { name: 'Intro', body: 'Am' },
+        { name: '', body: '' },
+        { name: 'Outro', body: '' },
+      ],
+    })
+    expect(kinds(s).filter((kind) => kind === 'section')).toHaveLength(2)
   })
 
   it('puts the tab after the chart by default, and before it when asked', () => {
-    const tab = renderScore(emptyScore())
-    const chart = song({ chart: [{ name: 'Intro', body: 'Am' }] })
-    expect(renderSong(chart).indexOf(tab)).toBeGreaterThan(
-      renderSong(chart).indexOf('[Intro]'),
-    )
-    const first = renderSong({ ...chart, tabFirst: true })
-    expect(first.indexOf(tab)).toBeLessThan(first.indexOf('[Intro]'))
+    const s = song({ chart: [{ name: 'Intro', body: 'Am' }] })
+    expect(kinds(s)).toEqual(['section', 'system'])
+    expect(kinds({ ...s, tabFirst: true })).toEqual(['system', 'section'])
+  })
+})
+
+describe('sectionHeading', () => {
+  it('marks a repeat next to the name, but not a section played once', () => {
+    expect(sectionHeading({ name: 'Chorus', repeat: 2, body: '' })).toBe('Chorus (x2)')
+    expect(sectionHeading({ name: 'Intro', repeat: 1, body: 'Am' })).toBe('Intro')
+    expect(sectionHeading({ name: 'Intro', body: 'Am' })).toBe('Intro')
+  })
+
+  it('gives an unnamed section no heading, repeat or not', () => {
+    expect(sectionHeading({ name: '', repeat: 2, body: 'Am' })).toBe('')
   })
 })
