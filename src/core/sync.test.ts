@@ -14,7 +14,7 @@ const entry = (id: string, updatedAt: number, title = id): Entry => ({
 const shelf = (...songs: readonly Entry[]): Library => {
   const [first, ...rest] = songs
   if (first === undefined) throw new Error('a library needs a song')
-  return { songs: [first, ...rest], open: first.id, removed: [] }
+  return { songs: [first, ...rest], open: first.id, removed: [], setlists: [] }
 }
 
 const titles = (library: Library) => library.songs.map((each) => each.song.title)

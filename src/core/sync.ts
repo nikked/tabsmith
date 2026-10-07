@@ -1,4 +1,10 @@
-import { repair, type Entry, type Library, type Removed } from './library.ts'
+import {
+  repair,
+  type Entry,
+  type Library,
+  type Removed,
+  type Setlist,
+} from './library.ts'
 import type { Song } from './model.ts'
 
 /**
@@ -84,5 +90,28 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
           ],
     ),
   ]
-  return repair([...kept, ...arrived], library.open, removed) ?? library
+  return repair([...kept, ...arrived], library.open, removed, library.setlists) ?? library
+}
+
+/**
+ * Setlists merge the same way songs do: newest wins, one at a time, a tie keeps
+ * what is here, and new ones join at the end. A deleted setlist is only marked
+ * inactive, so there is no deletion to special-case — it is just a newer copy.
+ */
+export const mergeSetlists = (library: Library, remote: readonly Setlist[]): Library => {
+  const known = new Map(
+    library.setlists.map((setlist) => [setlist.id, setlist.updatedAt]),
+  )
+  const newer = remote.filter(
+    (setlist) => setlist.updatedAt > (known.get(setlist.id) ?? Number.NEGATIVE_INFINITY),
+  )
+  if (newer.length === 0) return library
+  const won = new Map(newer.map((setlist) => [setlist.id, setlist]))
+  return {
+    ...library,
+    setlists: [
+      ...library.setlists.map((setlist) => won.get(setlist.id) ?? setlist),
+      ...newer.filter((setlist) => !known.has(setlist.id)),
+    ],
+  }
 }

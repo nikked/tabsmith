@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { records, type Synced } from './core/sync.ts'
-import type { Library } from './core/library.ts'
+import type { Library, Setlist } from './core/library.ts'
 import { DEMO_TITLE } from './demo.ts'
 import { pack, unpack } from './share.ts'
 import { decode, encode, type Loaded } from './storage.ts'
@@ -49,13 +49,30 @@ const row = z.object({
   active: z.boolean().optional(),
 })
 
+const setlistRow = z.object({
+  id: z.string().min(1),
+  at: z.number(),
+  name: z.string(),
+  songs: z.array(z.string()),
+  active: z.boolean(),
+})
+
 const reply = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), records: z.array(z.unknown()) }),
+  z.object({
+    ok: z.literal(true),
+    records: z.array(z.unknown()),
+    // A script deployed before setlists existed answers without them.
+    setlists: z.array(z.unknown()).default([]),
+  }),
   z.object({ ok: z.literal(false), error: z.string() }),
 ])
 
 export type Pulled =
-  | { readonly ok: true; readonly records: readonly Synced[] }
+  | {
+      readonly ok: true
+      readonly records: readonly Synced[]
+      readonly setlists: readonly Setlist[]
+    }
   | { readonly ok: false; readonly error: string }
 
 export const toWire = (library: Library) =>
@@ -108,6 +125,15 @@ const read = async (packed: string): Promise<Loaded> => {
   }
 }
 
+export const setlistsToWire = (library: Library) =>
+  library.setlists.map((setlist) => ({
+    id: setlist.id,
+    at: setlist.updatedAt,
+    name: setlist.name,
+    songs: setlist.songs,
+    active: setlist.active,
+  }))
+
 /**
  * Rows come from a sheet that can be edited by hand, so one that is not a song
  * any more is dropped rather than failing the whole sync.
@@ -135,6 +161,12 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
         }),
       )
     ).flat(),
+    setlists: parsed.data.setlists.flatMap((value): Setlist[] => {
+      const each = setlistRow.safeParse(value)
+      if (!each.success) return []
+      const { id, at, name, songs, active } = each.data
+      return [{ id, name, songs, active, updatedAt: at }]
+    }),
   }
 }
 
@@ -152,7 +184,11 @@ export const syncLibrary = async (
   try {
     const response = await fetch(to.url, {
       method: 'POST',
-      body: JSON.stringify({ token: to.token, records }),
+      body: JSON.stringify({
+        token: to.token,
+        records,
+        setlists: setlistsToWire(library),
+      }),
     })
     if (!response.ok)
       return {

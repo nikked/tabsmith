@@ -45,6 +45,19 @@ describe.each([
     },
     row: ['new', 2, 'New song', 'document', true],
   },
+  {
+    name: 'setlists',
+    write: 'writeSetlists',
+    record: { id: 'new', at: 2, name: 'Gig', songs: ['song'], active: true },
+    oversized: {
+      id: 'new',
+      at: 2,
+      name: 'Gig',
+      songs: ['x'.repeat(50001)],
+      active: true,
+    },
+    row: ['new', 2, 'Gig', '["song"]', true],
+  },
 ])('$name sheet writes', ({ write, record, oversized, row }) => {
   const stored: Value[][] = [
     ['id', 'at', 'name', 'document', 'active'],
