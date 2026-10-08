@@ -720,6 +720,10 @@ blank the song a row already holds.
 A song titled `DEMO_TITLE` (`Slow Machine (Demo)`, §1) is left out of what goes up, edited or
 deleted, so the sheet only ever holds songs someone wrote or adopted by renaming.
 
+An untitled song does go up, but `Code.gs` gives it no row until it has a title, so a song just
+started does not land in the sheet. One that already has a row keeps syncing after its title is
+cleared: the sheet is the one that knows which songs it holds.
+
 The song goes up as the same document a file holds (`encode`), deflated and base64url'd as a
 link is, so the sheet never needs to know what a song is and an old row still opens after the
 format moves on. Packing is for room, not secrecy: a cell holds at most 50,000 characters and
