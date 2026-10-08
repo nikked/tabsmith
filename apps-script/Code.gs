@@ -39,6 +39,26 @@ function newestOf(stored, incoming, keep) {
   return Array.from(newest.values())
 }
 
+/**
+ * A song only gets a row once it has a title: until then it is one just
+ * started, and the sheet would fill with untitled rows nobody can tell apart.
+ * One that already has a row keeps syncing if its title is cleared, deleted or
+ * not, since the row is what other devices go by.
+ */
+function mergeSongs(stored, incoming) {
+  const known = new Set(stored.map((record) => record.id))
+  const worthARow = incoming.filter(
+    (record) => record.title !== '' || known.has(record.id),
+  )
+  return newestOf(stored, worthARow, (record, before) => ({
+    id: record.id,
+    at: record.at,
+    title: record.title || (before ? before.title : ''),
+    song: record.song === null && before ? before.song : record.song,
+    active: record.active,
+  }))
+}
+
 function json(body) {
   return ContentService.createTextOutput(JSON.stringify(body)).setMimeType(
     ContentService.MimeType.JSON,
@@ -56,13 +76,7 @@ function doPost(e) {
   lock.waitLock(10000)
   try {
     const sheet = tab('songs', HEADER)
-    const all = newestOf(readRecords(sheet), body.records, (record, stored) => ({
-      id: record.id,
-      at: record.at,
-      title: record.title || (stored ? stored.title : ''),
-      song: record.song === null && stored ? stored.song : record.song,
-      active: record.active,
-    }))
+    const all = mergeSongs(readRecords(sheet), body.records)
     writeRecords(sheet, all)
 
     // An app from before setlists sends none, which changes nothing here.
