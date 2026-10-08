@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Entry, Library } from './library.ts'
 import { emptySong, type Song } from './model.ts'
-import { merge, records, type Synced } from './sync.ts'
+import { forgetSent, merge, records, type Synced } from './sync.ts'
 
 const named = (title: string): Song => ({ ...emptySong(), title })
 
@@ -66,17 +66,23 @@ describe('sync', () => {
     expect(merged.open).toBe('a')
   })
 
-  it('takes a song off the shelf that was deleted elsewhere, and keeps it', () => {
+  it('takes a song off the shelf that was deleted elsewhere, and leaves remembering it to the sheet', () => {
     const merged = merge(shelf(entry('a', 1), entry('b', 1)), [gone('b', 2)])
     expect(titles(merged)).toEqual(['a'])
-    expect(merged.removed).toEqual([{ id: 'b', at: 2, song: named('b') }])
+    expect(merged.removed).toEqual([])
   })
 
-  it('keeps the copy here when a deletion from before songs were kept arrives empty', () => {
-    const merged = merge(shelf(entry('a', 1), entry('b', 1, 'mine')), [
-      gone('b', 2, null),
-    ])
-    expect(merged.removed).toEqual([{ id: 'b', at: 2, song: named('mine') }])
+  it('changes nothing for a deletion of a song this device does not have', () => {
+    const library = shelf(entry('a', 1))
+    expect(merge(library, [gone('z', 2), gone('y', 3, null)])).toBe(library)
+  })
+
+  it('forgets a deletion here once the sheet has a newer one', () => {
+    const library = {
+      ...shelf(entry('a', 1)),
+      removed: [{ id: 'b', at: 2, song: named('b') }],
+    }
+    expect(merge(library, [gone('b', 3)]).removed).toEqual([])
   })
 
   it('keeps a song edited here after it was deleted elsewhere', () => {
@@ -110,5 +116,27 @@ describe('sync', () => {
   it('keeps the shelf rather than empty it when every song was deleted elsewhere', () => {
     const library = shelf(entry('a', 1))
     expect(merge(library, [gone('a', 2)])).toBe(library)
+  })
+
+  it('forgets the deletions a sync sent, and keeps one made while it was on its way', () => {
+    const sent = {
+      ...shelf(entry('a', 1)),
+      removed: [{ id: 'b', at: 2, song: named('b') }],
+    }
+    const library = {
+      ...sent,
+      removed: [...sent.removed, { id: 'c', at: 3, song: named('c') }],
+    }
+    expect(forgetSent(library, sent).removed).toEqual([
+      { id: 'c', at: 3, song: named('c') },
+    ])
+  })
+
+  it('comes back untouched when a sync sent no deletions', () => {
+    const library = {
+      ...shelf(entry('a', 1)),
+      removed: [{ id: 'b', at: 2, song: named('b') }],
+    }
+    expect(forgetSent(library, shelf(entry('a', 1)))).toBe(library)
   })
 })

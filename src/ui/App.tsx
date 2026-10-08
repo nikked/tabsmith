@@ -21,7 +21,7 @@ import {
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
-import { merge, mergeSetlists } from '../core/sync.ts'
+import { forgetSent, merge, mergeSetlists } from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -128,6 +128,7 @@ export default function App() {
    */
   const sync = async (to: Settings) => {
     setSyncNote('Syncing…')
+    const sent = latest.current.library
     const { pulled, tooLong } = await syncLibrary(to, latest.current.library)
     if (!pulled.ok) {
       setSyncNote(pulled.error)
@@ -135,7 +136,7 @@ export default function App() {
     }
     const { library: here, song } = latest.current
     const merged = mergeSetlists(
-      merge(withOpenSong(here, song, Date.now()), pulled.records),
+      merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
       pulled.setlists,
     )
     setLibrary(merged)
