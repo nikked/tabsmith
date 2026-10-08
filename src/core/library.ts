@@ -13,9 +13,9 @@ export type Entry = {
 }
 
 /**
- * A deleted song, remembered so a sync cannot bring it back from a device that
- * still has the copy from before it was deleted. The song goes with it, because
- * deleting only takes a song off the shelf: the sheet keeps it, marked inactive.
+ * A deleted song, remembered only until a sync has told the sheet, which then
+ * keeps it marked inactive so no other device's older copy can bring it back.
+ * The song goes with it, because deleting only takes a song off the shelf.
  * Null only for a deletion made before songs were kept.
  */
 export type Removed = {

@@ -699,14 +699,17 @@ shelf lives in `localStorage` as above.
 One round trip does both directions. The app POSTs every song and every deletion it knows of;
 the sheet keeps the newest record of each id and answers with all of them; the app runs the
 same newest-wins merge (`core/sync.ts`) on its side. Each song carries `updatedAt`, stamped when
-an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` so a device that
-still has the old copy cannot bring it back. An edit made after a delete elsewhere does bring a
+an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` only until a sync
+has carried it to the sheet. From then the sheet's inactive row is what keeps a device that
+still has the old copy from bringing it back, and a deletion the app pulls only takes a song off
+the shelf, so no device holds tombstones the sheet already has. An edit made after a delete elsewhere does bring a
 song back — the newer intent wins either way. Clocks are trusted, which is fine for one person's
 devices.
 
 Setlists sync the same way, newest wins per setlist, in a `setlists` tab of their own. A
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
-tombstone. A script deployed before setlists answers without them, which changes nothing here.
+tombstone. Like a deleted song, it stays on the device only until a sync has carried it to the
+sheet, and one pulled from the sheet only takes the setlist off the device. A script deployed before setlists answers without them, which changes nothing here.
 
 Nothing is ever deleted from the sheet. A deleted song goes up whole with `active: false`, the
 tombstone keeps the song so it can, and the sheet keeps it in its row marked inactive; the app

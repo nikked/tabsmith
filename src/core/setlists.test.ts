@@ -14,7 +14,7 @@ import {
   setlistsWith,
   songsOf,
 } from './setlists.ts'
-import { mergeSetlists } from './sync.ts'
+import { forgetSent, mergeSetlists } from './sync.ts'
 
 const entry = (id: string): Entry => ({
   id,
@@ -208,9 +208,41 @@ describe('mergeSetlists', () => {
     ])
   })
 
-  it('carries a deletion made elsewhere, since it is just a newer copy', () => {
-    const library = shelf(set('gig', ['a'], 1))
+  it('takes a setlist off this device that was deleted elsewhere', () => {
+    const library = shelf(set('gig', ['a'], 1), set('rehearsal', ['b'], 1))
     const merged = mergeSetlists(library, [{ ...set('gig', ['a'], 2), active: false }])
-    expect(activeSetlists(merged)).toEqual([])
+    expect(merged.setlists.map((setlist) => setlist.id)).toEqual(['rehearsal'])
+  })
+
+  it('changes nothing for a deleted setlist this device does not have', () => {
+    const library = shelf(set('gig', ['a'], 1))
+    expect(mergeSetlists(library, [{ ...set('old', ['a'], 2), active: false }])).toBe(
+      library,
+    )
+  })
+
+  it('brings back a setlist deleted here when it was edited later elsewhere', () => {
+    const library = shelf({ ...set('gig', ['a'], 2), active: false })
+    const merged = mergeSetlists(library, [set('gig', ['a', 'b'], 3)])
+    expect(activeSetlists(merged).map((setlist) => setlist.songs)).toEqual([['a', 'b']])
+  })
+})
+
+describe('forgetSent', () => {
+  it('forgets a deleted setlist once a sync has sent it, and keeps the rest', () => {
+    const deleted = { ...set('gig', ['a'], 2), active: false }
+    const sent = shelf(deleted, set('rehearsal', ['b'], 1))
+    const later = { ...set('demo', [], 3), active: false }
+    const library = { ...sent, setlists: [...sent.setlists, later] }
+    expect(forgetSent(library, sent).setlists).toEqual([
+      set('rehearsal', ['b'], 1),
+      later,
+    ])
+  })
+
+  it('keeps a deleted setlist newer than the copy that was sent', () => {
+    const sent = shelf({ ...set('gig', ['a'], 2), active: false })
+    const library = shelf({ ...set('gig', ['a'], 4), active: false })
+    expect(forgetSent(library, sent)).toBe(library)
   })
 })
