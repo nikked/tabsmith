@@ -254,7 +254,8 @@ export default function App() {
    * Every way a song reaches the shelf goes through here, so whatever is being
    * edited is written back before the shelf changes under it. An import arrives
    * after reading a file, and a sync may have landed meanwhile, so it adds to
-   * the shelf as it is then.
+   * the shelf as it is then. A new song is one to work on, so it opens in Edit
+   * whichever page it was made from.
    */
   const shelve = (song: Song) => {
     const entry = { id: newId(), song, updatedAt: Date.now() }
@@ -262,6 +263,7 @@ export default function App() {
       addEntry(withOpenSong(current, state.song, Date.now()), entry),
     )
     dispatch({ kind: 'load', song })
+    setMode('edit')
     setError(null)
   }
 
