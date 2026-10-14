@@ -52,6 +52,7 @@ import { SongsPage } from './SongsPage.tsx'
 import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 import { Toggle } from './Toggle.tsx'
+import { loadMode, saveMode, type Mode } from '../screen.ts'
 
 /**
  * Asking where to put a file is Chromium-only, and no other browser has an
@@ -86,7 +87,7 @@ export default function App() {
     initialTimeline(openEntry(library).song),
   )
   const state = timeline.present
-  const [mode, setMode] = useState<'songs' | 'edit' | 'practice'>('edit')
+  const [mode, setMode] = useState<Mode>(loadMode)
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
@@ -112,6 +113,10 @@ export default function App() {
   useEffect(() => {
     saveLibrary(library)
   }, [library])
+
+  useEffect(() => {
+    saveMode(mode)
+  }, [mode])
 
   // A sync answers after the render that sent it, so it reads the shelf and
   // the editor as they are when the answer lands rather than as they were.
@@ -275,13 +280,16 @@ export default function App() {
   }
 
   /**
-   * Picking a song is mostly to play it, so it opens in Practice. Opening from a
-   * setlist makes it the one Practice steps through; from All songs, none.
+   * A song picked beside the editor or Practice opens in whichever of them is
+   * up, so moving between songs does not throw you out of what you were doing.
+   * The songs page has to be left either way, and picking a song there is
+   * mostly to play it, so that opens in Practice. Opening from a setlist makes
+   * it the one Practice steps through; from All songs, none.
    */
   const openFrom = (song: string, setlist: string | null) => {
     switchTo(song)
     setActiveSetlist(setlist)
-    setMode('practice')
+    if (mode === 'songs') setMode('practice')
   }
 
   /** A song as it is now: the open one as the editor holds it, the rest as shelved. */
