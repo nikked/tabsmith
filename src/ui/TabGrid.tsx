@@ -9,6 +9,7 @@ import {
 import {
   atFirstBar,
   atLastBar,
+  moveCursor,
   removeBarDropsContent,
   removeRowDropsContent,
   retuneDropsNotes,
@@ -96,7 +97,26 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       titleFields.current[at.row + 1]?.focus()
+      return
     }
+    // Left and right still move the caret through a name, and step to the
+    // neighbouring column's field once the caret is at that end of it.
+    const { selectionStart, selectionEnd, value } = event.currentTarget
+    const caretAt = selectionStart === selectionEnd ? selectionStart : null
+    const move =
+      event.key === 'ArrowLeft' && caretAt === 0
+        ? 'prevColumn'
+        : event.key === 'ArrowRight' && caretAt === value.length
+          ? 'nextColumn'
+          : null
+    if (move === null) return
+    const next = moveCursor(score, { ...at, slot: 0 }, move)
+    const field = chordFields.current[`${next.row}:${next.bar}:${next.column}`]
+    if (field == null || field === event.currentTarget) return
+    event.preventDefault()
+    field.focus()
+    const caret = move === 'prevColumn' ? field.value.length : 0
+    field.setSelectionRange(caret, caret)
   }
 
   // Same reason as the chord field: these are text, not keymap sequences.
