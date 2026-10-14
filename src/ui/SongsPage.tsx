@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   byEdited,
   byTitle,
+  clockOf,
   hasStructure,
   hasTab,
   matching,
@@ -84,8 +85,11 @@ const rememberedFilters = (): Filters => {
   }
 }
 
+// With the time too: two songs edited the same day still need telling apart.
 const edited = (entry: Entry): string =>
-  entry.updatedAt === 0 ? '—' : new Date(entry.updatedAt).toLocaleDateString()
+  entry.updatedAt === 0
+    ? '—'
+    : `${new Date(entry.updatedAt).toLocaleDateString()} ${clockOf(entry.updatedAt)}`
 
 /**
  * Every song and every setlist, laid out to be arranged rather than switched
