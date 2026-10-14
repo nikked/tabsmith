@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { scoreHasContent } from '../core/edit.ts'
 import type { Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
 import {
   sectionHeading,
   songParts,
-  staffText,
+  staffLines,
   trimScore,
   type Part,
 } from '../core/render.ts'
@@ -121,7 +121,17 @@ const partView =
           <div key={index}>
             {part.title !== '' && <h4>{part.title}</h4>}
             {part.note !== '' && <p className="tab-note">{part.note}</p>}
-            <pre>{staffText(tab, part.row, spacing, columns)}</pre>
+            <pre>
+              {staffLines(tab, part.row, spacing, columns).map(
+                ({ text, aside }, line) => (
+                  <Fragment key={line}>
+                    {line > 0 && '\n'}
+                    {text}
+                    {aside !== null && <span className="tab-aside"> {aside}</span>}
+                  </Fragment>
+                ),
+              )}
+            </pre>
           </div>
         )
       case 'section':
