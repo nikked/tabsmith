@@ -98,12 +98,13 @@ const allBars = (score: Score): readonly Bar[] => score.rows.flatMap((row) => ro
 /**
  * One definition of what counts as work, so the Delete song prompt and the
  * bar and row prompts cannot drift apart about it. A chord name is as much
- * typing as a note, and a row's heading belongs to the row that carries it.
+ * typing as a note, and a row's heading belongs to the row that carries it. A
+ * chord field holding only spaces shows nothing, so it is not a chord.
  */
-const columnHasContent = (column: Column): boolean =>
-  column.chord !== undefined || column.cells.some((cell) => cell !== null)
+export const columnHasContent = (column: Column): boolean =>
+  (column.chord ?? '').trim() !== '' || column.cells.some((cell) => cell !== null)
 
-const barHasContent = (bar: Bar): boolean => bar.columns.some(columnHasContent)
+export const barHasContent = (bar: Bar): boolean => bar.columns.some(columnHasContent)
 
 const rowHasHeading = (row: Row): boolean =>
   row.title !== undefined || row.note !== undefined || row.aside !== undefined

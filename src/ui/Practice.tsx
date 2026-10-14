@@ -2,7 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { scoreHasContent } from '../core/edit.ts'
 import type { Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
-import { sectionHeading, songParts, staffText, type Part } from '../core/render.ts'
+import {
+  sectionHeading,
+  songParts,
+  staffText,
+  trimScore,
+  type Part,
+} from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { NotedLines } from './NotedLines.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -265,6 +271,8 @@ export function Practice({
     setFit({ step: FITS.largest, settled: false })
   }
 
+  const tab = trimScore(song.tab)
+
   const step = chosen ?? fit.step
   const scale = STEPS[step] ?? 1
   const columns =
@@ -415,7 +423,7 @@ export function Practice({
         </span>
       </div>
       <div ref={songBox} className="practice-song">
-        {songParts(song).map(partView(song.tab, spacing, columns))}
+        {songParts({ ...song, tab }).map(partView(tab, spacing, columns))}
       </div>
     </section>
   )
