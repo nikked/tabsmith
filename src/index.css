@@ -548,6 +548,12 @@ h1 img {
   color: var(--muted);
 }
 
+/* A remark beside the bars, not part of them, so it is set as text. */
+.practice .tab-aside {
+  font-family: system-ui, sans-serif;
+  color: var(--muted);
+}
+
 /* The reading view: the whole window, nothing but the song. Padded at the
    bottom so the last line can still be scrolled clear of a phone's home bar. */
 .practice {

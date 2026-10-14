@@ -89,6 +89,12 @@ const rowHeading = (row: Row): readonly string[] =>
   ].filter((line) => line !== '')
 
 /**
+ * One line of a rendered staff, with the aside that hangs off its end kept
+ * apart, so a view can set it as a remark rather than as part of the tab.
+ */
+export type StaffLine = { readonly text: string; readonly aside: string | null }
+
+/**
  * An aside belongs to the bars rather than naming them, so it hangs off the
  * closing bar line instead of sitting above the staff where a title goes:
  * `x2 for Intro` is an instruction for these bars, not what they are called.
@@ -98,22 +104,19 @@ const rowHeading = (row: Row): readonly string[] =>
 const withAside = (
   staff: readonly string[],
   aside: string | undefined,
-): readonly string[] => {
-  if (aside === undefined || aside === '') return staff
-  const lines = aside.split('\n')
+): readonly StaffLine[] => {
+  const lines = aside === undefined || aside === '' ? [] : aside.split('\n')
   const margin = ' '.repeat(staff[0]?.length ?? 0)
+  const said = (text: string | undefined): string | null =>
+    text === undefined || text === '' ? null : text
   return [
-    ...staff.map((line, slot) => {
-      const text = lines[slot]
-      return text === undefined || text === '' ? line : `${line} ${text}`
-    }),
+    ...staff.map((text, slot) => ({ text, aside: said(lines[slot]) })),
     ...lines
       .slice(staff.length)
       .filter((text) => text !== '')
-      .map((text) => `${margin} ${text}`),
+      .map((text) => ({ text: margin, aside: text })),
   ]
 }
-
 /** A bar's width in characters, its closing bar line included. */
 const barWidth = ({ sized }: MeasuredBar): number =>
   sized.reduce((sum, { width }) => sum + width, 0) + 1
@@ -151,32 +154,45 @@ const wrapBars = (
  * so a narrow screen shows the next bars under the first rather than cutting
  * them off. The aside belongs to the closing bar line, so it goes with the last.
  */
-export const staffText = (
+export const staffLines = (
   score: Score,
   row: Row,
   spacing: Spacing = 'dense',
   width = Infinity,
-): string => {
+): readonly StaffLine[] => {
   const { strings } = score.tuning
   const labelWidth = Math.max(0, ...strings.map((label) => label.length))
   const bars: readonly MeasuredBar[] = row.bars.map((bar) => ({
     sized: sizeColumns(bar, spacing),
   }))
   const lines = wrapBars(bars, labelWidth, width)
-  return lines
-    .map((system, index) => {
-      const staff = strings.map(
-        (label, slot) =>
-          `${label.padEnd(labelWidth)}|${system.map(({ sized }) => barRow(sized, slot)).join('')}`,
-      )
-      const chords = chordRow(system)
-      return [
-        ...(index === lines.length - 1 ? withAside(staff, row.aside) : staff),
-        ...(chords === null ? [] : [`${' '.repeat(labelWidth + 1)}${chords}`]),
-      ].join('\n')
-    })
-    .join('\n\n')
+  return lines.flatMap((system, index): readonly StaffLine[] => {
+    const staff = strings.map(
+      (label, slot) =>
+        `${label.padEnd(labelWidth)}|${system.map(({ sized }) => barRow(sized, slot)).join('')}`,
+    )
+    const chords = chordRow(system)
+    return [
+      ...(index === 0 ? [] : [{ text: '', aside: null }]),
+      ...(index === lines.length - 1
+        ? withAside(staff, row.aside)
+        : staff.map((text) => ({ text, aside: null }))),
+      ...(chords === null
+        ? []
+        : [{ text: `${' '.repeat(labelWidth + 1)}${chords}`, aside: null }]),
+    ]
+  })
 }
+
+export const staffText = (
+  score: Score,
+  row: Row,
+  spacing: Spacing = 'dense',
+  width = Infinity,
+): string =>
+  staffLines(score, row, spacing, width)
+    .map(({ text, aside }) => (aside === null ? text : `${text} ${aside}`))
+    .join('\n')
 
 /**
  * One string per system. A system is the unit that must not be broken across a
