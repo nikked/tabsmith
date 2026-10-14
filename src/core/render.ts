@@ -207,6 +207,23 @@ export const sectionHeading = (section: Section): string => {
 }
 
 /**
+ * A note rides at the end of the line it is about, after `//`, so it moves with
+ * that line through every edit, split and paste without anything to keep in
+ * step. The mark is kept as part of the text so the note lands in the column
+ * the writer put it in.
+ */
+export const NOTE_MARK = '//'
+
+export const splitNote = (
+  line: string,
+): { readonly text: string; readonly note: string | null } => {
+  const at = line.indexOf(NOTE_MARK)
+  return at < 0
+    ? { text: line, note: null }
+    : { text: line.slice(0, at), note: line.slice(at + NOTE_MARK.length) }
+}
+
+/**
  * What each block is, for a view that sets a title or a heading apart from the
  * text under it rather than showing everything as one face. A tab system's
  * title and note come apart from its staff for the same reason. A section's

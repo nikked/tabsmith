@@ -802,6 +802,7 @@ src/
   ui/
     App.tsx
     Chart.tsx     title, tempo and the sections
+    NotedLines.tsx chart lines with the note after `//` set apart
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
     SongList.tsx  the setlist tree beside the editor, for switching songs

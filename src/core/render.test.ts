@@ -13,7 +13,7 @@ import {
   type Tuning,
 } from './model.ts'
 import type { Row } from './model.ts'
-import { renderScore, sectionHeading, songParts, staffText } from './render.ts'
+import { renderScore, sectionHeading, songParts, splitNote, staffText } from './render.ts'
 
 type Placement = readonly [column: number, slot: number, cell: Cell]
 
@@ -366,6 +366,19 @@ describe('row headings', () => {
     ).split('\n\n')
     expect(rendered[0]?.split('\n')).toHaveLength(7)
     expect(rendered[1]?.split('\n')).toHaveLength(6)
+  })
+})
+
+describe('splitNote', () => {
+  it('takes everything after the first // as the note', () => {
+    expect(splitNote('Em      D   // quiet // still')).toEqual({
+      text: 'Em      D   ',
+      note: ' quiet // still',
+    })
+  })
+
+  it('leaves a line without one alone', () => {
+    expect(splitNote('C/G  D/F#')).toEqual({ text: 'C/G  D/F#', note: null })
   })
 })
 

@@ -501,6 +501,53 @@ h1 img {
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--line) 55%, transparent);
 }
 
+/* The body under the field: the same box and the same text, so every glyph
+   sits under its twin in the field and the caret lands where it looks. */
+.section-body {
+  position: relative;
+}
+
+.chart .body-mirror {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0.15rem 0;
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  tab-size: 8;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.section-body textarea {
+  position: relative;
+  color: transparent;
+  caret-color: var(--fg);
+}
+
+/* The field's own text is hidden, so a selection has to be given its colours
+   outright: styling it at all drops the browser's own highlight. */
+.section-body textarea::selection {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--cursor) 35%, transparent);
+}
+
+.note-mark {
+  color: transparent;
+}
+
+.chart .line-note {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--cursor) 18%, transparent);
+  border-radius: 0.2rem;
+}
+
+.practice .line-note {
+  color: var(--muted);
+}
+
 /* The reading view: the whole window, nothing but the song. Padded at the
    bottom so the last line can still be scrolled clear of a phone's home bar. */
 .practice {
@@ -1523,6 +1570,7 @@ kbd {
 @media (max-width: 40rem) {
   .chart input,
   .chart textarea,
+  .chart .body-mirror,
   .chord,
   .row-title,
   .row-note {
