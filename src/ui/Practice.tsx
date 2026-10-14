@@ -10,9 +10,20 @@ import {
   type Part,
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import { notation } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
+import { Notation } from './Notation.tsx'
 import { Toggle } from './Toggle.tsx'
-import { loadViews, saveViews, withView, type View, type Views } from '../viewing.ts'
+import {
+  loadReading,
+  loadViews,
+  saveReading,
+  saveViews,
+  withView,
+  type Reading,
+  type View,
+  type Views,
+} from '../viewing.ts'
 
 const STEPS = [0.7, 0.8, 0.9, 1, 1.15, 1.35, 1.6] as const
 
@@ -91,7 +102,11 @@ const RULER = '0000000000'
  * holds whatever size is on screen, so it can say how wide the song would be at
  * a size it is not shown at yet.
  */
-type Measure = { readonly width: number; readonly charAtOne: number }
+type Measure = {
+  readonly width: number
+  readonly charAtOne: number
+  readonly rem: number
+}
 
 /**
  * How wide the column is and how wide the song's monospace runs, read off the
@@ -102,7 +117,7 @@ const measureOf = (box: HTMLElement, glyphs: HTMLElement): Measure | null => {
   const size = Number.parseFloat(getComputedStyle(glyphs).fontSize)
   const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
   return char > 0 && size > 0
-    ? { width: box.clientWidth, charAtOne: (char / size) * rem }
+    ? { width: box.clientWidth, charAtOne: (char / size) * rem, rem }
     : null
 }
 
@@ -112,7 +127,8 @@ const overflows = (page: HTMLElement): boolean =>
   [...page.querySelectorAll('pre')].some((block) => block.scrollWidth > block.clientWidth)
 
 const partView =
-  (tab: Score, spacing: Spacing, columns: number) => (part: Part, index: number) => {
+  (tab: Score, spacing: Spacing, columns: number, width: number) =>
+  (part: Part, index: number) => {
     switch (part.kind) {
       case 'tempo':
         return <p key={index}>{part.text}</p>
@@ -134,6 +150,8 @@ const partView =
             </pre>
           </div>
         )
+      case 'notation':
+        return <Notation key={index} systems={notation(tab)} width={width} />
       case 'section':
         return (
           <div key={index}>
@@ -191,6 +209,8 @@ export function Practice({
     view.size === undefined ? -1 : STEPS.findIndex((size) => size === view.size)
   const chosen = index < 0 ? null : index
   const dense = view.dense === true
+  const [reading, setReading] = useState<Reading>(loadReading)
+  const asNotation = reading === 'notation'
   const spacing: Spacing = dense ? 'dense' : 'sparse'
   const hasTab = scoreHasContent(song.tab)
   const [fit, setFit] = useState<{ readonly step: number; readonly settled: boolean }>({
@@ -273,6 +293,14 @@ export function Practice({
     setFit({ step: FITS.largest, settled: false })
   }
 
+  // Notation and tab take different room, so the size is fitted again too.
+  const toggleNotation = () => {
+    const next = asNotation ? 'tab' : 'notation'
+    saveReading(next)
+    setReading(next)
+    setFit({ step: FITS.largest, settled: false })
+  }
+
   // A new song is fitted afresh. Done here rather than by remounting, so the
   // menu stays open while stepping through songs.
   const [fittedFor, setFittedFor] = useState(songId)
@@ -285,6 +313,9 @@ export function Practice({
 
   const step = chosen ?? fit.step
   const scale = STEPS[step] ?? 1
+  // The column in ems of the song's own text size, for a view drawn in ems.
+  const widthEm =
+    measure === null ? Number.POSITIVE_INFINITY : measure.width / (measure.rem * scale)
   const columns =
     measure === null
       ? Number.POSITIVE_INFINITY
@@ -334,15 +365,46 @@ export function Practice({
             {hasTab && (
               <MenuChecks
                 items={[
-                  { id: 'dense', label: 'Dense', checked: dense, onToggle: toggleDense },
+                  {
+                    id: 'notation',
+                    label: 'Notation',
+                    checked: asNotation,
+                    onToggle: toggleNotation,
+                  },
+                  ...(asNotation
+                    ? []
+                    : [
+                        {
+                          id: 'dense',
+                          label: 'Dense',
+                          checked: dense,
+                          onToggle: toggleDense,
+                        },
+                      ]),
                 ]}
               />
             )}
           </Menu>
         </div>
-        {/* Spacing is only about tab, so a song with none has nothing to set.
-            On a phone it moves into the menu above, sparse being the default. */}
+        {/* The same notes read either way; a song with no tab has neither. */}
         {hasTab && (
+          <Toggle
+            small
+            label="Read the tab as"
+            options={[
+              { value: 'tab', label: 'Tab' },
+              { value: 'notation', label: 'Notation' },
+            ]}
+            value={asNotation ? 'notation' : 'tab'}
+            onChange={(next) => {
+              if ((next === 'notation') !== asNotation) toggleNotation()
+            }}
+          />
+        )}
+        {/* Spacing is only about tab, so a song with none, or read as notation,
+            has nothing to set. On a phone it moves into the menu above, sparse
+            being the default. */}
+        {hasTab && !asNotation && (
           <Toggle
             small
             label="Spacing between notes"
@@ -433,7 +495,11 @@ export function Practice({
         </span>
       </div>
       <div ref={songBox} className="practice-song">
-        {songParts({ ...song, tab }).map(partView(tab, spacing, columns))}
+        {songParts({ ...song, tab })
+          .filter((part) =>
+            asNotation ? part.kind !== 'system' : part.kind !== 'notation',
+          )
+          .map(partView(tab, spacing, columns, widthEm))}
       </div>
     </section>
   )
