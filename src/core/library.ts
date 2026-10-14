@@ -91,7 +91,7 @@ export const hasTab = (entry: Entry): boolean => scoreHasContent(entry.song.tab)
 
 /**
  * A chart worked out into parts: at least two sections with something written
- * under them. A name alone is not a part — every song starts with a Verse 1.
+ * under them. A name alone is not a part — every song starts with an Intro.
  */
 export const hasStructure = (entry: Entry): boolean =>
   entry.song.chart.filter((section) => section.body.trim() !== '').length >= 2

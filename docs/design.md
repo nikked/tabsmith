@@ -610,7 +610,7 @@ the open song. Copy asks for a name, then the copy joins the shelf and opens.
 every song on the other, stacked on a phone. All songs can be searched — case and accents do not
 matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Practice
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
-them, since every song starts with an empty Verse 1), filters that stay on in this browser until
+them, since every song starts with an empty Intro), filters that stay on in this browser until
 turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
 song's tempo, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the

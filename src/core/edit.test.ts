@@ -781,7 +781,7 @@ describe('the chart', () => {
   const chartOf = (state: EditorState) => state.song.chart
 
   it('starts as one empty section', () => {
-    expect(chartOf(initialState())).toEqual([{ name: 'Verse 1', body: '' }])
+    expect(chartOf(initialState())).toEqual([{ name: 'Intro', body: '' }])
   })
 
   it('takes a title and a tempo', () => {
@@ -802,10 +802,70 @@ describe('the chart', () => {
       { kind: 'addSection', after: 0 },
     )
     expect(chartOf(state).map((section) => section.name)).toEqual([
-      'Verse 1',
-      '',
+      'Intro',
+      'Verse',
       'Chorus 1',
     ])
+  })
+
+  it('names a new section for where it lands: intro, then verse and chorus in turn', () => {
+    const state = run(
+      initialState(),
+      { kind: 'addSection', after: 0 },
+      { kind: 'addSection', after: 1 },
+      { kind: 'addSection', after: 2 },
+      { kind: 'addSection', after: 3 },
+    )
+    expect(chartOf(state).map((section) => section.name)).toEqual([
+      'Intro',
+      'Verse',
+      'Chorus',
+      'Verse',
+      'Chorus',
+    ])
+  })
+
+  it('duplicates a section directly below itself', () => {
+    const verse = { name: 'Verse', body: 'Em      D\nWe sail through', repeat: 2 }
+    const state = run(
+      initialState(),
+      { kind: 'addSection', after: 0 },
+      { kind: 'setSection', index: 1, section: verse },
+      { kind: 'addSection', after: 1 },
+      { kind: 'duplicateSection', index: 1 },
+    )
+    expect(chartOf(state)).toEqual([
+      { name: 'Intro', body: '' },
+      verse,
+      verse,
+      { name: 'Chorus', body: '' },
+    ])
+    expect(apply(state, { kind: 'duplicateSection', index: 9 })).toBe(state)
+  })
+
+  it('splits a section in two at the caret', () => {
+    const body = 'Em      D\nWe sail through\nC       G\nThe endless skies'
+    const state = run(
+      initialState(),
+      { kind: 'setSection', index: 0, section: { name: 'Verse', body, repeat: 2 } },
+      { kind: 'addSection', after: 0 },
+      { kind: 'splitSection', index: 0, at: body.indexOf('C ') },
+    )
+    expect(chartOf(state)).toEqual([
+      { name: 'Verse', body: 'Em      D\nWe sail through', repeat: 2 },
+      { name: 'Verse', body: 'C       G\nThe endless skies' },
+      { name: 'Verse', body: '' },
+    ])
+  })
+
+  it('refuses a split that would leave an empty half', () => {
+    const state = apply(initialState(), {
+      kind: 'setSection',
+      index: 0,
+      section: { name: 'Verse', body: 'Em D' },
+    })
+    expect(apply(state, { kind: 'splitSection', index: 0, at: 0 })).toBe(state)
+    expect(apply(state, { kind: 'splitSection', index: 0, at: 4 })).toBe(state)
   })
 
   it('removes a section, but never the last one', () => {
@@ -824,15 +884,15 @@ describe('the chart', () => {
       { kind: 'addSection', after: 1 },
       { kind: 'setSection', index: 2, section: { name: 'Bridge', body: '' } },
     )
-    expect(named(three)).toEqual(['Verse 1', 'Chorus', 'Bridge'])
+    expect(named(three)).toEqual(['Intro', 'Chorus', 'Bridge'])
 
     const lifted = apply(three, { kind: 'moveSection', index: 1, to: 2 })
-    expect(named(lifted)).toEqual(['Verse 1', 'Bridge', 'Chorus'])
+    expect(named(lifted)).toEqual(['Intro', 'Bridge', 'Chorus'])
     expect(chartOf(lifted)[2]?.body).toBe('Cmaj7')
 
     expect(named(apply(three, { kind: 'moveSection', index: 2, to: 0 }))).toEqual([
       'Bridge',
-      'Verse 1',
+      'Intro',
       'Chorus',
     ])
   })
