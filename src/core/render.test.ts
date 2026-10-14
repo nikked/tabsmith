@@ -392,6 +392,24 @@ describe('songParts', () => {
     })
   })
 
+  it('trims blank lines off both ends and trailing spaces, keeping the breaks between', () => {
+    const verse = {
+      name: 'Verse',
+      body: '\n  Em      D  \nWe sail through\n\n   \n    C\nendless skies\n\n',
+    }
+    expect(songParts(song({ chart: [verse] }))).toContainEqual({
+      kind: 'section',
+      section: {
+        name: 'Verse',
+        body: '  Em      D\nWe sail through\n\n\n    C\nendless skies',
+      },
+    })
+  })
+
+  it('leaves out a nameless section with nothing but whitespace under it', () => {
+    expect(kinds(song({ chart: [{ name: '', body: ' \n\n  ' }] }))).toEqual([])
+  })
+
   it('gives one part per system of the tab', () => {
     const s = song({
       tab: {
