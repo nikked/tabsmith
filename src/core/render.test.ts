@@ -13,7 +13,14 @@ import {
   type Tuning,
 } from './model.ts'
 import type { Row } from './model.ts'
-import { renderScore, sectionHeading, songParts, splitNote, staffText } from './render.ts'
+import {
+  renderScore,
+  sectionHeading,
+  songParts,
+  splitNote,
+  staffText,
+  trimScore,
+} from './render.ts'
 
 type Placement = readonly [column: number, slot: number, cell: Cell]
 
@@ -366,6 +373,42 @@ describe('row headings', () => {
     ).split('\n\n')
     expect(rendered[0]?.split('\n')).toHaveLength(7)
     expect(rendered[1]?.split('\n')).toHaveLength(6)
+  })
+})
+
+describe('trimScore', () => {
+  const fret = (n: number): Cell => ({ kind: 'fret', fret: n })
+
+  it('drops empty bars and the empty columns at the end of a bar, but one', () => {
+    const played = place(emptyBar(12, 6), [0, 4, fret(4)], [3, 5, fret(6)])
+    const score = {
+      ...emptyScore(),
+      rows: [{ title: 'Riff', bars: [emptyBar(12, 6), played, emptyBar(12, 6)] }],
+    }
+    const [row] = trimScore(score).rows
+    expect(row?.title).toBe('Riff')
+    expect(row?.bars).toHaveLength(1)
+    expect(row?.bars[0]?.columns).toHaveLength(5)
+    const lines = staffText(score, row ?? { bars: [] }).split('\n')
+    expect(lines[4]).toBe('A|4--------|')
+    expect(lines[5]).toBe('E|------6--|')
+  })
+
+  it('keeps a chord name as something played', () => {
+    const named = chords(emptyBar(4, 6), [1, 'Am'])
+    expect(
+      trimScore({ ...emptyScore(), rows: [{ bars: [named] }] }).rows[0]?.bars[0]?.columns,
+    ).toHaveLength(3)
+  })
+
+  it('drops a bar whose only chord name is blank, which shows nothing', () => {
+    const blank = chords(emptyBar(4, 6), [1, ' '])
+    expect(trimScore({ ...emptyScore(), rows: [{ bars: [blank] }] }).rows).toEqual([])
+  })
+
+  it('leaves out a row with nothing left in it', () => {
+    const rows = [emptyRow(2, 12, 6), { bars: [place(emptyBar(4, 6), [0, 0, fret(0)])] }]
+    expect(trimScore({ ...emptyScore(), rows }).rows).toHaveLength(1)
   })
 })
 

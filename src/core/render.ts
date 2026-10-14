@@ -1,4 +1,4 @@
-import { scoreHasContent } from './edit.ts'
+import { barHasContent, columnHasContent, scoreHasContent } from './edit.ts'
 import type {
   Bar,
   Cell,
@@ -222,6 +222,23 @@ export const splitNote = (
     ? { text: line, note: null }
     : { text: line.slice(0, at), note: line.slice(at + NOTE_MARK.length) }
 }
+
+/**
+ * A tab as it is read rather than written: the empty columns at the end of a
+ * bar are room the editor keeps for typing into, and an empty bar is one never
+ * used, so neither is played. One empty column stays after the last note so it
+ * does not run into the bar line. Columns before and between notes are timing
+ * and stay, and a row left with no bars goes with them.
+ */
+export const trimScore = (score: Score): Score => ({
+  ...score,
+  rows: score.rows.flatMap((row) => {
+    const bars = row.bars.filter(barHasContent).map((bar) => ({
+      columns: bar.columns.slice(0, bar.columns.findLastIndex(columnHasContent) + 2),
+    }))
+    return bars.length === 0 ? [] : [{ ...row, bars }]
+  }),
+})
 
 /**
  * What each block is, for a view that sets a title or a heading apart from the
