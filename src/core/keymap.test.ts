@@ -71,6 +71,8 @@ describe('keyToAction', () => {
     expect(keyToAction({ key: '[' })).toEqual({ kind: 'removeColumn' })
     expect(keyToAction({ key: '}' })).toEqual({ kind: 'addRow' })
     expect(keyToAction({ key: '{' })).toEqual({ kind: 'removeRow' })
+    expect(keyToAction({ key: '|' })).toEqual({ kind: 'splitBar' })
+    expect(keyToAction({ key: 'K', shiftKey: true })).toEqual({ kind: 'splitRow' })
     expect(keyToAction({ key: 'Backspace' })).toEqual({ kind: 'clear' })
     expect(keyToAction({ key: 'Delete' })).toEqual({ kind: 'clear' })
   })

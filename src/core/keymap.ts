@@ -27,6 +27,8 @@ const MOVES: Readonly<Record<string, Action>> = {
   '[': { kind: 'removeColumn' },
   '}': { kind: 'addRow' },
   '{': { kind: 'removeRow' },
+  '|': { kind: 'splitBar' },
+  K: { kind: 'splitRow' },
   x: { kind: 'mute' },
   b: { kind: 'bend' },
   '~': { kind: 'vibrato' },

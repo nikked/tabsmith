@@ -59,6 +59,16 @@ const GROUPS: readonly Group[] = [
         legend: 'add/remove bar',
       },
       {
+        keys: ['|'],
+        does: 'Split this bar in two before the cursor',
+        legend: 'split bar',
+      },
+      {
+        keys: ['K'],
+        does: 'Start a new row from this bar, the way K splits a line in many Vim setups',
+        legend: 'split row',
+      },
+      {
         keys: [']', '['],
         does: 'Add a column after this one / remove this one when it is empty',
         legend: 'add/remove column',

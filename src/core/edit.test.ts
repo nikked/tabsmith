@@ -463,6 +463,71 @@ describe('removeBar', () => {
   })
 })
 
+describe('splitBar', () => {
+  const at = (column: number): Action => ({
+    kind: 'setCursor',
+    cursor: { row: 0, bar: 0, column, slot: 0 },
+  })
+
+  it('cuts the bar before the cursor, which carries on in the new one', () => {
+    const state = run(initialState(), digit(3), at(4), digit(5), { kind: 'splitBar' })
+    expect(barsIn(state)).toBe(3)
+    expect(columnsIn(state, 0, 0)).toBe(4)
+    expect(columnsIn(state, 0, 1)).toBe(DEFAULT_BAR_COLUMNS - 4)
+    expect(cellAt(state, 0, 0, 0)).toEqual({ kind: 'fret', fret: 3 })
+    expect(cellAt(state, 1, 0, 0)).toEqual({ kind: 'fret', fret: 5 })
+    expect(state.cursor).toEqual({ row: 0, bar: 1, column: 0, slot: 0 })
+  })
+
+  it('refuses on the first column, where one half would be empty', () => {
+    const state = initialState()
+    expect(apply(state, { kind: 'splitBar' }).song).toBe(state.song)
+  })
+})
+
+describe('splitRow', () => {
+  // One row of four bars, a note in each so they can be told apart.
+  const fourBars = (): EditorState =>
+    run(
+      initialState(),
+      { kind: 'setRowHeading', row: 0, title: 'Riff', note: 'let ring', aside: 'x2' },
+      digit(1),
+      { kind: 'move', move: 'nextBar' },
+      digit(2),
+      { kind: 'addBar' },
+      digit(3),
+      { kind: 'addBar' },
+      digit(4),
+    )
+  const onBar = (state: EditorState, row: number, bar: number, column = 3): EditorState =>
+    apply(state, { kind: 'setCursor', cursor: { row, bar, column, slot: 0 } })
+  const firstNotes = (state: EditorState) =>
+    state.song.tab.rows.map((row) => row.bars.map((bar) => bar.columns[0]?.cells[0]))
+
+  it('splits the row before the cursor bar, the heading staying and the aside going', () => {
+    const split = apply(onBar(fourBars(), 0, 2), { kind: 'splitRow' })
+    expect(firstNotes(split)).toEqual([
+      [
+        { kind: 'fret', fret: 1 },
+        { kind: 'fret', fret: 2 },
+      ],
+      [
+        { kind: 'fret', fret: 3 },
+        { kind: 'fret', fret: 4 },
+      ],
+    ])
+    expect(split.song.tab.rows[0]).toMatchObject({ title: 'Riff', note: 'let ring' })
+    expect(split.song.tab.rows[0]?.aside).toBeUndefined()
+    expect(split.song.tab.rows[1]?.aside).toBe('x2')
+    expect(split.cursor).toEqual({ row: 1, bar: 0, column: 3, slot: 0 })
+  })
+
+  it('refuses on the first bar of a row, where the row above would be empty', () => {
+    const state = onBar(fourBars(), 0, 0)
+    expect(apply(state, { kind: 'splitRow' }).song).toBe(state.song)
+  })
+})
+
 describe('removeBarDropsContent', () => {
   const edited = (...actions: readonly Action[]): EditorState =>
     run(initialState(), ...actions)
