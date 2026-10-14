@@ -614,8 +614,8 @@ them, since every song starts with an empty Intro), filters that stay on in this
 turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
 song's tempo, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
-setlists it is in. Picking a song, here or in the sidebar, opens it in Practice, since a song is
-mostly picked to be played. Renaming the open song goes through the editor, which is what holds
+setlists it is in. Picking a song here opens it in Practice, since a song is mostly picked to be
+played; picked in the sidebar, it opens in the editor or Practice, whichever is up. Renaming the open song goes through the editor, which is what holds
 it; any other is renamed on the shelf (`retitle`).
 
 On a screen wide enough to spare the room, the setlists and every song also sit beside the
@@ -816,6 +816,7 @@ src/
     Practice.tsx  the reading view (§4b), also how a shared link opens
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
+  screen.ts       which page is up, kept so a reload comes back to it
   viewing.ts      how songs are shown on this device: each one's size and dense, and tab or notation
   share.ts        a song in a link, and back
   sync.ts         the request to the sheet, its wire format and settings
