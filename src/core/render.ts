@@ -275,12 +275,14 @@ export type Part =
       readonly note: string
       readonly row: Row
     }
+  | { readonly kind: 'notation' }
 
 const isBlank = (part: Part): boolean => {
   switch (part.kind) {
     case 'section':
       return part.section.name === '' && part.section.body === ''
     case 'system':
+    case 'notation':
       return false
     default:
       return part.text === ''
@@ -307,7 +309,7 @@ export const songParts = (song: Song): readonly Part[] => {
   }))
   // A tab nothing has been written into is a staff of dashes, which is nothing
   // to read; every new song has one.
-  const tab = scoreHasContent(song.tab)
+  const tabRows = scoreHasContent(song.tab)
     ? song.tab.rows.map((row): Part => ({
         kind: 'system',
         title: row.title ?? '',
@@ -315,6 +317,9 @@ export const songParts = (song: Song): readonly Part[] => {
         row,
       }))
     : []
+  // The same notes again on a staff, once the whole tab has been read through.
+  const tab: readonly Part[] =
+    tabRows.length === 0 ? [] : [...tabRows, { kind: 'notation' }]
   const parts = song.tabFirst
     ? [...header, ...tab, ...chart]
     : [...header, ...chart, ...tab]

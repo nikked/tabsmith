@@ -39,3 +39,23 @@ export const withView = (all: Views, song: string, change: View): Views => ({
   ...all,
   [song]: { ...all[song], ...change },
 })
+
+const READING_KEY = 'tabsmith.reading'
+
+/**
+ * Whether tab is read as tab or as notation. Unlike a song's size, this is
+ * how the player reads music, so one choice holds for every song on the device.
+ */
+export type Reading = 'tab' | 'notation'
+
+export const loadReading = (): Reading => {
+  try {
+    return localStorage.getItem(READING_KEY) === 'notation' ? 'notation' : 'tab'
+  } catch {
+    return 'tab'
+  }
+}
+
+export const saveReading = (value: Reading): void => {
+  localStorage.setItem(READING_KEY, value)
+}

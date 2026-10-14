@@ -795,6 +795,7 @@ src/
     edit.ts       Action, apply, step — every state transition and the undo timeline
     keymap.ts     keyToAction
     render.ts     renderScore, songParts and their helpers
+    notation.ts   the tab as notes on a treble staff, for reading it as notation
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
@@ -813,8 +814,9 @@ src/
     Sync.tsx      the Database sync dialog
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
+    Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
-  viewing.ts      how each song is shown on this device: chosen size and dense
+  viewing.ts      how songs are shown on this device: each one's size and dense, and tab or notation
   share.ts        a song in a link, and back
   sync.ts         the request to the sheet, its wire format and settings
   demo.ts         the demo song, decoded from demo.json

@@ -627,6 +627,72 @@ h1 img {
   font-family: system-ui, sans-serif;
 }
 
+/* Printed music is black on white, whatever the theme around it: a staff is
+   read the way it looks on paper. */
+.notation {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5em;
+  color: #000;
+  background: #fff;
+  border-radius: 0.3rem;
+}
+
+.practice-song .notation h4 {
+  color: #000;
+}
+
+.practice-song .notation .tab-note {
+  color: #555;
+}
+
+.notation-line {
+  display: flex;
+}
+
+.notation svg {
+  fill: currentColor;
+  stroke: currentColor;
+  overflow: visible;
+}
+
+.notation line {
+  stroke-width: 0.1;
+}
+
+.notation .stem {
+  stroke-width: 0.13;
+}
+
+.notation .flag {
+  fill: none;
+  stroke-width: 0.25;
+  stroke-linecap: round;
+}
+
+.notation .beam {
+  stroke: none;
+}
+
+.notation ellipse,
+.notation text {
+  stroke: none;
+  font-family: serif;
+}
+
+.notation .clef {
+  font-size: 9px;
+}
+
+.notation .chord-name {
+  font-family: inherit;
+  font-size: 1.6px;
+}
+
+.notation .accidental {
+  font-size: 2.2px;
+}
+
 .practice-song > p {
   margin: 0;
   color: var(--muted);

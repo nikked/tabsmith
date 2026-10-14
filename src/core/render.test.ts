@@ -493,6 +493,7 @@ describe('songParts', () => {
       tab: { ...emptyScore(), rows: [emptyRow(1, 2, 6), emptyRow(1, 2, 6)] },
     })
     expect(kinds(s)).not.toContain('system')
+    expect(kinds(s)).not.toContain('notation')
   })
 
   it('leaves out a section that holds neither a name nor a body', () => {
@@ -511,8 +512,8 @@ describe('songParts', () => {
       chart: [{ name: 'Intro', body: 'Am' }],
       tab: { ...emptyScore(), rows: [{ ...emptyRow(1, 2, 6), title: 'Riff' }] },
     })
-    expect(kinds(s)).toEqual(['section', 'system'])
-    expect(kinds({ ...s, tabFirst: true })).toEqual(['system', 'section'])
+    expect(kinds(s)).toEqual(['section', 'system', 'notation'])
+    expect(kinds({ ...s, tabFirst: true })).toEqual(['system', 'notation', 'section'])
   })
 })
 
