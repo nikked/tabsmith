@@ -55,6 +55,17 @@ export type Library = {
 export const openEntry = (library: Library): Entry =>
   library.songs.find((entry) => entry.id === library.open) ?? library.songs[0]
 
+/**
+ * HH:MM by this device's clock, spelled out rather than left to the locale,
+ * which writes 14.13 in some places.
+ */
+export const clockOf = (at: number): string => {
+  const time = new Date(at)
+  return [time.getHours(), time.getMinutes()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':')
+}
+
 export const titleOf = (entry: Entry): string =>
   entry.song.title === '' ? 'Untitled' : entry.song.title
 
