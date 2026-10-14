@@ -42,6 +42,8 @@ export type Action =
     }
   | { readonly kind: 'addBar' }
   | { readonly kind: 'removeBar' }
+  | { readonly kind: 'splitBar' }
+  | { readonly kind: 'splitRow' }
   | {
       readonly kind: 'setRowHeading'
       readonly row: number
@@ -480,6 +482,50 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       return resetDigits({
         ...withTab(state, score),
         cursor: clampCursor(score, state.cursor),
+      })
+    }
+
+    // Cut before the cursor's column, which leads the new bar, so the cursor
+    // stays on the note it was on. Refused on the first column, where the cut
+    // would leave an empty bar behind.
+    case 'splitBar': {
+      const { row, bar, column } = state.cursor
+      const columns = barAt(state.song.tab, row, bar)?.columns
+      if (columns === undefined || column === 0) return resetDigits(state)
+      return resetDigits({
+        ...withTab(
+          state,
+          mapRow(state.song.tab, row, (existing) => ({
+            ...existing,
+            bars: [
+              ...existing.bars.slice(0, bar),
+              { columns: columns.slice(0, column) },
+              { columns: columns.slice(column) },
+              ...existing.bars.slice(bar + 1),
+            ],
+          })),
+        ),
+        cursor: { ...state.cursor, bar: bar + 1, column: 0 },
+      })
+    }
+
+    // The cursor's bar and the ones after it start a new row below. The title
+    // and note stay with the row they name; the aside hangs off the closing bar
+    // line, so it moves with the last bar. Nothing to split at a row's start.
+    case 'splitRow': {
+      const { row, bar } = state.cursor
+      const existing = state.song.tab.rows[row]
+      if (existing === undefined || bar === 0) return resetDigits(state)
+      const { aside, ...heading } = existing
+      const rows = [
+        ...state.song.tab.rows.slice(0, row),
+        { ...heading, bars: existing.bars.slice(0, bar) },
+        { ...(aside === undefined ? {} : { aside }), bars: existing.bars.slice(bar) },
+        ...state.song.tab.rows.slice(row + 1),
+      ]
+      return resetDigits({
+        ...withTab(state, { ...state.song.tab, rows }),
+        cursor: { ...state.cursor, row: row + 1, bar: 0 },
       })
     }
 
