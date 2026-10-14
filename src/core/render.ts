@@ -209,10 +209,12 @@ export const sectionHeading = (section: Section): string => {
 /**
  * What each block is, for a view that sets a title or a heading apart from the
  * text under it rather than showing everything as one face. A tab system's
- * title and note come apart from its staff for the same reason. Everything but the
- * tab is passed on as typed: the chart carries chords over lyrics by the spaces
- * the writer put there, so reflowing or trimming it would destroy the only thing
- * holding a chord above its word.
+ * title and note come apart from its staff for the same reason. A section's
+ * lines keep the spaces that lead into them: the chart carries chords over
+ * lyrics by the spaces the writer put there, and they are the only thing holding
+ * a chord above its word. Blank lines between lines are the writer's own
+ * breaks and stay; blank lines before and after the text, and trailing
+ * spaces, hold nothing up and are dropped.
  */
 export type Part =
   | { readonly kind: 'tempo'; readonly text: string }
@@ -235,6 +237,13 @@ const isBlank = (part: Part): boolean => {
   }
 }
 
+const tidyBody = (body: string): string =>
+  body
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .replace(/^\n+|\n+$/g, '')
+
 /**
  * The song in reading order: the tempo, each section, and each system of the
  * tab, with the tab first when the song asks for it. The title is not a part:
@@ -242,7 +251,10 @@ const isBlank = (part: Part): boolean => {
  */
 export const songParts = (song: Song): readonly Part[] => {
   const header: readonly Part[] = [{ kind: 'tempo', text: song.tempo }]
-  const chart = song.chart.map((section): Part => ({ kind: 'section', section }))
+  const chart = song.chart.map((section): Part => ({
+    kind: 'section',
+    section: { ...section, body: tidyBody(section.body) },
+  }))
   // A tab nothing has been written into is a staff of dashes, which is nothing
   // to read; every new song has one.
   const tab = scoreHasContent(song.tab)
