@@ -193,7 +193,7 @@ const lastColumn = (score: Score, cursor: Cursor): Cursor => ({
   column: Math.max(0, columnCount(score, cursor.row, cursor.bar) - 1),
 })
 
-const moveCursor = (score: Score, cursor: Cursor, move: Move): Cursor => {
+export const moveCursor = (score: Score, cursor: Cursor, move: Move): Cursor => {
   switch (move) {
     case 'prevColumn': {
       if (cursor.column > 0) return { ...cursor, column: cursor.column - 1 }
