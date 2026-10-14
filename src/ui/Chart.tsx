@@ -1,6 +1,6 @@
-import type { KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import type { Action } from '../core/edit.ts'
-import type { Section, Song } from '../core/model.ts'
+import { SECTION_NAMES, suggestedName, type Section, type Song } from '../core/model.ts'
 
 type Props = {
   readonly song: Song
@@ -49,6 +49,28 @@ const parseRepeat = (raw: string): number | undefined => {
 export function Chart({ song, dispatch }: Props) {
   const setSection = (index: number, section: Section) =>
     dispatch({ kind: 'setSection', index, section })
+  const articles = useRef<Record<number, HTMLElement | null>>({})
+  const bodies = useRef<Record<number, HTMLTextAreaElement | null>>({})
+  const [drag, setDrag] = useState<{ readonly from: number; readonly to: number } | null>(
+    null,
+  )
+
+  // The same drop rule as the tab's rows: past every other section whose
+  // middle is above the pointer, which is the index moveSection takes.
+  const dropIndex = (from: number, y: number): number =>
+    song.chart.filter((_, index) => {
+      const node = articles.current[index]
+      if (index === from || node == null) return false
+      const box = node.getBoundingClientRect()
+      return box.top + box.height / 2 < y
+    }).length
+
+  const dropMark = (index: number): string => {
+    if (drag === null || drag.to === drag.from) return ''
+    if (index === drag.from) return ' lifted'
+    if (index !== drag.to) return ''
+    return drag.to > drag.from ? ' drop-below' : ' drop-above'
+  }
 
   return (
     <section className="chart">
@@ -69,13 +91,56 @@ export function Chart({ song, dispatch }: Props) {
         />
       </div>
 
+      <datalist id="section-names">
+        {SECTION_NAMES.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+
       {song.chart.map((section, index) => (
-        <article className="section" key={index}>
+        <article
+          className={`section${dropMark(index)}`}
+          key={index}
+          ref={(node) => {
+            articles.current[index] = node
+          }}
+        >
           <div className="section-head">
+            {song.chart.length > 1 && (
+              <button
+                type="button"
+                className="section-grip"
+                title="Drag to move this section"
+                aria-label={`Move section ${index + 1}`}
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  setDrag({ from: index, to: index })
+                }}
+                onPointerMove={(event) => {
+                  if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+                  setDrag({ from: index, to: dropIndex(index, event.clientY) })
+                }}
+                onPointerUp={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    dispatch({
+                      kind: 'moveSection',
+                      index,
+                      to: dropIndex(index, event.clientY),
+                    })
+                  }
+                  setDrag(null)
+                }}
+                onPointerCancel={() => setDrag(null)}
+              >
+                ⠿
+              </button>
+            )}
             <input
               className="section-name"
               aria-label={`Section ${index + 1} name`}
-              placeholder="Verse 1"
+              list="section-names"
+              placeholder={suggestedName(index)}
               value={section.name}
               onChange={(event) =>
                 setSection(index, { ...section, name: event.target.value })
@@ -116,6 +181,28 @@ export function Chart({ song, dispatch }: Props) {
             </button>
             <button
               type="button"
+              title="Split this section in two at the caret"
+              // Focus stays on the button, so Cmd/Ctrl+Z reaches the editor's
+              // undo rather than the body's own, which knows nothing of the split.
+              onClick={() =>
+                dispatch({
+                  kind: 'splitSection',
+                  index,
+                  at: bodies.current[index]?.selectionStart ?? 0,
+                })
+              }
+            >
+              ✂
+            </button>
+            <button
+              type="button"
+              title="Duplicate this section"
+              onClick={() => dispatch({ kind: 'duplicateSection', index })}
+            >
+              ⧉
+            </button>
+            <button
+              type="button"
               title="Add a section below"
               onClick={() => dispatch({ kind: 'addSection', after: index })}
             >
@@ -131,6 +218,9 @@ export function Chart({ song, dispatch }: Props) {
             </button>
           </div>
           <textarea
+            ref={(node) => {
+              bodies.current[index] = node
+            }}
             aria-label={`Section ${index + 1} chords`}
             spellCheck={false}
             rows={Math.max(2, section.body.split('\n').length + 1)}

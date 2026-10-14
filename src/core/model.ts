@@ -106,10 +106,23 @@ export const emptyScore = (): Score => ({
 
 export const emptySection = (name: string): Section => ({ name, body: '' })
 
+export const SECTION_NAMES = [
+  'Intro',
+  'Verse',
+  'Chorus',
+  'Bridge',
+  'Solo',
+  'Outro',
+] as const
+
+/** Most songs open on an intro and then trade verses and choruses. */
+export const suggestedName = (index: number): string =>
+  index === 0 ? 'Intro' : index % 2 === 1 ? 'Verse' : 'Chorus'
+
 export const emptySong = (): Song => ({
   title: '',
   tempo: '',
-  chart: [emptySection('Verse 1')],
+  chart: [emptySection(suggestedName(0))],
   tab: emptyScore(),
   tabFirst: false,
 })

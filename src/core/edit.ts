@@ -5,6 +5,7 @@ import {
   emptyRow,
   emptySection,
   emptySong,
+  suggestedName,
   type Bar,
   type Cell,
   type Column,
@@ -58,6 +59,8 @@ export type Action =
   | { readonly kind: 'setTitle'; readonly title: string }
   | { readonly kind: 'setTempo'; readonly tempo: string }
   | { readonly kind: 'addSection'; readonly after: number }
+  | { readonly kind: 'duplicateSection'; readonly index: number }
+  | { readonly kind: 'splitSection'; readonly index: number; readonly at: number }
   | { readonly kind: 'removeSection'; readonly index: number }
   | {
       readonly kind: 'moveSection'
@@ -596,7 +599,39 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       const at = action.after + 1
       return withChart(state, [
         ...state.song.chart.slice(0, at),
-        emptySection(''),
+        emptySection(suggestedName(at)),
+        ...state.song.chart.slice(at),
+      ])
+    }
+
+    case 'duplicateSection': {
+      const copy = state.song.chart[action.index]
+      if (copy === undefined) return state
+      const at = action.index + 1
+      return withChart(state, [
+        ...state.song.chart.slice(0, at),
+        copy,
+        ...state.song.chart.slice(at),
+      ])
+    }
+
+    /**
+     * Cut at the caret, where the body is broken in two. The line break the
+     * caret sits beside goes with the cut, so neither half starts or ends on a
+     * blank line. A cut at either end would leave an empty half, so it is refused.
+     */
+    case 'splitSection': {
+      const section = state.song.chart[action.index]
+      if (section === undefined) return state
+      if (action.at <= 0 || action.at >= section.body.length) return state
+      const at = action.index + 1
+      return withChart(state, [
+        ...state.song.chart.slice(0, action.index),
+        { ...section, body: section.body.slice(0, action.at).replace(/\n$/, '') },
+        {
+          name: suggestedName(at),
+          body: section.body.slice(action.at).replace(/^\n/, ''),
+        },
         ...state.song.chart.slice(at),
       ])
     }
