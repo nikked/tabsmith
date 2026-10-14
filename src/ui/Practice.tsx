@@ -4,6 +4,7 @@ import type { Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
 import { sectionHeading, songParts, staffText, type Part } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import { NotedLines } from './NotedLines.tsx'
 import { Toggle } from './Toggle.tsx'
 import { loadViews, saveViews, withView, type View, type Views } from '../viewing.ts'
 
@@ -121,7 +122,11 @@ const partView =
         return (
           <div key={index}>
             {part.section.name !== '' && <h3>{sectionHeading(part.section)}</h3>}
-            {part.section.body !== '' && <pre>{part.section.body}</pre>}
+            {part.section.body !== '' && (
+              <pre>
+                <NotedLines body={part.section.body} />
+              </pre>
+            )}
           </div>
         )
     }

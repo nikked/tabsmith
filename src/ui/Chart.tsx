@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import type { Action } from '../core/edit.ts'
 import { SECTION_NAMES, suggestedName, type Section, type Song } from '../core/model.ts'
+import { NotedLines } from './NotedLines.tsx'
 
 type Props = {
   readonly song: Song
@@ -51,6 +52,7 @@ export function Chart({ song, dispatch }: Props) {
     dispatch({ kind: 'setSection', index, section })
   const articles = useRef<Record<number, HTMLElement | null>>({})
   const bodies = useRef<Record<number, HTMLTextAreaElement | null>>({})
+  const mirrors = useRef<Record<number, HTMLPreElement | null>>({})
   const [drag, setDrag] = useState<{ readonly from: number; readonly to: number } | null>(
     null,
   )
@@ -217,19 +219,37 @@ export function Chart({ song, dispatch }: Props) {
               −
             </button>
           </div>
-          <textarea
-            ref={(node) => {
-              bodies.current[index] = node
-            }}
-            aria-label={`Section ${index + 1} chords`}
-            spellCheck={false}
-            rows={Math.max(2, section.body.split('\n').length + 1)}
-            value={section.body}
-            onChange={(event) =>
-              setSection(index, { ...section, body: event.target.value })
-            }
-            onKeyDown={onBodyKeyDown}
-          />
+          {/* A textarea cannot colour part of its text, so the body is drawn
+              again underneath it with the notes set apart, and the field on
+              top shows only its caret and selection. */}
+          <div className="section-body">
+            <pre
+              ref={(node) => {
+                mirrors.current[index] = node
+              }}
+              className="body-mirror"
+              aria-hidden="true"
+            >
+              <NotedLines body={section.body} />
+            </pre>
+            <textarea
+              ref={(node) => {
+                bodies.current[index] = node
+              }}
+              aria-label={`Section ${index + 1} chords`}
+              spellCheck={false}
+              rows={Math.max(2, section.body.split('\n').length + 1)}
+              value={section.body}
+              onChange={(event) =>
+                setSection(index, { ...section, body: event.target.value })
+              }
+              onKeyDown={onBodyKeyDown}
+              onScroll={(event) => {
+                const mirror = mirrors.current[index]
+                if (mirror != null) mirror.scrollLeft = event.currentTarget.scrollLeft
+              }}
+            />
+          </div>
         </article>
       ))}
     </section>
