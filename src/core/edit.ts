@@ -11,6 +11,7 @@ import {
   type Column,
   type Cursor,
   type EditorState,
+  type Key,
   type Link,
   type Row,
   type Score,
@@ -59,7 +60,9 @@ export type Action =
   | { readonly kind: 'retune'; readonly tuning: Tuning }
   | { readonly kind: 'load'; readonly song: Song }
   | { readonly kind: 'setTitle'; readonly title: string }
-  | { readonly kind: 'setTempo'; readonly tempo: string }
+  | { readonly kind: 'setBpm'; readonly bpm: number | null }
+  | { readonly kind: 'setKey'; readonly key: Key | null }
+  | { readonly kind: 'setNote'; readonly note: string }
   | { readonly kind: 'addSection'; readonly after: number }
   | { readonly kind: 'duplicateSection'; readonly index: number }
   | { readonly kind: 'splitSection'; readonly index: number; readonly at: number }
@@ -317,7 +320,9 @@ const defaultChart = (chart: readonly Section[]): boolean => {
 /** Untouched headings are not work, so clearing a song that holds none loses nothing. */
 export const songHasContent = (song: Song): boolean =>
   song.title !== '' ||
-  song.tempo !== '' ||
+  song.bpm !== null ||
+  song.key !== null ||
+  song.note !== '' ||
   !defaultChart(song.chart) ||
   scoreHasContent(song.tab)
 
@@ -636,8 +641,14 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'setTitle':
       return { ...state, song: { ...state.song, title: action.title } }
 
-    case 'setTempo':
-      return { ...state, song: { ...state.song, tempo: action.tempo } }
+    case 'setBpm':
+      return { ...state, song: { ...state.song, bpm: action.bpm } }
+
+    case 'setKey':
+      return { ...state, song: { ...state.song, key: action.key } }
+
+    case 'setNote':
+      return { ...state, song: { ...state.song, note: action.note } }
 
     case 'setTabFirst':
       return { ...state, song: { ...state.song, tabFirst: action.tabFirst } }
@@ -749,8 +760,10 @@ const typingIn = (action: Action): string | null => {
   switch (action.kind) {
     case 'setTitle':
       return 'title'
-    case 'setTempo':
-      return 'tempo'
+    case 'setBpm':
+      return 'bpm'
+    case 'setNote':
+      return 'note'
     case 'setChord':
       return `chord:${action.row}:${action.bar}:${action.column}`
     case 'setRowHeading':

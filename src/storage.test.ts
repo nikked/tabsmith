@@ -114,11 +114,13 @@ describe('encode / decode', () => {
     expect(readBack(song)).toEqual(song)
   })
 
-  it('round-trips a chart, a tempo and the tab placement', () => {
+  it('round-trips a chart, a tempo, a key, a note and the tab placement', () => {
     const song: Song = {
       ...emptySong(),
       title: 'Endless Skies',
-      tempo: '70 bpm',
+      bpm: 70,
+      key: 'F#m',
+      note: 'swing',
       tabFirst: true,
       chart: [
         { name: 'Intro', repeat: 4, body: 'A9 A4' },
@@ -130,6 +132,32 @@ describe('encode / decode', () => {
 
   it('writes something a person can read in an editor', () => {
     expect(encode(emptySong())).toContain('\n  "version": 4')
+  })
+})
+
+describe('a song saved with a free-text tempo', () => {
+  const old = (tempo: string) => {
+    const { bpm: _bpm, key: _key, note: _note, ...rest } = emptySong()
+    const result = decode(JSON.stringify({ version: 4, song: { ...rest, tempo } }))
+    return result.ok ? { bpm: result.song.bpm, note: result.song.note } : null
+  }
+
+  it('takes the bpm out of it and keeps the rest as the note', () => {
+    expect(old('87 bpm')).toEqual({ bpm: 87, note: '' })
+    expect(old('120')).toEqual({ bpm: 120, note: '' })
+    expect(old('swing, 96 BPM')).toEqual({ bpm: 96, note: 'swing' })
+  })
+
+  it('keeps text with no tempo in it as the note, numbers and all', () => {
+    expect(old('slow 6/8')).toEqual({ bpm: null, note: 'slow 6/8' })
+    expect(old('')).toEqual({ bpm: null, note: '' })
+  })
+
+  it('reads a key it does not know as no key', () => {
+    const result = decode(
+      JSON.stringify({ version: 4, song: { ...emptySong(), key: 'H' } }),
+    )
+    expect(result.ok && result.song.key).toBeNull()
   })
 })
 
@@ -216,7 +244,7 @@ describe('decode rejects', () => {
   it('a song missing its parts', () => {
     const doc = (song: unknown): string => JSON.stringify({ version: 4, song })
     expect(rejects(doc({}))).toBe('That file is not a tabsmith song.')
-    expect(rejects(doc({ ...emptySong(), tempo: 70 }))).toBeTruthy()
+    expect(rejects(doc({ ...emptySong(), bpm: '70' }))).toBeTruthy()
     expect(rejects(doc({ ...emptySong(), chart: [] }))).toBeTruthy()
     expect(rejects(doc({ ...emptySong(), tab: undefined }))).toBeTruthy()
   })

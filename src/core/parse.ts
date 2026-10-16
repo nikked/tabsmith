@@ -429,7 +429,9 @@ export const parseSong = (text: string, title = ''): Parsed => {
     ok: true,
     song: {
       title,
-      tempo: '',
+      bpm: null,
+      key: null,
+      note: '',
       chart: sections.length > 0 ? sections : [{ name: '', body: '' }],
       tab,
       tabFirst: false,

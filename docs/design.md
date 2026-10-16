@@ -111,7 +111,7 @@ type Row = {
 type Score = {
   readonly tuning: Tuning
   readonly rows: readonly Row[]
-  readonly defaultBarColumns: number    // new bars start at this width; default 12
+  readonly defaultBarColumns: number    // new bars start at this width; default 8, a bar of 4/4 in eighths
 }
 
 type Section = {
@@ -122,7 +122,9 @@ type Section = {
 
 type Song = {
   readonly title: string
-  readonly tempo: string                // free text: '70 bpm', 'slow 6/8'
+  readonly bpm: number | null
+  readonly key: Key | null              // one of the 12 major and 12 minor keys
+  readonly note: string                 // free text: 'swing feel'
   readonly chart: readonly Section[]
   readonly tab: Score
   readonly tabFirst: boolean            // tab before the chart, or after it
@@ -148,14 +150,15 @@ Notes on the model:
 - **No note duration.** A note occupies exactly one column. A "long" note is you leaving
   columns empty before the next one. `7` followed by two empty columns and `7` with a
   hypothetical duration of 3 render identically (`7----`), so duration would be data that
-  does no work.
+  does no work. Notation reads one off the room instead: each column is an eighth, so a note
+  lasts until the next one, rounded down to plain values with rests.
 - **Chords are free.** A column may hold a cell on every string at once; that is a chord, and
   it needs no representation of its own. Column width is the max across the whole column, so a
   chord stays aligned even when one of its notes carries a technique.
 - **A chord name belongs to a column**, not to a bar or a beat: it is the annotation of the
   moment the column is. Absent and empty are the same thing, so an emptied field leaves no
   `chord` key behind and never reaches the ASCII.
-- **Bars own their columns.** Default 12, add/remove per bar freely. Bars may have different
+- **Bars own their columns.** Default 8, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
 - **A row can be titled**, because a tab is usually several named parts rather than one long
   one. Vertically a row reads title, strings, chord fields, and rows stack, so `↑` and `↓` walk
@@ -273,10 +276,10 @@ songParts(song) => readonly Part[]
 sectionHeading(section) => string
 ```
 
-**A song** is `songParts`: its tempo, each section, and each system of the tab, in reading order
+**A song** is `songParts`: its bpm and key, its note, each section, and each system of the tab, in reading order
 — the tab first or last per `tabFirst` — each tagged with what it is, so Practice can set the
 section names and each tab row's title and note in the UI's face, apart from the monospace text
-under them. The song's title is not a part: Practice keeps it in its bar. A blank tempo, a
+under them. The song's title is not a part: Practice keeps it in its bar. A blank bpm and key, a blank note, a
 section with neither a name nor a body, or a tab with nothing written into it
 (`scoreHasContent`, §4) — a staff of dashes every new song has — is left out. Everything but the
 tab is passed on as typed; the chart is never reflowed, re-spaced or trimmed (§2).
@@ -482,7 +485,7 @@ and untouched headings are not work, so a song nothing has been typed into is de
 prompt.
 
 ```ts
-songHasContent(song) => boolean     // anything typed: title, tempo, chart or tab
+songHasContent(song) => boolean     // anything typed: title, bpm, key, note, chart or tab
 scoreHasContent(score) => boolean   // any note, mute, chord name or row heading
 ```
 
@@ -612,7 +615,7 @@ matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasCo
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters that stay on in this browser until
 turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
-song's tempo, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
+song's bpm and key, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
 setlists it is in. Picking a song here opens it in Practice, since a song is mostly picked to be
 played; picked in the sidebar, it opens in the editor or Practice, whichever is up. Renaming the open song goes through the editor, which is what holds
@@ -762,7 +765,7 @@ names it, and everything else syncs. Its deletion still goes up, without the son
 ## 6. Deliberately absent
 
 Named here so they don't creep in: custom tunings beyond the three presets, a capo stored with
-the song, multiple songs open at once, rhythm and time signatures, playback, accounts, and live
+the song, multiple songs open at once, time signatures other than 4/4, playback, accounts, and live
 sync between devices that are both open
 — a device picks up changes when it syncs, not the moment they are made (§5).
 
@@ -802,7 +805,7 @@ src/
     sync.ts       records, merge, mergeSetlists — newest wins per song and setlist (§5)
   ui/
     App.tsx
-    Chart.tsx     title, tempo and the sections
+    Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog

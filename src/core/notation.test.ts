@@ -4,10 +4,14 @@ import {
   chordName,
   notation,
   openPitches,
+  rhythm,
+  suggestKey,
   writtenPitch,
   type Chord,
+  type Event,
+  type Measure,
 } from './notation.ts'
-import { emptyBar, emptyScore, TUNINGS, type Bar, type Cell } from './model.ts'
+import { emptyScore, TUNINGS, type Bar, type Cell } from './model.ts'
 
 const fret = (n: number): Cell => ({ kind: 'fret', fret: n })
 
@@ -29,18 +33,83 @@ describe('openPitches', () => {
 
 describe('writtenPitch', () => {
   it('writes guitar an octave up, so open high e is the top space', () => {
-    expect(writtenPitch(64)).toEqual({ step: 7, accidental: null })
-    expect(writtenPitch(52)).toEqual({ step: 0, accidental: null })
+    expect(writtenPitch(64, 0, false)).toEqual({ step: 7, accidental: null })
+    expect(writtenPitch(52, 0, false)).toEqual({ step: 0, accidental: null })
   })
 
-  it('spells the black keys as flats', () => {
-    expect(writtenPitch(54)).toEqual({ step: 2, accidental: 'flat' })
-    expect(writtenPitch(46)).toEqual({ step: -3, accidental: 'flat' })
+  it('spells the black keys as flats or sharps outside a key', () => {
+    expect(writtenPitch(54, 0, false)).toEqual({ step: 2, accidental: 'flat' })
+    expect(writtenPitch(46, 0, false)).toEqual({ step: -3, accidental: 'flat' })
+    expect(writtenPitch(54, 0, true)).toEqual({ step: 1, accidental: 'sharp' })
+  })
+
+  // Written pitches, sounding an octave lower: F#4 is 54 here.
+  it('leaves out what the key signature already says', () => {
+    expect(writtenPitch(54, 1, true)).toEqual({ step: 1, accidental: null })
+    expect(writtenPitch(46, -2, false)).toEqual({ step: -3, accidental: null })
+  })
+
+  it('marks a natural where the key would alter the letter', () => {
+    expect(writtenPitch(53, 1, true)).toEqual({ step: 1, accidental: 'natural' })
+    expect(writtenPitch(47, -1, false)).toEqual({ step: -3, accidental: 'natural' })
+  })
+
+  it('spells a note out of the key the way the key leans', () => {
+    expect(writtenPitch(56, 2, true)).toEqual({ step: 2, accidental: 'sharp' })
+    expect(writtenPitch(54, -3, false)).toEqual({ step: 2, accidental: 'flat' })
+  })
+
+  it('uses the key letter even across an octave, E# in F# major', () => {
+    expect(writtenPitch(53, 6, true)).toEqual({ step: 0, accidental: null })
+  })
+})
+
+const q = (step: number): Chord => ({ pitches: [{ step, accidental: null }], name: null })
+const values = (measure: Measure): readonly string[] =>
+  measure.map((event: Event) => `${event.kind === 'note' ? 'n' : 'r'}${event.value}`)
+
+describe('rhythm', () => {
+  it('makes neighbours eighths and a note with room after it a quarter', () => {
+    expect(values(rhythm([q(0), q(1), q(2), null, q(3), null, null, null]))).toEqual([
+      'n1',
+      'n1',
+      'n2',
+      'n4',
+    ])
+  })
+
+  it('runs a note to the bar line', () => {
+    expect(values(rhythm([q(0), null, null, null, null, null, null, null]))).toEqual([
+      'n8',
+    ])
+  })
+
+  it('rounds a length no value has down, and rests the difference', () => {
+    expect(values(rhythm([q(0), null, null, q(1), null, null, null, null]))).toEqual([
+      'n2',
+      'r1',
+      'n4',
+      'r1',
+    ])
+    expect(values(rhythm([q(0), null, null, null, null, null, null]))).toEqual([
+      'n4',
+      'r2',
+      'r1',
+    ])
+  })
+
+  it('rests before the first note, and through a bar with none', () => {
+    expect(values(rhythm([null, null, q(0), null]))).toEqual(['r2', 'n2'])
+    expect(values(rhythm([null, null, null, null]))).toEqual(['r4'])
+  })
+
+  it('keeps where each event starts in the bar', () => {
+    expect(rhythm([null, q(0), null, null]).map((event) => event.at)).toEqual([0, 1, 3])
   })
 })
 
 describe('notation', () => {
-  it('makes a quarter of every column with a note, skipping the empty ones', () => {
+  it('times every column with a note by the room after it', () => {
     const empty = Array.from({ length: 6 }, () => null)
     const score = {
       ...emptyScore(),
@@ -48,36 +117,57 @@ describe('notation', () => {
         {
           title: 'Riff',
           note: 'let ring',
-          bars: [
-            bar(on(3, fret(4)), on(3, fret(3)), empty, on(5, fret(6))),
-            emptyBar(4, 6),
-          ],
+          bars: [bar(on(3, fret(4)), on(3, fret(3)), empty, on(5, fret(6)), empty)],
         },
       ],
     }
-    expect(notation(score)).toEqual([
+    expect(notation(score, null)).toEqual([
       {
         title: 'Riff',
         note: 'let ring',
         measures: [
           [
-            { pitches: [{ step: 2, accidental: 'flat' }], name: null },
-            { pitches: [{ step: 1, accidental: null }], name: null },
-            { pitches: [{ step: -3, accidental: 'flat' }], name: null },
+            {
+              kind: 'note',
+              chord: { pitches: [{ step: 2, accidental: 'flat' }], name: null },
+              value: 1,
+              at: 0,
+            },
+            {
+              kind: 'note',
+              chord: { pitches: [{ step: 1, accidental: null }], name: null },
+              value: 2,
+              at: 1,
+            },
+            {
+              kind: 'note',
+              chord: { pitches: [{ step: -3, accidental: 'flat' }], name: null },
+              value: 2,
+              at: 3,
+            },
           ],
-          [],
         ],
       },
     ])
   })
 
+  it('spells the notes in the song key when it has one', () => {
+    const score = { ...emptyScore(), rows: [{ bars: [bar(on(3, fret(4)))] }] }
+    const first = (key: 'E' | null) => {
+      const event = notation(score, key)[0]?.measures[0]?.[0]
+      return event?.kind === 'note' ? event.chord.pitches[0] : undefined
+    }
+    expect(first(null)).toEqual({ step: 2, accidental: 'flat' })
+    expect(first('E')).toEqual({ step: 1, accidental: null })
+  })
+
   it('stacks a column played together lowest first, names it, and leaves out mutes', () => {
     const chord = [fret(0), fret(1), fret(0), fret(2), fret(3), { kind: 'mute' } as const]
-    const [system] = notation({ ...emptyScore(), rows: [{ bars: [bar(chord)] }] })
-    expect(system?.measures[0]?.[0]?.pitches.map((pitch) => pitch.step)).toEqual([
-      -2, 0, 2, 5, 7,
-    ])
-    expect(system?.measures[0]?.[0]?.name).toBe('C')
+    const [system] = notation({ ...emptyScore(), rows: [{ bars: [bar(chord)] }] }, null)
+    const event = system?.measures[0]?.[0]
+    const played = event?.kind === 'note' ? event.chord : undefined
+    expect(played?.pitches.map((pitch) => pitch.step)).toEqual([-2, 0, 2, 5, 7])
+    expect(played?.name).toBe('C')
   })
 })
 
@@ -119,11 +209,15 @@ describe('chordName', () => {
 })
 
 describe('a named chord on the staff', () => {
+  const chordIn = (cells: readonly (Cell | null)[]): Chord | undefined => {
+    const [system] = notation({ ...emptyScore(), rows: [{ bars: [bar(cells)] }] }, null)
+    const event = system?.measures[0]?.[0]
+    return event?.kind === 'note' ? event.chord : undefined
+  }
+
   it('is spelled in its key, with one head for two strings on the same note', () => {
     // Open B major barred at the 2nd fret: x24442, so F# and D# not Gb and Eb.
-    const b = [fret(2), fret(4), fret(4), fret(4), fret(2), null]
-    const [system] = notation({ ...emptyScore(), rows: [{ bars: [bar(b)] }] })
-    const chord = system?.measures[0]?.[0]
+    const chord = chordIn([fret(2), fret(4), fret(4), fret(4), fret(2), null])
     expect(chord?.name).toBe('B')
     expect(chord?.pitches.map((pitch) => pitch.accidental)).toEqual([
       null,
@@ -133,34 +227,87 @@ describe('a named chord on the staff', () => {
       'sharp',
     ])
 
-    const doubled = [fret(0), fret(0), fret(0), fret(2), fret(2), fret(0)]
-    const [em] = notation({ ...emptyScore(), rows: [{ bars: [bar(doubled)] }] })
-    expect(em?.measures[0]?.[0]?.pitches).toHaveLength(6)
-    const unison = [fret(0), fret(5), null, null, null, null]
-    const [twice] = notation({ ...emptyScore(), rows: [{ bars: [bar(unison)] }] })
-    expect(twice?.measures[0]?.[0]?.pitches).toHaveLength(1)
+    expect(
+      chordIn([fret(0), fret(0), fret(0), fret(2), fret(2), fret(0)])?.pitches,
+    ).toHaveLength(6)
+    expect(chordIn([fret(0), fret(5), null, null, null, null])?.pitches).toHaveLength(1)
   })
 })
 
 describe('beamGroups', () => {
-  const note: Chord = { pitches: [{ step: 0, accidental: null }], name: null }
-  const chord: Chord = {
-    pitches: [
-      { step: 0, accidental: null },
-      { step: 2, accidental: null },
-    ],
-    name: null,
-  }
+  const note = (value: 1 | 2, at: number): Event => ({
+    kind: 'note',
+    chord: q(0),
+    value,
+    at,
+  })
+  const rest = (at: number): Event => ({ kind: 'rest', value: 1, at })
 
-  it('beams a run of single notes four to a group, the rest after', () => {
-    expect(beamGroups(Array.from({ length: 6 }, () => note))).toEqual([
+  it('beams eighths side by side, never across the middle of the bar', () => {
+    const run = Array.from({ length: 6 }, (_, at) => note(1, at))
+    expect(beamGroups(run)).toEqual([
       [0, 1, 2, 3],
       [4, 5],
     ])
   })
 
-  it('keeps quarters for a beat or less, or anything with a chord in it', () => {
-    expect(beamGroups(Array.from({ length: 4 }, () => note))).toBeNull()
-    expect(beamGroups([note, note, chord, note, note])).toBeNull()
+  it('breaks a group at a rest or a longer note, flagging a lone eighth', () => {
+    expect(beamGroups([note(1, 0), rest(1), note(1, 2), note(2, 3), note(1, 5)])).toEqual(
+      [[0], [2], [4]],
+    )
+  })
+})
+
+describe('suggestKey', () => {
+  const scoreOf = (...frets: readonly number[]) => ({
+    ...emptyScore(),
+    rows: [{ bars: [bar(...frets.map((n) => on(0, fret(n))))] }],
+  })
+
+  it('finds the major scale the notes fit, on the top string', () => {
+    // E F# G# A B C# D#: E major.
+    expect(suggestKey(scoreOf(0, 2, 4, 5, 7, 9, 11, 0))).toBe('E')
+  })
+
+  it('takes the relative minor when its tonic is played more', () => {
+    // A B C D E, mostly A: A minor rather than C major.
+    expect(suggestKey(scoreOf(5, 7, 8, 10, 0, 5, 5))).toBe('Am')
+  })
+
+  it('prefers fewer sharps or flats on a tie, and nothing for no notes', () => {
+    expect(suggestKey(scoreOf(3, 8))).toBe('C')
+    expect(suggestKey(emptyScore())).toBeNull()
+  })
+})
+
+describe('measure accidentals', () => {
+  it.each([
+    { key: 'G' as const, frets: [1, 2, 2], want: ['natural', 'sharp', null] },
+    { key: 'F' as const, frets: [7, 6, 6], want: ['natural', 'flat', null] },
+    { key: 'C' as const, frets: [6, 7, 7], want: ['flat', 'natural', null] },
+  ])('restores the alteration in $key after a chromatic note', ({ key, frets, want }) => {
+    const columns = frets.map((n) => on(0, fret(n)))
+    const score = { ...emptyScore(), rows: [{ bars: [bar(...columns)] }] }
+    const notes = notation(score, key)[0]?.measures[0]?.filter(
+      (event) => event.kind === 'note',
+    )
+    expect(notes?.map((event) => event.chord.pitches[0]?.accidental)).toEqual(want)
+  })
+
+  it('resets accidentals at the bar line', () => {
+    const score = {
+      ...emptyScore(),
+      rows: [{ bars: [bar(on(0, fret(1))), bar(on(0, fret(2)))] }],
+    }
+    const measures = notation(score, 'G')[0]?.measures
+    expect(
+      measures?.map((measure) =>
+        measure.flatMap((event) =>
+          event.kind === 'note'
+            ? event.chord.pitches.map((pitch) => pitch.accidental)
+            : [],
+        ),
+      ),
+    ).toEqual([['natural'], [null]])
   })
 })

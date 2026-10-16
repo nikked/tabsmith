@@ -12,6 +12,7 @@ import {
   type Entry,
   type Library,
 } from '../core/library.ts'
+import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Menu, MenuChecks, MenuItems } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -305,8 +306,10 @@ export function SongsPage(props: Props) {
                     onClick={() => onOpen(entry.id, null)}
                   >
                     <span className="song-title">{title}</span>
-                    {entry.song.tempo !== '' && (
-                      <span className="song-tempo">{entry.song.tempo}</span>
+                    {songFacts(entry.song).length > 0 && (
+                      <span className="song-facts">
+                        {songFacts(entry.song).join(' · ')}
+                      </span>
                     )}
                   </button>
                   <span className="song-setlists">

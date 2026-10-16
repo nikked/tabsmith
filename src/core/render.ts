@@ -267,7 +267,7 @@ export const trimScore = (score: Score): Score => ({
  * spaces, hold nothing up and are dropped.
  */
 export type Part =
-  | { readonly kind: 'tempo'; readonly text: string }
+  | { readonly kind: 'facts'; readonly facts: readonly string[] }
   | { readonly kind: 'section'; readonly section: Section }
   | {
       readonly kind: 'system'
@@ -284,8 +284,8 @@ const isBlank = (part: Part): boolean => {
     case 'system':
     case 'notation':
       return false
-    default:
-      return part.text === ''
+    case 'facts':
+      return part.facts.length === 0
   }
 }
 
@@ -296,13 +296,24 @@ const tidyBody = (body: string): string =>
     .join('\n')
     .replace(/^\n+|\n+$/g, '')
 
+/** What a player wants to know before counting in: '87 bpm', 'Am'. */
+export const songFacts = (song: Song): readonly string[] => [
+  ...(song.bpm === null ? [] : [`${song.bpm} bpm`]),
+  ...(song.key === null ? [] : [song.key]),
+]
+
 /**
- * The song in reading order: the tempo, each section, and each system of the
+ * The song in reading order: its tempo, key and note, each section, and each system of the
  * tab, with the tab first when the song asks for it. The title is not a part:
  * Practice keeps it in its bar, always in sight, rather than above the song.
  */
 export const songParts = (song: Song): readonly Part[] => {
-  const header: readonly Part[] = [{ kind: 'tempo', text: song.tempo }]
+  const header: readonly Part[] = [
+    {
+      kind: 'facts',
+      facts: [...songFacts(song), ...(song.note === '' ? [] : [song.note])],
+    },
+  ]
   const chart = song.chart.map((section): Part => ({
     kind: 'section',
     section: { ...section, body: tidyBody(section.body) },

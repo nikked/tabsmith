@@ -67,12 +67,12 @@ describe('renderScore', () => {
   it('renders the default score as one row of two bars', () => {
     expect(renderScore(emptyScore())).toBe(
       lines(
-        'e|-----------------------|-----------------------|',
-        'B|-----------------------|-----------------------|',
-        'G|-----------------------|-----------------------|',
-        'D|-----------------------|-----------------------|',
-        'A|-----------------------|-----------------------|',
-        'E|-----------------------|-----------------------|',
+        'e|---------------|---------------|',
+        'B|---------------|---------------|',
+        'G|---------------|---------------|',
+        'D|---------------|---------------|',
+        'A|---------------|---------------|',
+        'E|---------------|---------------|',
       ),
     )
   })
@@ -429,11 +429,13 @@ describe('songParts', () => {
   const song = (parts: Partial<Song>): Song => ({ ...emptySong(), ...parts })
   const kinds = (s: Song) => songParts(s).map((part) => part.kind)
 
-  it('leads with the tempo and skips it when blank, leaving the title to the page', () => {
-    expect(songParts(song({ title: 'Endless Skies', tempo: '70 bpm' }))[0]).toEqual({
-      kind: 'tempo',
-      text: '70 bpm',
-    })
+  it('leads with the tempo, key and note, skipping them when blank, leaving the title to the page', () => {
+    expect(
+      songParts(
+        song({ title: 'Endless Skies', bpm: 70, key: 'Am', note: 'swing' }),
+      ).slice(0, 1),
+    ).toEqual([{ kind: 'facts', facts: ['70 bpm', 'Am', 'swing'] }])
+    expect(songParts(song({ key: 'Eb' }))[0]).toEqual({ kind: 'facts', facts: ['Eb'] })
     expect(kinds(song({ title: 'Endless Skies' }))[0]).toBe('section')
   })
 

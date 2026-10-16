@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { scoreHasContent } from '../core/edit.ts'
-import type { Score, Song, Spacing } from '../core/model.ts'
+import type { Key, Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
 import {
   sectionHeading,
@@ -10,7 +10,7 @@ import {
   type Part,
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
-import { notation } from '../core/notation.ts'
+import { FIFTHS, notation } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -127,11 +127,19 @@ const overflows = (page: HTMLElement): boolean =>
   [...page.querySelectorAll('pre')].some((block) => block.scrollWidth > block.clientWidth)
 
 const partView =
-  (tab: Score, spacing: Spacing, columns: number, width: number) =>
+  (tab: Score, key: Key | null, spacing: Spacing, columns: number, width: number) =>
   (part: Part, index: number) => {
     switch (part.kind) {
-      case 'tempo':
-        return <p key={index}>{part.text}</p>
+      case 'facts':
+        return (
+          <p key={index} className="facts">
+            {part.facts.map((fact, i) => (
+              <span key={i} className="chip">
+                {fact}
+              </span>
+            ))}
+          </p>
+        )
       case 'system':
         return (
           <div key={index}>
@@ -151,7 +159,14 @@ const partView =
           </div>
         )
       case 'notation':
-        return <Notation key={index} systems={notation(tab)} width={width} />
+        return (
+          <Notation
+            key={index}
+            systems={notation(tab, key)}
+            width={width}
+            fifths={key === null ? 0 : FIFTHS[key]}
+          />
+        )
       case 'section':
         return (
           <div key={index}>
@@ -309,7 +324,8 @@ export function Practice({
     setFit({ step: FITS.largest, settled: false })
   }
 
-  const tab = trimScore(song.tab)
+  // Notation reads durations from columns, including trailing space and rest bars.
+  const tab = asNotation ? song.tab : trimScore(song.tab)
 
   const step = chosen ?? fit.step
   const scale = STEPS[step] ?? 1
@@ -499,7 +515,7 @@ export function Practice({
           .filter((part) =>
             asNotation ? part.kind !== 'system' : part.kind !== 'notation',
           )
-          .map(partView(tab, spacing, columns, widthEm))}
+          .map(partView(tab, song.key, spacing, columns, widthEm))}
       </div>
     </section>
   )

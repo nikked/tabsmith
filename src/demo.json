@@ -2,7 +2,7 @@
   "version": 4,
   "song": {
     "title": "Slow Machine (Demo)",
-    "tempo": "70 bpm",
+    "bpm": 70,
     "tabFirst": false,
     "chart": [
       {

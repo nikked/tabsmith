@@ -1,12 +1,28 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import type { Action } from '../core/edit.ts'
-import { SECTION_NAMES, suggestedName, type Section, type Song } from '../core/model.ts'
+import {
+  KEYS,
+  SECTION_NAMES,
+  suggestedName,
+  type Key,
+  type Section,
+  type Song,
+} from '../core/model.ts'
+import { suggestKey } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
 
 type Props = {
   readonly song: Song
   readonly dispatch: (action: Action) => void
 }
+
+/** Digits only, and nothing typed or a zero is no tempo at all. */
+const bpmOf = (text: string): number | null => {
+  const bpm = Number(text.replace(/\D/g, '').slice(0, 3))
+  return bpm > 0 ? bpm : null
+}
+
+const keyOf = (value: string): Key | null => KEYS.find((key) => key === value) ?? null
 
 /**
  * One is allowed through even though it means nothing, because it is the first
@@ -53,6 +69,7 @@ export function Chart({ song, dispatch }: Props) {
   const articles = useRef<Record<number, HTMLElement | null>>({})
   const bodies = useRef<Record<number, HTMLTextAreaElement | null>>({})
   const mirrors = useRef<Record<number, HTMLPreElement | null>>({})
+  const suggested = suggestKey(song.tab)
   const [drag, setDrag] = useState<{ readonly from: number; readonly to: number } | null>(
     null,
   )
@@ -84,13 +101,58 @@ export function Chart({ song, dispatch }: Props) {
           value={song.title}
           onChange={(event) => dispatch({ kind: 'setTitle', title: event.target.value })}
         />
-        <input
-          className="tempo"
-          aria-label="Tempo"
-          placeholder="70 bpm"
-          value={song.tempo}
-          onChange={(event) => dispatch({ kind: 'setTempo', tempo: event.target.value })}
-        />
+        <div className="facts">
+          <label className="chip bpm">
+            <input
+              aria-label="Tempo in bpm"
+              inputMode="numeric"
+              placeholder="70"
+              value={song.bpm ?? ''}
+              onChange={(event) =>
+                dispatch({ kind: 'setBpm', bpm: bpmOf(event.target.value) })
+              }
+            />
+            bpm
+          </label>
+          <span className="chip select">
+            <select
+              aria-label="Key"
+              value={song.key ?? ''}
+              onChange={(event) =>
+                dispatch({ kind: 'setKey', key: keyOf(event.target.value) })
+              }
+            >
+              <option value="">No key</option>
+              {KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {key}
+                </option>
+              ))}
+            </select>
+          </span>
+          {song.key === null && suggested !== null && (
+            <button
+              type="button"
+              className="chip suggest-key"
+              title="Suggested from the notes in the tab"
+              onClick={() => dispatch({ kind: 'setKey', key: suggested })}
+            >
+              Use {suggested}?
+            </button>
+          )}
+          <label className="chip">
+            <input
+              aria-label="Song note"
+              placeholder="Note"
+              // An input does not grow with its text, so the pill is sized to it.
+              size={Math.max(song.note.length, 4)}
+              value={song.note}
+              onChange={(event) =>
+                dispatch({ kind: 'setNote', note: event.target.value })
+              }
+            />
+          </label>
+        </div>
       </div>
 
       <datalist id="section-names">
