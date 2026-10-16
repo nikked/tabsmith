@@ -42,8 +42,7 @@ it('preserves note duration and rest bars when reading notation', () => {
   const html = renderToStaticMarkup(
     <Practice song={song} songId="s" onLeave={() => {}} />,
   )
-  // A whole note has no stem; a note cut short by trimming would have one.
-  expect(html).not.toContain('class="stem"')
-  // The empty bar is still there, as a bar of rest.
+  expect(html).toContain('\uE0A2') // Whole note.
+  expect(html).toContain('\uE4E3') // Whole rest.
   expect(html.match(/class="measure-end"/g)).toHaveLength(2)
 })

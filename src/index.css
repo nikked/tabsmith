@@ -729,44 +729,13 @@ h1 img {
   stroke-width: 0.13;
 }
 
-.notation .flag {
-  fill: none;
-  stroke-width: 0.25;
-  stroke-linecap: round;
-}
-
 .notation .beam {
   stroke: none;
 }
 
-.notation ellipse,
 .notation text {
   stroke: none;
   font-family: serif;
-}
-
-.notation ellipse.open {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 0.18;
-}
-
-.notation .rest {
-  stroke: none;
-}
-
-.notation .rest-stroke {
-  fill: none;
-  stroke-width: 0.3;
-  stroke-linejoin: round;
-}
-
-.notation .rest-stroke.thin {
-  stroke-width: 0.15;
-}
-
-.notation .clef {
-  font-size: 9px;
 }
 
 .notation .chord-name {
@@ -774,12 +743,19 @@ h1 img {
   font-size: 1.6px;
 }
 
-.notation .accidental {
-  font-size: 2.2px;
+/* Clef, noteheads, flags, accidentals and rests: a subset of Bravura, renamed
+   as its licence asks (fonts/OFL.txt). Blocked rather than swapped while it
+   loads, as no fallback font has these code points. */
+@font-face {
+  font-family: 'Tabsmith Notation';
+  src: url('./fonts/notation.woff2') format('woff2');
+  font-display: block;
 }
 
-.notation .key-flat {
-  font-size: 2.85px;
+/* Bravura's em is four staff spaces, and the staff is drawn in staff spaces. */
+.notation .music {
+  font-family: 'Tabsmith Notation';
+  font-size: 4px;
 }
 
 .notation .ottava {
