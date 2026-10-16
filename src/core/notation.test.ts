@@ -4,6 +4,7 @@ import {
   chordName,
   notation,
   openPitches,
+  placeOctaves,
   rhythm,
   suggestKey,
   writtenPitch,
@@ -64,7 +65,11 @@ describe('writtenPitch', () => {
   })
 })
 
-const q = (step: number): Chord => ({ pitches: [{ step, accidental: null }], name: null })
+const q = (step: number): Chord => ({
+  pitches: [{ step, accidental: null }],
+  name: null,
+  ottava: null,
+})
 const values = (measure: Measure): readonly string[] =>
   measure.map((event: Event) => `${event.kind === 'note' ? 'n' : 'r'}${event.value}`)
 
@@ -129,19 +134,31 @@ describe('notation', () => {
           [
             {
               kind: 'note',
-              chord: { pitches: [{ step: 2, accidental: 'flat' }], name: null },
+              chord: {
+                pitches: [{ step: 2, accidental: 'flat' }],
+                name: null,
+                ottava: null,
+              },
               value: 1,
               at: 0,
             },
             {
               kind: 'note',
-              chord: { pitches: [{ step: 1, accidental: null }], name: null },
+              chord: {
+                pitches: [{ step: 1, accidental: null }],
+                name: null,
+                ottava: null,
+              },
               value: 2,
               at: 1,
             },
             {
               kind: 'note',
-              chord: { pitches: [{ step: -3, accidental: 'flat' }], name: null },
+              chord: {
+                pitches: [{ step: -3, accidental: 'flat' }],
+                name: null,
+                ottava: null,
+              },
               value: 2,
               at: 3,
             },
@@ -159,6 +176,24 @@ describe('notation', () => {
     }
     expect(first(null)).toEqual({ step: 2, accidental: 'flat' })
     expect(first('E')).toEqual({ step: 1, accidental: null })
+  })
+
+  it('runs a stretch under 8va over the bar line, keeping each bar its own', () => {
+    // Top string: the 17th fret is past three ledger lines up, the 5th on the first.
+    const high = on(0, fret(17))
+    const score = {
+      ...emptyScore(),
+      rows: [{ bars: [bar(on(0, fret(5)), high), bar(on(0, fret(5)), high)] }],
+    }
+    const [system] = notation(score, null)
+    expect(
+      system?.measures.map((measure) =>
+        measure.map((event) => (event.kind === 'note' ? event.chord.ottava : 'rest')),
+      ),
+    ).toEqual([
+      [null, '8va'],
+      ['8va', '8va'],
+    ])
   })
 
   it('stacks a column played together lowest first, names it, and leaves out mutes', () => {
@@ -231,6 +266,63 @@ describe('a named chord on the staff', () => {
       chordIn([fret(0), fret(0), fret(0), fret(2), fret(2), fret(0)])?.pitches,
     ).toHaveLength(6)
     expect(chordIn([fret(0), fret(5), null, null, null, null])?.pitches).toHaveLength(1)
+  })
+})
+
+describe('placeOctaves', () => {
+  const at = (...steps: readonly number[]): Chord => ({
+    pitches: steps.map((step) => ({ step, accidental: null })),
+    name: null,
+    ottava: null,
+  })
+  const marks = (chords: readonly (Chord | null)[]) =>
+    placeOctaves(chords).map((chord) => chord?.ottava ?? '-')
+
+  it('writes a stretch from one far note to another an octave nearer', () => {
+    expect(placeOctaves([at(14, 16), at(16)])).toEqual([
+      { pitches: at(7, 9).pitches, name: null, ottava: '8va' },
+      { pitches: at(9).pitches, name: null, ottava: '8va' },
+    ])
+    expect(placeOctaves([at(-6), at(-8)]).map((chord) => chord?.pitches)).toEqual([
+      at(1).pitches,
+      at(-1).pitches,
+    ])
+  })
+
+  it('leaves a lone far note with its ledger lines', () => {
+    expect(marks([at(17), at(11), at(13), at(11)])).toEqual(['-', '-', '-', '-'])
+  })
+
+  it('leaves a stretch that never climbs past the third ledger line', () => {
+    expect(marks([at(10), at(14), at(15), at(14), at(15)])).toEqual([
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+    ])
+    expect(marks([at(-6), at(-7)])).toEqual(['-', '-'])
+  })
+
+  it('carries the stretch over the notes between two far ones, and over empty columns', () => {
+    expect(marks([at(14), null, at(9), at(16)])).toEqual(['8va', '-', '8va', '8va'])
+    expect(marks([at(-6), at(0), at(-8)])).toEqual(['8vb', '8vb', '8vb'])
+  })
+
+  it('takes in notes two ledger lines out on either side, and no nearer ones', () => {
+    expect(marks([at(11), at(12), at(15), at(17), at(13), at(12), at(10)])).toEqual([
+      '-',
+      '8va',
+      '8va',
+      '8va',
+      '8va',
+      '8va',
+      '-',
+    ])
+  })
+
+  it('breaks the stretch at a note that would not read an octave nearer', () => {
+    expect(marks([at(16), at(4), at(16)])).toEqual(['-', '-', '-'])
   })
 })
 

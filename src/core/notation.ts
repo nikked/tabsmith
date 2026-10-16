@@ -10,7 +10,20 @@ export type Accidental = 'flat' | 'sharp' | 'natural'
 export type Pitch = { readonly step: number; readonly accidental: Accidental | null }
 
 /** The notes of one tab column, lowest first, and the chord they make when they make one. */
-export type Chord = { readonly pitches: readonly Pitch[]; readonly name: string | null }
+/**
+ * A chord too far above or below the staff is written an octave nearer and
+ * marked to be played where it sounds: 8va up, 8vb down.
+ */
+export type Ottava = '8va' | '8vb' | null
+
+/** A stretch moved an octave nearer, one way or the other. */
+type Shift = Exclude<Ottava, null>
+
+export type Chord = {
+  readonly pitches: readonly Pitch[]
+  readonly name: string | null
+  readonly ottava: Ottava
+}
 
 /** A note value in eighths: an eighth, a quarter, a half or a whole. */
 export type Value = 1 | 2 | 4 | 8
@@ -293,7 +306,100 @@ const chordOf = (
       .sort((a, b) => a.step - b.step)
       .filter((pitch, i, all) => i === 0 || !sameNote(pitch, all[i - 1] ?? pitch)),
     name: chordName(sounding),
+    ottava: null,
   }
+}
+
+const lowest = (chord: Chord): number => chord.pitches[0]?.step ?? 0
+const highest = (chord: Chord): number => chord.pitches.at(-1)?.step ?? 0
+
+// Three ledger lines out is where a note stops reading at a glance: the third
+// line above the staff, and the third below it.
+const far: Readonly<Record<Shift, (chord: Chord) => boolean>> = {
+  '8va': (chord) => lowest(chord) >= 14,
+  '8vb': (chord) => highest(chord) <= -6,
+}
+
+// A note between two far ones still goes in with them if, an octave nearer, it
+// needs no more than one ledger line on the other side of the staff.
+const fits: Readonly<Record<Shift, (chord: Chord) => boolean>> = {
+  '8va': (chord) => lowest(chord) - 7 >= -2,
+  '8vb': (chord) => highest(chord) + 7 <= 10,
+}
+
+// Two ledger lines out: next to a stretch, a note this far goes in with it.
+const near: Readonly<Record<Shift, (chord: Chord) => boolean>> = {
+  '8va': (chord) => lowest(chord) >= 12,
+  '8vb': (chord) => highest(chord) <= -4,
+}
+
+// Four ledger lines out: a stretch that never gets this far reads well enough
+// where it is, so it is left alone.
+const peaks: Readonly<Record<Shift, (chord: Chord) => boolean>> = {
+  '8va': (chord) => highest(chord) >= 16,
+  '8vb': (chord) => lowest(chord) <= -8,
+}
+
+const OCTAVE: Readonly<Record<Shift, number>> = { '8va': -7, '8vb': 7 }
+
+type Placed = { readonly chord: Chord; readonly i: number }
+
+/**
+ * The notes of a row, in order, with every stretch that opens and closes on a
+ * note three ledger lines out, and climbs to four somewhere, written an octave
+ * nearer under 8va or 8vb. A lone note that far keeps its ledger lines. What
+ * lies between goes in too, as long as each note still reads moved; one that
+ * does not breaks the stretch. Notes two ledger lines out just before or after
+ * it go in with it. Empty columns are kept as they are.
+ */
+export const placeOctaves = (
+  chords: readonly (Chord | null)[],
+): readonly (Chord | null)[] => {
+  const marked = (ottava: Shift): ReadonlySet<number> => {
+    const notes = chords.flatMap((chord, i): readonly Placed[] =>
+      chord === null ? [] : [{ chord, i }],
+    )
+    // A note that would not read moved splits the row into stretches that can.
+    const segments = notes.reduce<readonly (readonly Placed[])[]>(
+      (all, note) =>
+        fits[ottava](note.chord)
+          ? [...all.slice(0, -1), [...(all.at(-1) ?? []), note]]
+          : [...all, []],
+      [[]],
+    )
+    return new Set(
+      segments.flatMap((segment) => {
+        const farOut = segment.flatMap((note, k) => (far[ottava](note.chord) ? [k] : []))
+        const first = farOut[0]
+        const last = farOut.at(-1)
+        if (first === undefined || last === undefined || first === last) return []
+        if (!segment.slice(first, last + 1).some((note) => peaks[ottava](note.chord))) {
+          return []
+        }
+        const isNear = (note: Placed) => near[ottava](note.chord)
+        const from = segment.slice(0, first).findLastIndex((note) => !isNear(note)) + 1
+        const after = segment.slice(last + 1).findIndex((note) => !isNear(note))
+        const to = after === -1 ? segment.length : last + 1 + after
+        return segment.slice(from, to).map((note) => note.i)
+      }),
+    )
+  }
+  const up = marked('8va')
+  const down = marked('8vb')
+  const ottavaAt = (i: number): Ottava => (up.has(i) ? '8va' : down.has(i) ? '8vb' : null)
+  return chords.map((chord, i) => {
+    const ottava = ottavaAt(i)
+    return chord === null || ottava === null
+      ? chord
+      : {
+          ...chord,
+          pitches: chord.pitches.map((pitch) => ({
+            ...pitch,
+            step: pitch.step + OCTAVE[ottava],
+          })),
+          ottava,
+        }
+  })
 }
 
 const VALUES: readonly Value[] = [8, 4, 2, 1]
@@ -349,18 +455,30 @@ const measureAccidentals = (
 export const notation = (score: Score, key: Key | null): readonly System[] => {
   const open = openPitches(score.tuning)
   const fifths = key === null ? null : FIFTHS[key]
-  return score.rows.map((row) => ({
-    title: row.title ?? '',
-    note: row.note ?? '',
-    measures: row.bars.map((bar) =>
-      rhythm(
-        measureAccidentals(
-          bar.columns.map((column) => chordOf(column, open, fifths)),
-          fifths ?? 0,
+  return score.rows.map((row) => {
+    // Placed across the whole row, so a stretch under 8va can run over a bar line.
+    const placed = placeOctaves(
+      row.bars.flatMap((bar) =>
+        bar.columns.map((column) => chordOf(column, open, fifths)),
+      ),
+    )
+    const starts = row.bars.reduce<readonly number[]>(
+      (at, bar) => [...at, (at.at(-1) ?? 0) + bar.columns.length],
+      [0],
+    )
+    return {
+      title: row.title ?? '',
+      note: row.note ?? '',
+      measures: row.bars.map((_, b) =>
+        rhythm(
+          measureAccidentals(
+            placed.slice(starts[b] ?? 0, starts[b + 1] ?? placed.length),
+            fifths ?? 0,
+          ),
         ),
       ),
-    ),
-  }))
+    }
+  })
 }
 
 const HALF_BAR = 4

@@ -3,6 +3,7 @@ import {
   type Accidental,
   type Event,
   type Measure,
+  type Ottava,
   type Pitch,
   type System,
   type Value,
@@ -24,6 +25,8 @@ const STEM = 3.5
 const PAD = 2
 const NAME = 1.6
 const NAME_ROOM = 2.5
+const OTTAVA_ROOM = 2
+const OTTAVA_MARK = 2.4
 
 /**
  * The room one note or rest takes across the staff, an eighth a little less
@@ -176,7 +179,9 @@ const stemDirections = (measure: Measure): readonly boolean[] => {
  * out to its furthest head, stem or beam and no further, with room for chord
  * names on top when there are any.
  */
-const reach = (system: System): { readonly above: number; readonly below: number } => {
+type Reach = { readonly above: number; readonly below: number; readonly named: boolean }
+
+const reach = (system: System): Reach => {
   const extents = system.measures.flatMap((measure) => {
     const ups = stemDirections(measure)
     return measure.flatMap((event, i) => {
@@ -191,12 +196,16 @@ const reach = (system: System): { readonly above: number; readonly below: number
   })
   const top = Math.min(0, ...extents.map((extent) => extent.top))
   const bottom = Math.max(4, ...extents.map((extent) => extent.bottom))
-  const named = system.measures
+  const notes = system.measures
     .flat()
-    .some((event) => event.kind === 'note' && event.chord.name !== null)
+    .flatMap((event) => (event.kind === 'note' ? [event.chord] : []))
+  const named = notes.some((chord) => chord.name !== null)
+  const up = notes.some((chord) => chord.ottava === '8va')
+  const down = notes.some((chord) => chord.ottava === '8vb')
   return {
-    above: -top + 0.5 + (named ? NAME_ROOM : 0),
-    below: bottom - 4 + 0.5,
+    above: -top + 0.5 + (named ? NAME_ROOM : 0) + (up ? OTTAVA_ROOM : 0),
+    below: bottom - 4 + 0.5 + (down ? OTTAVA_ROOM : 0),
+    named,
   }
 }
 
@@ -220,7 +229,9 @@ const stemX = (x: number, up: boolean): number => (up ? x + 0.6 : x - 0.6)
 
 /** Where a stem ends when nothing else decides it: a stem's length past the furthest head. */
 const ownTip = (pitches: Pitches, up: boolean): number =>
-  up ? yOf(pitches.at(-1)?.step ?? 0) - STEM : yOf(pitches[0]?.step ?? 0) + STEM
+  up
+    ? Math.min(yOf(pitches.at(-1)?.step ?? 0) - STEM, 2)
+    : Math.max(yOf(pitches[0]?.step ?? 0) + STEM, 2)
 
 /**
  * A note or chord: its heads, open for a half or a whole, and a stem out to
@@ -378,18 +389,49 @@ function Beamed({
   )
 }
 
+type Run = { readonly ottava: '8va' | '8vb'; readonly from: number; readonly to: number }
+
+/** Notes under one 8va or 8vb, rests between them and all, so each run gets one bracket. */
+const ottavaRuns = (measure: Measure): readonly Run[] =>
+  measure.reduce<readonly Run[]>((runs, event, i) => {
+    const ottava = event.kind === 'note' ? event.chord.ottava : null
+    if (ottava === null) return runs
+    const last = runs.at(-1)
+    return last !== undefined &&
+      last.ottava === ottava &&
+      measure.slice(last.to + 1, i).every((between) => between.kind === 'rest')
+      ? [...runs.slice(0, -1), { ...last, to: i }]
+      : [...runs, { ottava, from: i, to: i }]
+  }, [])
+
+const firstNote = (measure: Measure): number =>
+  measure.findIndex((event) => event.kind === 'note')
+const lastNote = (measure: Measure): number =>
+  measure.findLastIndex((event) => event.kind === 'note')
+
+const ottavaOf = (measure: Measure, i: number): Ottava => {
+  const event = measure[i]
+  return event?.kind === 'note' ? event.chord.ottava : null
+}
+
+/**
+ * The ottava the measures either side of this one on its line leave off and
+ * pick up with, so a bracket carries over a bar line rather than starting again.
+ */
+type Neighbours = { readonly before: Ottava; readonly after: Ottava }
+
 function MeasureStaff({
   piece,
   first,
   fifths,
-  above,
-  below,
+  reach: { above, below, named },
+  neighbours: { before, after },
 }: {
   readonly piece: Piece
   readonly first: boolean
   readonly fifths: number
-  readonly above: number
-  readonly below: number
+  readonly reach: Reach
+  readonly neighbours: Neighbours
 }) {
   const { measure, closed } = piece
   const { xs, width: notes } = layout(measure, first, fifths)
@@ -459,6 +501,37 @@ function MeasureStaff({
           </text>
         ) : null,
       )}
+      {ottavaRuns(measure).map(({ ottava, from, to }) => {
+        const carriedIn = from === firstNote(measure) && before === ottava
+        const carriedOn = to === lastNote(measure) && after === ottava
+        const start = carriedIn ? 0 : (xs[from] ?? 0) - 0.8
+        const line = carriedIn ? 0 : start + OTTAVA_MARK
+        const end = carriedOn ? width : (xs[to] ?? 0) + 0.8
+        const y =
+          ottava === '8va' ? -above + (named ? NAME_ROOM : 0) + 1.4 : 4 + below - 0.4
+        const rule = y - 0.45
+        return (
+          <g key={from}>
+            {!carriedIn && (
+              <text x={start} y={y} className="ottava">
+                {ottava}
+              </text>
+            )}
+            {end > line && (
+              <line x1={line} x2={end} y1={rule} y2={rule} className="ottava-line" />
+            )}
+            {!carriedOn && end > line && (
+              <line
+                x1={end}
+                x2={end}
+                y1={rule}
+                y2={rule + (ottava === '8va' ? 1 : -1)}
+                className="ottava-hook"
+              />
+            )}
+          </g>
+        )
+      })}
       {closed && <line x1={width} x2={width} y1={0} y2={4} className="measure-end" />}
     </svg>
   )
@@ -489,23 +562,34 @@ export function Notation({
       aria-label="Notation"
     >
       {systems.map((system, row) => {
-        const { above, below } = reach(system)
+        const extent = reach(system)
         return (
           <div key={row}>
             {system.title !== '' && <h4>{system.title}</h4>}
             {system.note !== '' && <p className="tab-note">{system.note}</p>}
             {breakLines(system.measures, room, fifths).map((line, index) => (
               <div key={index} className="notation-line">
-                {line.map((piece, bar) => (
-                  <MeasureStaff
-                    key={bar}
-                    piece={piece}
-                    first={bar === 0}
-                    fifths={fifths}
-                    above={above}
-                    below={below}
-                  />
-                ))}
+                {line.map((piece, bar) => {
+                  const previous = line[bar - 1]?.measure
+                  const next = line[bar + 1]?.measure
+                  return (
+                    <MeasureStaff
+                      key={bar}
+                      piece={piece}
+                      first={bar === 0}
+                      fifths={fifths}
+                      reach={extent}
+                      neighbours={{
+                        before:
+                          previous === undefined
+                            ? null
+                            : ottavaOf(previous, lastNote(previous)),
+                        after:
+                          next === undefined ? null : ottavaOf(next, firstNote(next)),
+                      }}
+                    />
+                  )
+                })}
               </div>
             ))}
           </div>
