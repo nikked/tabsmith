@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { MAX_FRET } from './core/edit.ts'
 import { repair, type Entry, type Library } from './core/library.ts'
-import { emptySection, emptySong, type Song } from './core/model.ts'
+import { emptySection, emptySong, KEYS, type Song } from './core/model.ts'
 
 const KEY = 'tabsmith'
 const LIBRARY_KEY = 'tabsmith.library'
@@ -79,18 +79,58 @@ const section = z.object({
 })
 
 /**
+ * A song used to carry its tempo as free text. The number in it, when the text
+ * plainly names one ('87 bpm', '120'), is the bpm; whatever else was written
+ * stays as the song's note. A bare number inside other words ('slow 6/8') is
+ * not taken for a tempo.
+ */
+export const fromTempo = (
+  tempo: string,
+): { readonly bpm: number | null; readonly note: string } => {
+  const named = /(\d{2,3})\s*bpm\b/i.exec(tempo)
+  if (named !== null) {
+    return {
+      bpm: Number(named[1]),
+      // 'swing, 96 bpm' leaves 'swing', not 'swing,'.
+      note: tempo
+        .replace(named[0], '')
+        .replace(/\s+/g, ' ')
+        .replace(/^[\s,;·-]+|[\s,;·-]+$/g, ''),
+    }
+  }
+  const bare = /^\s*(\d{2,3})\s*$/.exec(tempo)
+  return bare === null
+    ? { bpm: null, note: tempo.trim() }
+    : { bpm: Number(bare[1]), note: '' }
+}
+
+const withoutTempo = (value: unknown): unknown => {
+  if (!isDoc(value) || typeof value.tempo !== 'string' || 'bpm' in value) return value
+  const { tempo, ...rest } = value
+  return { ...rest, ...fromTempo(tempo) }
+}
+
+/**
  * Every field a later version adds needs a `.default()`, so a file written
  * before it existed still parses. Unknown fields are dropped rather than
  * refused, so a file from a build one field ahead of this one still opens; a
- * higher version integer is refused outright.
+ * higher version integer is refused outright. The old tempo is reshaped here
+ * rather than in a migration, because the shelf and the sheet hold songs too
+ * and neither goes through the file's version chain.
  */
-const song = z.object({
-  title: z.string().default(''),
-  tempo: z.string().default(''),
-  chart: z.array(section).nonempty(),
-  tab: score,
-  tabFirst: z.boolean().default(false),
-})
+const song = z.preprocess(
+  withoutTempo,
+  z.object({
+    title: z.string().default(''),
+    bpm: z.int().positive().nullable().default(null),
+    // A key this build does not know is no key rather than no song.
+    key: z.enum(KEYS).nullable().catch(null),
+    note: z.string().default(''),
+    chart: z.array(section).nonempty(),
+    tab: score,
+    tabFirst: z.boolean().default(false),
+  }),
+)
 
 /**
  * One step per version, applied blindly: a migration only reshapes, and the

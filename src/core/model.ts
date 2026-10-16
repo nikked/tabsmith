@@ -53,9 +53,42 @@ export type Section = {
   readonly body: string
 }
 
+/** Majors round the circle of fifths, then their relative minors. */
+export const KEYS = [
+  'C',
+  'G',
+  'D',
+  'A',
+  'E',
+  'B',
+  'F#',
+  'Db',
+  'Ab',
+  'Eb',
+  'Bb',
+  'F',
+  'Am',
+  'Em',
+  'Bm',
+  'F#m',
+  'C#m',
+  'G#m',
+  'Ebm',
+  'Bbm',
+  'Fm',
+  'Cm',
+  'Gm',
+  'Dm',
+] as const
+
+export type Key = (typeof KEYS)[number]
+
 export type Song = {
   readonly title: string
-  readonly tempo: string
+  readonly bpm: number | null
+  readonly key: Key | null
+  /** Anything about the song as a whole that is not its tempo or key: 'swing feel'. */
+  readonly note: string
   readonly chart: readonly Section[]
   readonly tab: Score
   readonly tabFirst: boolean
@@ -81,7 +114,8 @@ export const TUNINGS = [
   { name: 'Bass', strings: ['G', 'D', 'A', 'E'] },
 ] as const satisfies readonly Tuning[]
 
-export const DEFAULT_BAR_COLUMNS = 12
+/** Eight eighths: one bar of 4/4, each column an eighth note. */
+export const DEFAULT_BAR_COLUMNS = 8
 
 export const emptyCells = (strings: number): readonly (Cell | null)[] =>
   Array.from({ length: strings }, () => null)
@@ -121,7 +155,9 @@ export const suggestedName = (index: number): string =>
 
 export const emptySong = (): Song => ({
   title: '',
-  tempo: '',
+  bpm: null,
+  key: null,
+  note: '',
   chart: [emptySection(suggestedName(0))],
   tab: emptyScore(),
   tabFirst: false,

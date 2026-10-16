@@ -77,7 +77,7 @@ describe('reading a tab back', () => {
     const empty = [null, null, null, null, null, null]
     const score: Score = {
       tuning: STANDARD,
-      defaultBarColumns: 12,
+      defaultBarColumns: 8,
       rows: [
         {
           title: 'Main riff',

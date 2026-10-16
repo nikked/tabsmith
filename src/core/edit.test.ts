@@ -180,7 +180,12 @@ describe('cursor clamping at score edges', () => {
       { kind: 'move', move: 'stringDown' },
       { kind: 'move', move: 'stringDown' },
     )
-    expect(state.cursor).toEqual({ row: 0, bar: 1, column: 11, slot: 5 })
+    expect(state.cursor).toEqual({
+      row: 0,
+      bar: 1,
+      column: DEFAULT_BAR_COLUMNS - 1,
+      slot: 5,
+    })
     expect(apply(state, { kind: 'move', move: 'nextColumn' }).cursor).toEqual(
       state.cursor,
     )
@@ -201,14 +206,24 @@ describe('cursor clamping at score edges', () => {
   it('steps left out of a row into the last column of the row above', () => {
     const two = apply(initialState(), { kind: 'addRow' })
     const back = apply(two, { kind: 'move', move: 'prevColumn' })
-    expect(back.cursor).toEqual({ row: 0, bar: 1, column: 11, slot: 0 })
+    expect(back.cursor).toEqual({
+      row: 0,
+      bar: 1,
+      column: DEFAULT_BAR_COLUMNS - 1,
+      slot: 0,
+    })
   })
 
   it('crosses bar boundaries in both directions', () => {
     const twoBars = run(initialState(), { kind: 'addBar' })
     expect(twoBars.cursor).toEqual({ row: 0, bar: 1, column: 0, slot: 0 })
     const back = apply(twoBars, { kind: 'move', move: 'prevColumn' })
-    expect(back.cursor).toEqual({ row: 0, bar: 0, column: 11, slot: 0 })
+    expect(back.cursor).toEqual({
+      row: 0,
+      bar: 0,
+      column: DEFAULT_BAR_COLUMNS - 1,
+      slot: 0,
+    })
     expect(apply(back, { kind: 'move', move: 'nextColumn' }).cursor).toEqual({
       row: 0,
       bar: 1,
@@ -279,14 +294,14 @@ describe('removeColumn', () => {
   it('refuses when the last column is not empty', () => {
     const state = run(initialState(), toLastColumn(), digit(5))
     const after = apply(state, { kind: 'removeColumn' })
-    expect(columnsIn(after)).toBe(12)
+    expect(columnsIn(after)).toBe(DEFAULT_BAR_COLUMNS)
   })
 
   it('removes an empty last column and pulls the cursor back', () => {
     const state = run(initialState(), toLastColumn())
     const after = apply(state, { kind: 'removeColumn' })
-    expect(columnsIn(after)).toBe(11)
-    expect(after.cursor.column).toBe(10)
+    expect(columnsIn(after)).toBe(DEFAULT_BAR_COLUMNS - 1)
+    expect(after.cursor.column).toBe(DEFAULT_BAR_COLUMNS - 2)
   })
 
   it('refuses to take a bar below one column', () => {
@@ -849,14 +864,20 @@ describe('the chart', () => {
     expect(chartOf(initialState())).toEqual([{ name: 'Intro', body: '' }])
   })
 
-  it('takes a title and a tempo', () => {
+  it('takes a title, a tempo, a key and a note', () => {
     const state = run(
       initialState(),
       { kind: 'setTitle', title: 'Endless Skies' },
-      { kind: 'setTempo', tempo: '70 bpm' },
+      { kind: 'setBpm', bpm: 70 },
+      { kind: 'setKey', key: 'Am' },
+      { kind: 'setNote', note: 'swing' },
     )
-    expect(state.song.title).toBe('Endless Skies')
-    expect(state.song.tempo).toBe('70 bpm')
+    expect(state.song).toMatchObject({
+      title: 'Endless Skies',
+      bpm: 70,
+      key: 'Am',
+      note: 'swing',
+    })
   })
 
   it('inserts a new section directly below the one asked for', () => {
@@ -1009,7 +1030,9 @@ describe('songHasContent', () => {
     const typed = (...actions: readonly Action[]): boolean =>
       songHasContent(run(initialState(), ...actions).song)
     expect(typed({ kind: 'setTitle', title: 'x' })).toBe(true)
-    expect(typed({ kind: 'setTempo', tempo: '70 bpm' })).toBe(true)
+    expect(typed({ kind: 'setBpm', bpm: 70 })).toBe(true)
+    expect(typed({ kind: 'setKey', key: 'Am' })).toBe(true)
+    expect(typed({ kind: 'setNote', note: 'swing' })).toBe(true)
     expect(typed({ kind: 'addSection', after: 0 })).toBe(true)
     expect(
       typed({ kind: 'setSection', index: 0, section: { name: 'Verse 1', body: 'Am' } }),

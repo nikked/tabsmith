@@ -1,20 +1,31 @@
-import type { Column, Score, Tuning } from './model.ts'
+import { KEYS, type Column, type Key, type Score, type Tuning } from './model.ts'
 
 /**
  * Where a note sits on a treble staff, in steps of a line or a space: 0 is the
  * bottom line (E4), 8 the top one (F5), and anything outside takes ledger lines.
+ * The accidental is the one drawn: null when the key signature already says it.
  */
-export type Accidental = 'flat' | 'sharp'
+export type Accidental = 'flat' | 'sharp' | 'natural'
 
 export type Pitch = { readonly step: number; readonly accidental: Accidental | null }
 
-/**
- * The notes of one tab column, lowest first, played together as one quarter,
- * and the chord they make when they make one.
- */
+/** The notes of one tab column, lowest first, and the chord they make when they make one. */
 export type Chord = { readonly pitches: readonly Pitch[]; readonly name: string | null }
 
-export type Measure = readonly Chord[]
+/** A note value in eighths: an eighth, a quarter, a half or a whole. */
+export type Value = 1 | 2 | 4 | 8
+
+/** A note or a rest, `at` eighths into its bar. */
+export type Event =
+  | {
+      readonly kind: 'note'
+      readonly chord: Chord
+      readonly value: Value
+      readonly at: number
+    }
+  | { readonly kind: 'rest'; readonly value: Value; readonly at: number }
+
+export type Measure = readonly Event[]
 
 /**
  * One tab row's worth of measures under the row's title and note, so the staff
@@ -24,6 +35,34 @@ export type System = {
   readonly title: string
   readonly note: string
   readonly measures: readonly Measure[]
+}
+
+/** Sharps up, flats down: how many the key signature has. */
+export const FIFTHS: Readonly<Record<Key, number>> = {
+  C: 0,
+  G: 1,
+  D: 2,
+  A: 3,
+  E: 4,
+  B: 5,
+  'F#': 6,
+  Db: -5,
+  Ab: -4,
+  Eb: -3,
+  Bb: -2,
+  F: -1,
+  Am: 0,
+  Em: 1,
+  Bm: 2,
+  'F#m': 3,
+  'C#m': 4,
+  'G#m': 5,
+  Ebm: -6,
+  Bbm: -5,
+  Fm: -4,
+  Cm: -3,
+  Gm: -2,
+  Dm: -1,
 }
 
 const PITCH_CLASS: Readonly<Record<string, number>> = {
@@ -36,38 +75,51 @@ const PITCH_CLASS: Readonly<Record<string, number>> = {
   B: 11,
 }
 
-/** Where each of the twelve notes sits among the seven letters, C = 0. */
-type Spelling = readonly (readonly [letter: number, accidental: Accidental | null])[]
+type Alter = -1 | 0 | 1
 
-const FLATS: Spelling = [
-  [0, null],
-  [1, 'flat'],
-  [1, null],
-  [2, 'flat'],
-  [2, null],
-  [3, null],
-  [4, 'flat'],
-  [4, null],
-  [5, 'flat'],
-  [5, null],
-  [6, 'flat'],
-  [6, null],
-]
+/** The pitch class of each letter unaltered, C first. */
+const NATURALS = [0, 2, 4, 5, 7, 9, 11] as const
 
-const SHARPS: Spelling = [
-  [0, null],
-  [0, 'sharp'],
-  [1, null],
-  [1, 'sharp'],
-  [2, null],
-  [3, null],
-  [3, 'sharp'],
-  [4, null],
-  [4, 'sharp'],
-  [5, null],
-  [5, 'sharp'],
-  [6, null],
-]
+// The order sharps and flats are added to a key signature, by letter: F C G D
+// A E B, and back the other way.
+const SHARP_ORDER = [3, 0, 4, 1, 5, 2, 6] as const
+const FLAT_ORDER = [6, 2, 5, 1, 4, 0, 3] as const
+
+/** How a key signature alters each letter, C first. */
+const signature = (fifths: number): readonly Alter[] =>
+  NATURALS.map((_, letter) =>
+    SHARP_ORDER.slice(0, Math.max(fifths, 0)).some((sharp) => sharp === letter)
+      ? 1
+      : FLAT_ORDER.slice(0, Math.max(-fifths, 0)).some((flat) => flat === letter)
+        ? -1
+        : 0,
+  )
+
+/**
+ * A pitch class as a letter and an alteration: the key's own note when it has
+ * one, then a plain letter, and only then a sharp or a flat.
+ */
+const spell = (
+  pc: number,
+  key: readonly Alter[],
+  sharps: boolean,
+): readonly [letter: number, alter: Alter] => {
+  const inKey = NATURALS.findIndex(
+    (natural, letter) => (natural + (key[letter] ?? 0) + 12) % 12 === pc,
+  )
+  if (inKey >= 0) return [inKey, key[inKey] ?? 0]
+  const plain = NATURALS.findIndex((natural) => natural === pc)
+  if (plain >= 0) return [plain, 0]
+  return sharps
+    ? [NATURALS.findIndex((natural) => natural === pc - 1), 1]
+    : [NATURALS.findIndex((natural) => natural === pc + 1), -1]
+}
+
+const DRAWN: Readonly<Record<Alter, Accidental>> = {
+  [-1]: 'flat',
+  0: 'natural',
+  1: 'sharp',
+}
 
 const pitchClass = (name: string): number => {
   const base = PITCH_CLASS[name.charAt(0).toUpperCase()] ?? 0
@@ -96,13 +148,22 @@ export const openPitches = (tuning: Tuning): readonly number[] => {
 
 /**
  * Guitar is written an octave above where it sounds, so it sits on the staff.
- * A lone note is spelled with flats, the way it is usually named over a tab.
+ * Spelled in the key, `fifths` sharps or flats; a note outside it goes sharp or
+ * flat as `sharps` says, and shows only what the key signature does not.
  */
-export const writtenPitch = (sounding: number, sharps = false): Pitch => {
+export const writtenPitch = (
+  sounding: number,
+  fifths: number,
+  sharps: boolean,
+): Pitch => {
   const written = sounding + 12
-  const octave = Math.floor(written / 12) - 1
-  const [letter, accidental] = (sharps ? SHARPS : FLATS)[written % 12] ?? [0, null]
-  return { step: octave * 7 + letter - (4 * 7 + 2), accidental }
+  const key = signature(fifths)
+  const [letter, alter] = spell(written % 12, key, sharps)
+  const octave = Math.floor((written - alter) / 12) - 1
+  return {
+    step: octave * 7 + letter - (4 * 7 + 2),
+    accidental: alter === key[letter] ? null : DRAWN[alter],
+  }
 }
 
 const FLAT_NAMES = [
@@ -211,48 +272,153 @@ export const chordName = (sounding: readonly number[]): string | null => {
 const sameNote = (a: Pitch, b: Pitch): boolean =>
   a.step === b.step && a.accidental === b.accidental
 
-const chordOf = (column: Column, open: readonly number[]): Chord => {
+/**
+ * Without a key, a lone note is spelled with flats, the way it is usually named
+ * over a tab, and a chord in the key it is written in.
+ */
+const chordOf = (
+  column: Column,
+  open: readonly number[],
+  fifths: number | null,
+): Chord | null => {
   const sounding = column.cells.flatMap((cell, slot) => {
     const string = open[slot]
     return cell?.kind === 'fret' && string !== undefined ? [string + cell.fret] : []
   })
-  const sharps = identify(sounding)?.sharps ?? false
+  if (sounding.length === 0) return null
+  const sharps = fifths === null ? (identify(sounding)?.sharps ?? false) : fifths > 0
   return {
     pitches: sounding
-      .map((note) => writtenPitch(note, sharps))
+      .map((note) => writtenPitch(note, fifths ?? 0, sharps))
       .sort((a, b) => a.step - b.step)
       .filter((pitch, i, all) => i === 0 || !sameNote(pitch, all[i - 1] ?? pitch)),
     name: chordName(sounding),
   }
 }
 
-/** Each column with a note in it becomes one quarter; empty columns are only room. */
-export const notation = (score: Score): readonly System[] => {
+const VALUES: readonly Value[] = [8, 4, 2, 1]
+
+/** The longest plain value that fits, so nothing runs past what was written. */
+const longest = (span: number): Value => VALUES.find((value) => value <= span) ?? 1
+
+const rests = (at: number, span: number): readonly Event[] => {
+  if (span <= 0) return []
+  const value = longest(span)
+  return [{ kind: 'rest', value, at }, ...rests(at + value, span - value)]
+}
+
+/**
+ * Each column is an eighth, so a note lasts until the next one or the bar line:
+ * notes in neighbouring columns are eighths, a note with a column of room after
+ * it a quarter. A length no single value has is rounded down, and rests make up
+ * the difference, as they do for columns before the first note.
+ */
+export const rhythm = (chords: readonly (Chord | null)[]): Measure => {
+  const notes = chords.flatMap((chord, at) => (chord === null ? [] : [{ chord, at }]))
+  return [
+    ...rests(0, notes[0]?.at ?? chords.length),
+    ...notes.flatMap(({ chord, at }, i): readonly Event[] => {
+      const span = (notes[i + 1]?.at ?? chords.length) - at
+      const value = longest(span)
+      return [{ kind: 'note', chord, value, at }, ...rests(at + value, span - value)]
+    }),
+  ]
+}
+
+/** Accidentals last to the bar line, for the same written letter and octave. */
+const measureAccidentals = (
+  chords: readonly (Chord | null)[],
+  fifths: number,
+): readonly (Chord | null)[] => {
+  const key = signature(fifths)
+  const current = new Map<number, Accidental>()
+  return chords.map((chord) => {
+    if (chord === null) return null
+    const pitches = chord.pitches.map((pitch): Pitch => {
+      const letter = (((pitch.step + 2) % 7) + 7) % 7
+      const initial = DRAWN[key[letter] ?? 0]
+      const alteration = pitch.accidental ?? initial
+      const previous = current.get(pitch.step) ?? initial
+      current.set(pitch.step, alteration)
+      return { ...pitch, accidental: alteration === previous ? null : alteration }
+    })
+    return { ...chord, pitches }
+  })
+}
+
+export const notation = (score: Score, key: Key | null): readonly System[] => {
   const open = openPitches(score.tuning)
+  const fifths = key === null ? null : FIFTHS[key]
   return score.rows.map((row) => ({
     title: row.title ?? '',
     note: row.note ?? '',
     measures: row.bars.map((bar) =>
-      bar.columns
-        .map((column) => chordOf(column, open))
-        .filter((chord) => chord.pitches.length > 0),
+      rhythm(
+        measureAccidentals(
+          bar.columns.map((column) => chordOf(column, open, fifths)),
+          fifths ?? 0,
+        ),
+      ),
     ),
   }))
 }
 
-const BEAT = 4
+const HALF_BAR = 4
 
 /**
- * A measure of more than one beat's worth of single notes reads as a run, so
- * it is set in eighths beamed four to a group. Anything with a chord in it, or
- * short enough to read note by note, stays in quarters: null. Indexes into the
+ * Eighth notes side by side are beamed, in groups that do not cross the middle
+ * of a 4/4 bar, so two beats read at a glance. A rest or a longer note breaks a
+ * group, and a lone eighth is a group of one, flagged. Indexes into the
  * measure, so the beams can be drawn over the notes already laid out.
  */
-export const beamGroups = (measure: Measure): readonly (readonly number[])[] | null => {
-  if (measure.length <= BEAT || measure.some((chord) => chord.pitches.length > 1)) {
-    return null
-  }
-  return Array.from({ length: Math.ceil(measure.length / BEAT) }, (_, group) =>
-    measure.map((_, i) => i).slice(group * BEAT, group * BEAT + BEAT),
-  )
+export const beamGroups = (measure: Measure): readonly (readonly number[])[] =>
+  measure.reduce<readonly (readonly number[])[]>((groups, event, i) => {
+    if (event.kind !== 'note' || event.value !== 1) return groups
+    const group = groups.at(-1)
+    const before = measure[i - 1]
+    return group !== undefined &&
+      group.at(-1) === i - 1 &&
+      before !== undefined &&
+      Math.floor(before.at / HALF_BAR) === Math.floor(event.at / HALF_BAR)
+      ? [...groups.slice(0, -1), [...group, i]]
+      : [...groups, [i]]
+  }, [])
+
+/**
+ * The key the tab's notes fit best: the major scale holding the most of them,
+ * the one with fewer sharps or flats when two hold as many. Its relative minor
+ * instead when that tonic is played more often than the major's. Null for a tab
+ * with no notes.
+ */
+export const suggestKey = (score: Score): Key | null => {
+  const open = openPitches(score.tuning)
+  const counts = score.rows
+    .flatMap((row) => row.bars.flatMap((bar) => bar.columns))
+    .flatMap((column) =>
+      column.cells.flatMap((cell, slot) => {
+        const string = open[slot]
+        return cell?.kind === 'fret' && string !== undefined
+          ? [(string + cell.fret) % 12]
+          : []
+      }),
+    )
+    .reduce<readonly number[]>(
+      (tally, pc) => tally.map((count, i) => (i === pc ? count + 1 : count)),
+      Array.from({ length: 12 }, () => 0),
+    )
+  if (counts.every((count) => count === 0)) return null
+  const countOf = (pc: number): number => counts[((pc % 12) + 12) % 12] ?? 0
+  const tonic = (key: Key): number => FIFTHS[key] * 7
+  const fit = (key: Key): number =>
+    // C major's naturals, as steps above a tonic, are every major scale.
+    NATURALS.reduce<number>((sum, step) => sum + countOf(tonic(key) + step), 0)
+  const majors = KEYS.filter((key) => !key.endsWith('m'))
+  const best = [...majors].sort(
+    (a, b) => fit(b) - fit(a) || Math.abs(FIFTHS[a]) - Math.abs(FIFTHS[b]),
+  )[0]
+  if (best === undefined) return null
+  const minor = KEYS.find((key) => key.endsWith('m') && FIFTHS[key] === FIFTHS[best])
+  return minor !== undefined && countOf(tonic(best) + 9) > countOf(tonic(best))
+    ? minor
+    : best
 }
