@@ -799,6 +799,7 @@ src/
     keymap.ts     keyToAction
     render.ts     renderScore, songParts and their helpers
     notation.ts   the tab as notes on a treble staff, for reading it as notation
+    engrave.ts    where that notation goes: widths, line breaks, stems, ledger lines
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)

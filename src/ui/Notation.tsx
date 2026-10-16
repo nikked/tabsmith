@@ -1,10 +1,31 @@
 import {
+  breakLines,
+  CLEF,
+  firstNote,
+  KEY_ACCIDENTAL,
+  lastNote,
+  layout,
+  ledgers,
+  NAME,
+  NAME_ROOM,
+  ottavaOf,
+  ottavaRuns,
+  ownTip,
+  PAD,
+  pitchesAt,
+  reach,
+  shiftedHeads,
+  signatureOf,
+  stemsUp,
+  yOf,
+  type Piece,
+  type Pitches,
+  type Reach,
+} from '../core/engrave.ts'
+import {
   beamGroups,
   type Accidental,
-  type Event,
-  type Measure,
   type Ottava,
-  type Pitch,
   type System,
   type Value,
 } from '../core/notation.ts'
@@ -14,224 +35,59 @@ import {
  * staff grows and shrinks with the text size Practice picks.
  */
 const SPACE_EM = 0.65
-const CLEF = 3.4
-const KEY_ACCIDENTAL = 1
-// A key signature's flats are set larger than a note's, as its sharps already read.
-const KEY_FLAT = 1.3
-const NOTE = 4.5
-const EIGHTH = 3.8
-const ACCIDENTAL = 1.6
-const STEM = 3.5
-const PAD = 2
-const NAME = 1.6
-const NAME_ROOM = 2.5
-const OTTAVA_ROOM = 2
 const OTTAVA_MARK = 2.4
 
 /**
- * The room one note or rest takes across the staff, an eighth a little less
- * than the rest. A chord name above is never allowed to run into the next one.
- * An accidental fits in the gap to the note before, so heads stay evenly apart;
- * only a measure's first note, with no note before it, makes room for one.
+ * SMuFL code points in the bundled notation font, a subset of Bravura. Its em
+ * is four staff spaces, and each glyph's baseline is the line or space it
+ * belongs on, so a glyph is placed at its note's y with no offset.
  */
-const textWidth = (text: string): number =>
-  text === '' ? 0 : text.length * NAME * 0.62 + 1
-
-const slotOf = (
-  event: Event,
-  opening: boolean,
-): { readonly lead: number; readonly body: number } =>
-  event.kind === 'rest'
-    ? { lead: 0, body: NOTE }
-    : {
-        lead:
-          opening && event.chord.pitches.some((pitch) => pitch.accidental !== null)
-            ? ACCIDENTAL
-            : 0,
-        body: Math.max(
-          event.value === 1 ? EIGHTH : NOTE,
-          textWidth(event.chord.name ?? ''),
-        ),
-      }
-
-/** Steps run up from the bottom line, y runs down from the top one. */
-const yOf = (step: number): number => (8 - step) / 2
-
-// Where a treble key signature puts its sharps and flats, in the order a key
-// adds them: F C G D A E B, and B E A D G C F.
-const SHARP_STEPS = [8, 5, 9, 6, 3, 7, 4] as const
-const FLAT_STEPS = [4, 7, 3, 6, 2, 5, 1] as const
-
-const signatureOf = (
-  fifths: number,
-): readonly { readonly step: number; readonly accidental: Accidental }[] =>
-  fifths >= 0
-    ? SHARP_STEPS.slice(0, fifths).map((step) => ({ step, accidental: 'sharp' }))
-    : FLAT_STEPS.slice(0, -fifths).map((step) => ({ step, accidental: 'flat' }))
-
-// How far below a note's line or space each glyph's baseline goes, so its
-// middle sits on the note: a flat's bowl is low in the glyph, a sharp's middle high.
-const DROP: Readonly<Record<Accidental, number>> = {
-  flat: 0.2,
-  sharp: 0.65,
-  natural: 0.45,
-}
+const SMUFL = {
+  gClef: '\uE050',
+  noteheadWhole: '\uE0A2',
+  noteheadHalf: '\uE0A3',
+  noteheadBlack: '\uE0A4',
+  flag8thUp: '\uE240',
+  flag8thDown: '\uE241',
+  restWhole: '\uE4E3',
+  restHalf: '\uE4E4',
+  restQuarter: '\uE4E5',
+  rest8th: '\uE4E6',
+} as const
 
 const GLYPH: Readonly<Record<Accidental, string>> = {
-  flat: '♭',
-  sharp: '♯',
-  natural: '♮',
+  flat: '\uE260',
+  natural: '\uE261',
+  sharp: '\uE262',
 }
 
-// The clef and key signature already hold the first note off the bar line, so
-// only half the pad a measure opens with follows them.
-const startOf = (first: boolean, fifths: number): number =>
-  first ? CLEF + Math.abs(fifths) * KEY_ACCIDENTAL + PAD / 2 : PAD
-
-/** Where each note or rest is centred, and where the measure ends. */
-const layout = (
-  measure: Measure,
-  first: boolean,
-  fifths: number,
-): { readonly xs: readonly number[]; readonly width: number } =>
-  measure.reduce<{ readonly xs: readonly number[]; readonly width: number }>(
-    ({ xs, width }, event, i) => {
-      const { lead, body } = slotOf(event, i === 0)
-      return { xs: [...xs, width + lead + body / 2], width: width + lead + body }
-    },
-    { xs: [], width: startOf(first, fifths) },
-  )
-
-const measureWidth = (measure: Measure, first: boolean, fifths: number): number =>
-  layout(measure, first, fifths).width + PAD
-
-/** A measure, or as much of one as fits a line: only its last piece closes on a bar line. */
-type Piece = { readonly measure: Measure; readonly closed: boolean }
-
-/**
- * A measure too wide for a line goes on over as many lines as it needs, cut
- * between notes, rather than running off the side of a phone.
- */
-const piecesOf = (measure: Measure, room: number, fifths: number): readonly Piece[] => {
-  const parts = measure.reduce<readonly Measure[]>((parts, event) => {
-    const current = parts.at(-1)
-    return current !== undefined &&
-      measureWidth([...current, event], true, fifths) <= room
-      ? [...parts.slice(0, -1), [...current, event]]
-      : [...parts, [event]]
-  }, [])
-  return parts.length === 0
-    ? [{ measure, closed: true }]
-    : parts.map((part, i) => ({ measure: part, closed: i === parts.length - 1 }))
+// Bravura's widths, in staff spaces: a black or half notehead, and each
+// accidental, so an accidental is set a small gap clear of its head.
+const HEAD = 1.18
+const ACCIDENTAL_WIDTH: Readonly<Record<Accidental, number>> = {
+  flat: 0.904,
+  natural: 0.672,
+  sharp: 0.996,
 }
 
-/**
- * Measures set into lines as wide as the room, each line opening on a clef and
- * the key signature the way printed music does. Broken here rather than left to
- * the browser to wrap, because only here is it known which measure starts a
- * line and needs them.
- */
-const breakLines = (
-  measures: readonly Measure[],
-  room: number,
-  fifths: number,
-): readonly (readonly Piece[])[] =>
-  measures
-    .flatMap((measure) => piecesOf(measure, room, fifths))
-    .reduce<{
-      readonly lines: readonly (readonly Piece[])[]
-      readonly used: number
-    }>(
-      ({ lines, used }, piece) => {
-        const current = lines.at(-1)
-        const after = used + measureWidth(piece.measure, false, fifths)
-        return current !== undefined && current.length > 0 && after <= room
-          ? { lines: [...lines.slice(0, -1), [...current, piece]], used: after }
-          : {
-              lines: [...lines, [piece]],
-              used: measureWidth(piece.measure, true, fifths),
-            }
-      },
-      { lines: [], used: 0 },
-    ).lines
+const noteheadOf = (value: Value): string =>
+  value === 8
+    ? SMUFL.noteheadWhole
+    : value === 4
+      ? SMUFL.noteheadHalf
+      : SMUFL.noteheadBlack
 
-const pitchesAt = (measure: Measure, i: number): Pitches => {
-  const event = measure[i]
-  return event?.kind === 'note' ? event.chord.pitches : []
+const REST: Readonly<Record<Value, { readonly glyph: string; readonly y: number }>> = {
+  // A whole rest hangs from the second line down; the rest sit on the middle one.
+  8: { glyph: SMUFL.restWhole, y: 1 },
+  4: { glyph: SMUFL.restHalf, y: 2 },
+  2: { glyph: SMUFL.restQuarter, y: 2 },
+  1: { glyph: SMUFL.rest8th, y: 2 },
 }
-
-/**
- * Which way each stem in a measure points: a beamed group's notes share one
- * direction, as the Beamed group draws them, and anything else picks its own.
- */
-const stemDirections = (measure: Measure): readonly boolean[] => {
-  const shared = new Map(
-    beamGroups(measure).flatMap((group) => {
-      const up = stemsUp(group.flatMap((i) => pitchesAt(measure, i)))
-      return group.map((i) => [i, up] as const)
-    }),
-  )
-  return measure.map((_, i) => shared.get(i) ?? stemsUp(pitchesAt(measure, i)))
-}
-
-/**
- * How far a system reaches past the staff, so every measure in it lines up:
- * out to its furthest head, stem or beam and no further, with room for chord
- * names on top when there are any.
- */
-type Reach = { readonly above: number; readonly below: number; readonly named: boolean }
-
-const reach = (system: System): Reach => {
-  const extents = system.measures.flatMap((measure) => {
-    const ups = stemDirections(measure)
-    return measure.flatMap((event, i) => {
-      if (event.kind === 'rest') return []
-      const high = yOf(event.chord.pitches.at(-1)?.step ?? 0)
-      const low = yOf(event.chord.pitches[0]?.step ?? 0)
-      const stem = event.value === 8 ? 0.5 : STEM
-      return ups[i] === true
-        ? [{ top: high - stem, bottom: low + 0.5 }]
-        : [{ top: high - 0.5, bottom: low + stem }]
-    })
-  })
-  const top = Math.min(0, ...extents.map((extent) => extent.top))
-  const bottom = Math.max(4, ...extents.map((extent) => extent.bottom))
-  const notes = system.measures
-    .flat()
-    .flatMap((event) => (event.kind === 'note' ? [event.chord] : []))
-  const named = notes.some((chord) => chord.name !== null)
-  const up = notes.some((chord) => chord.ottava === '8va')
-  const down = notes.some((chord) => chord.ottava === '8vb')
-  return {
-    above: -top + 0.5 + (named ? NAME_ROOM : 0) + (up ? OTTAVA_ROOM : 0),
-    below: bottom - 4 + 0.5 + (down ? OTTAVA_ROOM : 0),
-    named,
-  }
-}
-
-// Ledger lines fall on the even steps outside the staff, out to the note.
-const ledgers = (step: number): readonly number[] =>
-  step <= -2
-    ? Array.from({ length: Math.floor(-step / 2) }, (_, i) => -2 * (i + 1))
-    : step >= 10
-      ? Array.from({ length: Math.floor((step - 8) / 2) }, (_, i) => 10 + 2 * i)
-      : []
 
 const BEAM = 0.5
 
-type Pitches = readonly Pitch[]
-
-/** Stems go on the side away from the middle line, where the notes sit lower. */
-const stemsUp = (pitches: Pitches): boolean =>
-  pitches.reduce((sum, pitch) => sum + pitch.step, 0) / pitches.length < 4
-
-const stemX = (x: number, up: boolean): number => (up ? x + 0.6 : x - 0.6)
-
-/** Where a stem ends when nothing else decides it: a stem's length past the furthest head. */
-const ownTip = (pitches: Pitches, up: boolean): number =>
-  up
-    ? Math.min(yOf(pitches.at(-1)?.step ?? 0) - STEM, 2)
-    : Math.max(yOf(pitches[0]?.step ?? 0) + STEM, 2)
+const stemX = (x: number, up: boolean): number => (up ? x + 0.53 : x - 0.53)
 
 /**
  * A note or chord: its heads, open for a half or a whole, and a stem out to
@@ -253,13 +109,7 @@ function Note({
 }) {
   const low = pitches[0]?.step ?? 0
   const high = pitches.at(-1)?.step ?? 0
-  const shifted = pitches.reduce<readonly boolean[]>(
-    (acc, pitch, i) => [
-      ...acc,
-      i > 0 && pitch.step - (pitches[i - 1]?.step ?? 0) === 1 && acc[i - 1] !== true,
-    ],
-    [],
-  )
+  const shifted = shiftedHeads(pitches)
   const headX = (i: number): number =>
     shifted[i] === true ? (up ? x + 1.2 : x - 1.2) : x
   return (
@@ -283,20 +133,14 @@ function Note({
       })}
       {pitches.map((pitch, i) => (
         <g key={i}>
-          <ellipse
-            cx={headX(i)}
-            cy={yOf(pitch.step)}
-            rx={0.62}
-            ry={0.44}
-            transform={`rotate(-20 ${headX(i)} ${yOf(pitch.step)})`}
-            className={value >= 4 ? 'open' : undefined}
-          />
+          <text x={headX(i)} y={yOf(pitch.step)} textAnchor="middle" className="music">
+            {noteheadOf(value)}
+          </text>
           {pitch.accidental !== null && (
             <text
-              x={headX(i) - 0.85}
-              y={yOf(pitch.step) + DROP[pitch.accidental]}
-              textAnchor="end"
-              className="accidental"
+              x={headX(i) - HEAD / 2 - 0.35 - ACCIDENTAL_WIDTH[pitch.accidental]}
+              y={yOf(pitch.step)}
+              className="music"
             >
               {GLYPH[pitch.accidental]}
             </text>
@@ -316,34 +160,13 @@ function Note({
   )
 }
 
-/**
- * A whole rest hangs from the second line down and a half sits on the middle
- * one; a quarter and an eighth are drawn as their usual squiggle and hook.
- */
 function Rest({ value, x }: { readonly value: Value; readonly x: number }) {
-  switch (value) {
-    case 8:
-      return <rect x={x - 0.6} y={1} width={1.2} height={0.5} className="rest" />
-    case 4:
-      return <rect x={x - 0.6} y={1.5} width={1.2} height={0.5} className="rest" />
-    case 2:
-      return (
-        <path
-          d={`M${x - 0.2} 0.7 L${x + 0.5} 1.6 L${x - 0.2} 2.3 L${x + 0.5} 3 Q${x - 0.6} 2.8 ${x + 0.1} 3.7`}
-          className="rest-stroke"
-        />
-      )
-    case 1:
-      return (
-        <g>
-          <circle cx={x - 0.35} cy={1.6} r={0.3} className="rest" />
-          <path
-            d={`M${x - 0.35} 1.75 Q${x + 0.1} 1.8 ${x + 0.5} 1.3 L${x - 0.1} 3.1`}
-            className="rest-stroke thin"
-          />
-        </g>
-      )
-  }
+  const { glyph, y } = REST[value]
+  return (
+    <text x={x} y={y} textAnchor="middle" className="music">
+      {glyph}
+    </text>
+  )
 }
 
 /**
@@ -376,42 +199,13 @@ function Beamed({
           className="beam"
         />
       ) : (
-        <path
-          d={
-            up
-              ? `M${first} ${tip} c0.2 1.2 1.7 1.5 1.3 3.2`
-              : `M${first} ${tip} c0.2 -1.2 1.7 -1.5 1.3 -3.2`
-          }
-          className="flag"
-        />
+        // A flag hangs off the stem's end from the stem's left edge.
+        <text x={first - 0.065} y={tip} className="music">
+          {up ? SMUFL.flag8thUp : SMUFL.flag8thDown}
+        </text>
       )}
     </g>
   )
-}
-
-type Run = { readonly ottava: '8va' | '8vb'; readonly from: number; readonly to: number }
-
-/** Notes under one 8va or 8vb, rests between them and all, so each run gets one bracket. */
-const ottavaRuns = (measure: Measure): readonly Run[] =>
-  measure.reduce<readonly Run[]>((runs, event, i) => {
-    const ottava = event.kind === 'note' ? event.chord.ottava : null
-    if (ottava === null) return runs
-    const last = runs.at(-1)
-    return last !== undefined &&
-      last.ottava === ottava &&
-      measure.slice(last.to + 1, i).every((between) => between.kind === 'rest')
-      ? [...runs.slice(0, -1), { ...last, to: i }]
-      : [...runs, { ottava, from: i, to: i }]
-  }, [])
-
-const firstNote = (measure: Measure): number =>
-  measure.findIndex((event) => event.kind === 'note')
-const lastNote = (measure: Measure): number =>
-  measure.findLastIndex((event) => event.kind === 'note')
-
-const ottavaOf = (measure: Measure, i: number): Ottava => {
-  const event = measure[i]
-  return event?.kind === 'note' ? event.chord.ottava : null
 }
 
 /**
@@ -449,16 +243,17 @@ function MeasureStaff({
       ))}
       {first && (
         <>
-          <text x={0.3} y={4.9} className="clef">
-            𝄞
+          {/* The G clef curls round the second line up, where G is. */}
+          <text x={0.3} y={yOf(2)} className="music">
+            {SMUFL.gClef}
           </text>
           {signatureOf(fifths).map(({ step, accidental }, i) => (
             <text
               key={i}
               x={CLEF + (i + 0.5) * KEY_ACCIDENTAL}
-              y={yOf(step) + DROP[accidental] * (accidental === 'flat' ? KEY_FLAT : 1)}
+              y={yOf(step)}
               textAnchor="middle"
-              className={accidental === 'flat' ? 'accidental key-flat' : 'accidental'}
+              className="music"
             >
               {GLYPH[accidental]}
             </text>

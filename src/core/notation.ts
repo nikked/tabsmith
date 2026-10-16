@@ -17,7 +17,7 @@ export type Pitch = { readonly step: number; readonly accidental: Accidental | n
 export type Ottava = '8va' | '8vb' | null
 
 /** A stretch moved an octave nearer, one way or the other. */
-type Shift = Exclude<Ottava, null>
+export type Shift = Exclude<Ottava, null>
 
 export type Chord = {
   readonly pitches: readonly Pitch[]
