@@ -245,11 +245,11 @@ h1 img {
 }
 
 /* Keys go to whichever field is focused — a chord name or a row's heading — so
-   the cell they will come back to is dimmed rather than lit: two full
-   highlights would claim the cursor is in two places. */
+   the cell they will come back to is not lit at all: any highlight there reads
+   as a second cursor. */
 .staff:has(.chord:focus, .row-title:focus, .row-note:focus, .row-aside:focus)
   .cell.current {
-  background: color-mix(in srgb, var(--cursor) 30%, transparent);
+  background: none;
   color: var(--fg);
 }
 
