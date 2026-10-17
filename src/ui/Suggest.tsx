@@ -1,4 +1,5 @@
 import { useId, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import type { Cell } from '../core/fields.ts'
 import { matching } from '../core/suggest.ts'
 
 type Props = {
@@ -10,6 +11,8 @@ type Props = {
   readonly className?: string
   /** Placement of the whole field, for a field that is a grid or flex item. */
   readonly style?: CSSProperties
+  /** Where the field sits in a form the arrow keys move up and down through. */
+  readonly cell?: Cell
 }
 
 /**
@@ -25,6 +28,7 @@ export function Suggest({
   placeholder,
   className,
   style,
+  cell,
 }: Props) {
   const list = useId()
   const [open, setOpen] = useState(false)
@@ -37,15 +41,21 @@ export function Suggest({
     setActive(-1)
   }
 
+  /**
+   * Up and down belong to the list only while it is showing; otherwise they are
+   * left to the form, to move between fields. Alt+Down opens the list the way
+   * it does on a native combobox.
+   */
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (event.key === 'ArrowDown' && event.altKey && shown.length === 0) {
+      event.preventDefault()
+      setOpen(true)
+      return
+    }
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && shown.length > 0) {
       event.preventDefault()
       const step = event.key === 'ArrowDown' ? 1 : -1
-      setOpen(true)
-      setActive((at) => {
-        const count = matching(suggestions, value).length
-        return count === 0 ? -1 : (at + step + count) % count
-      })
+      setActive((at) => (at + step + shown.length) % shown.length)
       return
     }
     if (event.key === 'Enter' && shown[active] !== undefined) {
@@ -81,7 +91,11 @@ export function Suggest({
           setOpen(true)
           setActive(-1)
         }}
-        onFocus={() => setOpen(true)}
+        data-row={cell?.row}
+        data-col={cell?.col}
+        // A click asks for the list; arriving by keyboard does not, or the
+        // arrows could never move past a field that has suggestions.
+        onClick={() => setOpen(true)}
         onBlur={() => {
           setOpen(false)
           setActive(-1)

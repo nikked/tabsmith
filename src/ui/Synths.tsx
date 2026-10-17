@@ -1,4 +1,6 @@
+import { useRef, type KeyboardEvent } from 'react'
 import type { Action } from '../core/edit.ts'
+import { stepRow, type Cell } from '../core/fields.ts'
 import type { Song, Synth } from '../core/model.ts'
 import { suggestionsFor, synthNames } from '../core/synths.ts'
 import { Suggest } from './Suggest.tsx'
@@ -20,6 +22,7 @@ type Props = {
 function Controls({
   kind,
   row,
+  field,
   slots,
   values,
   suggestions,
@@ -27,6 +30,8 @@ function Controls({
 }: {
   readonly kind: 'Dial' | 'Knob'
   readonly row: number
+  /** This row's number among every field row of the synths, for the arrows. */
+  readonly field: number
   readonly slots: number
   readonly values: readonly string[]
   readonly suggestions: readonly string[]
@@ -45,6 +50,7 @@ function Controls({
         >
           <span>{index + 1}</span>
           <Suggest
+            cell={{ row: field, col: index + 1 }}
             label={`${kind} ${index + 1}`}
             placeholder="—"
             value={value}
@@ -102,6 +108,7 @@ function SynthEditor({
       }}
     >
       <Suggest
+        cell={{ row: index * 3, col: 0 }}
         className="synth-name"
         label={`Synth ${index + 1} name`}
         placeholder="Synth"
@@ -111,6 +118,7 @@ function SynthEditor({
         onChange={(name) => set({ ...synth, name })}
       />
       <Suggest
+        cell={{ row: index * 3, col: 1 }}
         className="synth-sound"
         label={`Synth ${index + 1} sound`}
         placeholder="Sound"
@@ -130,6 +138,7 @@ function SynthEditor({
       <Controls
         kind="Dial"
         row={2}
+        field={index * 3 + 1}
         slots={slots}
         values={synth.dials}
         suggestions={used.dials}
@@ -138,6 +147,7 @@ function SynthEditor({
       <Controls
         kind="Knob"
         row={3}
+        field={index * 3 + 2}
         slots={slots}
         values={synth.knobs}
         suggestions={used.knobs}
@@ -152,7 +162,44 @@ function SynthEditor({
  * in another song can be added in one press, named as it was there; anything
  * typed is suggested from what that same synth was set to before.
  */
+const cellOf = (node: Element): Cell | null => {
+  const row = Number(node.getAttribute('data-row'))
+  const col = Number(node.getAttribute('data-col'))
+  return node.hasAttribute('data-row') && Number.isFinite(row) && Number.isFinite(col)
+    ? { row, col }
+    : null
+}
+
 export function Synths({ song, songs, dispatch }: Props) {
+  const section = useRef<HTMLElement>(null)
+
+  // Up and down walk the fields like a table, through every synth in turn. A
+  // suggestion list that is open has the arrows first and says so.
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (
+      event.defaultPrevented ||
+      (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')
+    ) {
+      return
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    const from = event.target instanceof Element ? cellOf(event.target) : null
+    const fields = [...(section.current?.querySelectorAll('[data-row]') ?? [])]
+    if (from === null) return
+    const cells = fields.flatMap((node) => {
+      const cell = cellOf(node)
+      return cell === null ? [] : [{ cell, node }]
+    })
+    const to = stepRow(
+      cells.map(({ cell }) => cell),
+      from,
+      event.key === 'ArrowDown' ? 1 : -1,
+    )
+    const next = cells.find(({ cell }) => cell.row === to?.row && cell.col === to.col)
+    if (next === undefined || !(next.node instanceof HTMLInputElement)) return
+    event.preventDefault()
+    next.node.focus()
+  }
   const known = synthNames(songs)
   const missing = known.filter(
     (name) =>
@@ -167,7 +214,7 @@ export function Synths({ song, songs, dispatch }: Props) {
     ...song.synths.flatMap((synth) => [synth.dials.length, synth.knobs.length]),
   )
   return (
-    <section className="synths" aria-label="Synths">
+    <section ref={section} className="synths" aria-label="Synths" onKeyDown={onKeyDown}>
       {song.synths.map((synth, index) => (
         <SynthEditor
           key={index}

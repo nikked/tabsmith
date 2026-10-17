@@ -810,6 +810,7 @@ src/
     engrave.ts    where that notation goes: widths, line breaks, stems, ledger lines
     synths.ts     the synth names, sounds and controls earlier songs used, offered again
     suggest.ts    which suggestions to show under a field as it is typed into
+    fields.ts     which field an arrow key moves to in a form of rows and columns
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
