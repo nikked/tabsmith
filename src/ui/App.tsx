@@ -102,21 +102,13 @@ type Asking =
   | { readonly kind: 'renameSetlist'; readonly id: string }
   | { readonly kind: 'deleteSetlist'; readonly id: string }
 
-/** A cog, the usual mark for settings. */
+/** A cog, the usual mark for settings: a solid gear with a hole through it. */
 const CogIcon = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="16"
-    height="16"
-    aria-hidden="true"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-  >
-    <circle cx="8" cy="8" r="4.4" />
-    <circle cx="8" cy="8" r="1.8" />
-    <path d="M8 1.4v2.2M8 12.4v2.2M1.4 8h2.2M12.4 8h2.2M3.33 3.33l1.56 1.56M11.11 11.11l1.56 1.56M3.33 12.67l1.56-1.56M11.11 4.89l1.56-1.56" />
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+    <path
+      fillRule="evenodd"
+      d="M6.48 2.51 L6.65 0.32 L9.35 0.32 L9.52 2.51 L10.81 3.04 L12.47 1.61 L14.39 3.53 L12.96 5.19 L13.49 6.48 L15.68 6.65 L15.68 9.35 L13.49 9.52 L12.96 10.81 L14.39 12.47 L12.47 14.39 L10.81 12.96 L9.52 13.49 L9.35 15.68 L6.65 15.68 L6.48 13.49 L5.19 12.96 L3.53 14.39 L1.61 12.47 L3.04 10.81 L2.51 9.52 L0.32 9.35 L0.32 6.65 L2.51 6.48 L3.04 5.19 L1.61 3.53 L3.53 1.61 L5.19 3.04Z M11.30 8 a3.3 3.3 0 1 0 -6.60 0 a3.3 3.3 0 1 0 6.60 0Z"
+    />
   </svg>
 )
 
@@ -558,19 +550,62 @@ export default function App() {
     )
   }
 
+  // Sync and, on Home, settings: in the header, and on a narrower Home also in
+  // the Setlists heading, where they cost no row of their own (CSS shows one).
+  const appButtons = (
+    <>
+      <button
+        type="button"
+        className={busy ? 'sync-now busy' : 'sync-now'}
+        aria-label={
+          syncWith === null
+            ? 'Set up sync'
+            : pending > 0
+              ? `Sync now, ${pending} not synced`
+              : 'Sync now'
+        }
+        title={
+          syncWith === null
+            ? 'Set up sync'
+            : busy
+              ? 'Syncing…'
+              : pending > 0
+                ? `${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`
+                : 'Sync now'
+        }
+        onClick={() =>
+          syncWith === null ? show(syncDialog.current) : void sync(syncWith)
+        }
+      >
+        <SyncIcon />
+        {/* On the button rather than beside it, so a phone's header keeps
+          to one line however many there are. */}
+        {syncWith !== null && pending > 0 && (
+          <span className="sync-count" aria-hidden="true">
+            {pending}
+          </span>
+        )}
+      </button>
+      {/* Settings are for the whole app, so they are with the songs on Home
+        rather than over a song being written or read. */}
+      {mode === 'songs' && (
+        <button
+          type="button"
+          className="settings-open"
+          aria-label="Settings"
+          title="Settings"
+          onClick={() => show(settingsDialog.current)}
+        >
+          <CogIcon />
+        </button>
+      )}
+    </>
+  )
+
   return (
     <main>
       {!focused && (
         <header>
-          <h1>
-            <img
-              src={`${import.meta.env.BASE_URL}favicon.svg`}
-              alt=""
-              width="20"
-              height="20"
-            />
-            <span className="brand-name">tabsmith</span>
-          </h1>
           <input
             ref={picker}
             type="file"
@@ -600,51 +635,7 @@ export default function App() {
               Link copied
             </span>
           )}
-          <button
-            type="button"
-            className={busy ? 'sync-now busy' : 'sync-now'}
-            aria-label={
-              syncWith === null
-                ? 'Set up sync'
-                : pending > 0
-                  ? `Sync now, ${pending} not synced`
-                  : 'Sync now'
-            }
-            title={
-              syncWith === null
-                ? 'Set up sync'
-                : busy
-                  ? 'Syncing…'
-                  : pending > 0
-                    ? `${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`
-                    : 'Sync now'
-            }
-            onClick={() =>
-              syncWith === null ? show(syncDialog.current) : void sync(syncWith)
-            }
-          >
-            <SyncIcon />
-            {/* On the button rather than beside it, so a phone's header keeps
-                to one line however many there are. */}
-            {syncWith !== null && pending > 0 && (
-              <span className="sync-count" aria-hidden="true">
-                {pending}
-              </span>
-            )}
-          </button>
-          {/* Settings are for the whole app, so they are with the songs on Home
-              rather than over a song being written or read. */}
-          {mode === 'songs' && (
-            <button
-              type="button"
-              className="settings-open"
-              aria-label="Settings"
-              title="Settings"
-              onClick={() => show(settingsDialog.current)}
-            >
-              <CogIcon />
-            </button>
-          )}
+          {appButtons}
         </header>
       )}
       {error !== null && (
@@ -658,6 +649,7 @@ export default function App() {
       {mode === 'songs' ? (
         <SongsPage
           library={library}
+          controls={appButtons}
           onOpen={openFrom}
           onEdit={editFrom}
           onRename={(song) => setAsking({ kind: 'rename', song })}

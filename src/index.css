@@ -38,15 +38,25 @@ body {
 }
 
 main {
+  --page-top: 1.5rem;
   max-width: 120rem;
   margin: 0 auto;
   padding: 1.5rem;
   /* Opened from a home screen the page runs under the status bar; outside one
      the inset is nothing, so this is the plain padding everywhere else. */
-  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--page-top) + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* On a laptop or a desktop, more room above the page: with no name in the
+   header, the first thing on it would otherwise sit tight under the browser's
+   own bar. A fine pointer is what tells a MacBook from an iPad as wide. */
+@media (min-width: 64rem) and (pointer: fine) {
+  main {
+    --page-top: 2.5rem;
+  }
 }
 
 /* A strip of the page's own colour behind the status bar, so the song does not
@@ -70,42 +80,13 @@ body::before {
   }
 }
 
-/* Centred, not baseline-aligned: the name sits in a padded chip whose baseline
-   is not the text's, so baselines would hang it above the buttons. */
+/* Centred, not baseline-aligned: the toggle and the square buttons are padded
+   boxes whose baselines are not their text's. */
 header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-}
-
-/**
- * The mark and the name sit in one pill, so the app's name reads as a single
- * object rather than as loose text among the controls. The mark is the favicon
- * itself — one file, so the two cannot drift apart.
- *
- * Same shell as the header's controls, a size up and in the full text colour:
- * it is the one thing in the header that is not a control.
- */
-h1 {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 1rem 0.35rem 0.55rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--fg);
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  margin: 0;
-}
-
-h1 img {
-  display: block;
-  width: 24px;
-  height: 24px;
 }
 
 .staff {
@@ -2256,9 +2237,54 @@ kbd {
   align-items: start;
 }
 
-@media (min-width: 88rem) {
+/* Two columns from an iPad held upright (the mini is 744px), as each still has
+   the width of a short note; a phone keeps one. */
+@media (min-width: 46rem) {
   .band-boxes {
     grid-template-columns: repeat(2, minmax(0, 44rem));
+  }
+}
+
+@media (min-width: 88rem) {
+  /* With room to spare beside the boxes, Home has no header row of its own:
+     sync and settings sit in the top corner and the boxes start at the top
+     beside them, kept clear of the two buttons. */
+  main:has(> .songs-page) {
+    position: relative;
+  }
+
+  main:has(> .songs-page) > header {
+    gap: 0.4rem;
+    position: absolute;
+    top: calc(var(--page-top) + env(safe-area-inset-top, 0px));
+    right: 1.5rem;
+  }
+
+  .band-boxes {
+    margin-right: 6.5rem;
+  }
+}
+
+/* Narrower than that, Home has no header row at all: sync and settings sit at
+   the right of the Setlists heading, which has the room, and the header only
+   appears to say a link was copied. */
+.page-controls {
+  display: none;
+  gap: 0.4rem;
+}
+
+@media not all and (min-width: 88rem) {
+  main:has(> .songs-page) > header .sync-now,
+  main:has(> .songs-page) > header .settings-open {
+    display: none;
+  }
+
+  main:has(> .songs-page) > header:not(:has(.link-copied)) {
+    display: none;
+  }
+
+  .page-controls {
+    display: flex;
   }
 }
 
@@ -2403,16 +2429,9 @@ kbd {
 }
 
 .markdown-view :is(h1, h2, h3, h4, h5, h6) {
-  display: block;
   margin: 1.1em 0 0.5em;
-  padding: 0;
   font-weight: 700;
   line-height: 1.25;
-  letter-spacing: normal;
-  color: var(--peach);
-  background: none;
-  border: none;
-  border-radius: 0;
 }
 
 .markdown-view h1 {
@@ -2837,27 +2856,13 @@ kbd {
 }
 
 /* An iPhone has room for the header on one row only if every control gives a
-   little: the logo keeps its mark and lets its name go to screen readers only,
-   and the controls and the gaps between them shrink. In Practice the song's
+   little: the controls and the gaps between them shrink. In Practice the song's
    title takes a line of its own, so it is never squeezed to a letter, and the
    controls sit compactly on the line under it. */
 @media (max-width: 40rem) {
   header {
     flex-wrap: nowrap;
     gap: 0.4rem;
-  }
-
-  h1 {
-    padding: 0.35rem;
-  }
-
-  .brand-name {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 
   header .menu-open {
@@ -2955,7 +2960,7 @@ kbd {
  *   dial  teal     knob  lavender     work left to do  red softened into the text
  *   Home's headings stay plain, so mauve marks a song's own parts;
  *   bpm, key and note: yellow softened into the text; synth sounds stay plain
- *   the brand and where you are: the lander's gradients
+ *   where you are: the lander's gradients
  */
 :root {
   --setlist-colour: color-mix(in srgb, var(--peach) 65%, var(--fg));
@@ -3080,20 +3085,6 @@ h3.checklist-title {
 .chip.song-todo {
   color: var(--todo-colour);
   border-color: color-mix(in srgb, var(--todo-colour) 60%, transparent);
-}
-
-/* The app's name, in a gradient the way the lander's heading is, kept to the
-   cold end of the palette. */
-.brand-name {
-  color: transparent;
-  /* A shade under the accents themselves, so the name sits back from the page. */
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--sapphire) 75%, var(--bg)),
-    color-mix(in srgb, var(--blue) 75%, var(--bg)),
-    color-mix(in srgb, var(--lavender) 75%, var(--bg))
-  );
-  background-clip: text;
 }
 
 /* Where you are, Home, Perform or Edit, lit like any choice in force. */
