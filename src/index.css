@@ -497,6 +497,75 @@ h1 img {
   color: var(--fg);
 }
 
+/* In Practice, one line per synth: what to dial in, then what each control
+   does. The controls wrap under the name on a narrow screen. */
+.synth-list {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.35em 0.6em;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.4em 0.9em 0.4em 0.4em;
+  font-family: system-ui, sans-serif;
+  /* Set to the page's size, not the song's: A− and A+ size what is read
+     while playing, and the patches are set before it starts. */
+  font-size: 1rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+/* Name and sound each take a column of the panel, so every synth's sound
+   starts in line under the one above. */
+.synth-list dt {
+  display: contents;
+}
+
+/* Lit the way the chosen page is in the header's toggle, so a synth reads as
+   a setting being shown rather than a line of the song. */
+.synth-list .synth-name {
+  padding: 0.1em 0.65em;
+  font-weight: 700;
+  text-align: center;
+  color: var(--bg);
+  background: var(--fg);
+  border-radius: 7px;
+}
+
+/* The patch it is set to reads as a value of the synth, not part of its name. */
+.synth-list .synth-sound {
+  color: color-mix(in srgb, var(--fg) 75%, var(--muted));
+}
+
+.synth-list dd {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 3;
+  gap: 0.15em 0.9em;
+  margin: 0 0 0 0.65em;
+}
+
+/* The dials and the knobs each keep together, a rule between them marking
+   where the one set ends and the other starts. */
+.synth-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15em 0.9em;
+}
+
+.synth-group + .synth-group {
+  padding-left: 0.9em;
+  border-left: 1px solid var(--line);
+}
+
+.synth-label {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
 /* Close under the title in the bar, past the gap the song's parts keep apart. */
 .practice-song .facts {
   margin-top: -0.6em;
