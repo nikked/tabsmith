@@ -1065,17 +1065,6 @@ h1 img {
   font-size: 0.9rem;
 }
 
-/* Pressed while the settings show, the way a filter chip is while it narrows. */
-.practice-bar > .synth-toggle {
-  color: var(--muted);
-}
-
-.practice-bar > .synth-toggle[aria-pressed='true'] {
-  color: var(--bg);
-  background: var(--muted);
-  border-color: var(--muted);
-}
-
 /* An icon, square, and no wider than it has to be: it only gives room back. */
 .practice-bar > .full-toggle {
   display: grid;
@@ -1089,9 +1078,9 @@ h1 img {
   color: var(--fg);
 }
 
-/* Practice's controls folded into one menu, for a phone: hidden until then. */
+/* Practice's settings, last in the bar on every screen. */
 .bar-more {
-  display: none;
+  order: 2;
 }
 
 .bar-more .menu-open {
@@ -1914,23 +1903,26 @@ kbd {
   margin: 0;
 }
 
-/* A tablet. The bar is too narrow for the title beside every control, so the
-   toggles, set once and left, fold into the menu the phone uses. The size and
-   setlist controls stay out where they are pressed mid-song, and the menu
-   drops its own copies of them. */
+/* A tablet. The bar is too narrow for the title beside every control, so Tab
+   or Notation, set once and left, joins the menu too. */
 @media (max-width: 64rem) {
-  .bar-more {
-    display: block;
-    order: 2;
-  }
-
-  .practice-bar > .toggle.small,
-  .practice-bar > .synth-toggle {
+  .practice-bar > .toggle.small {
     display: none;
   }
 }
 
-@media (min-width: 40.0625rem) and (max-width: 64rem) {
+/* Wider than a tablet the bar shows Tab or Notation itself, so the menu does
+   not repeat it. */
+@media (min-width: 64.0625rem) {
+  .bar-more .compact-only,
+  .practice-bar > .compact-only {
+    display: none;
+  }
+}
+
+/* Anything wider than a phone keeps the size and setlist controls in the bar,
+   where they are pressed mid-song, so the menu drops its own copies. */
+@media (min-width: 40.0625rem) {
   .bar-more .phone-only,
   .practice-bar > .phone-only {
     display: none;
@@ -2267,11 +2259,6 @@ kbd {
   /* The bar is one line: the song's title, small arrows through the setlist,
      then full screen, then a menu holding the rest, so the song gets every line
      they would take. */
-  .bar-more {
-    display: block;
-    order: 2;
-  }
-
   .practice-bar > .full-toggle {
     order: 1;
   }

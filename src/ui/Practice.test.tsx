@@ -46,3 +46,17 @@ it('preserves note duration and rest bars when reading notation', () => {
   expect(html).toContain('\uE4E3') // Whole rest.
   expect(html.match(/class="measure-end"/g)).toHaveLength(2)
 })
+
+it.each(['tab', 'notation'])(
+  'always exposes synth controls in the %s menu',
+  (reading) => {
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => (key === 'tabsmith.reading' ? reading : null),
+    })
+    const html = renderToStaticMarkup(
+      <Practice song={emptySong()} songId="empty" onLeave={() => {}} />,
+    )
+    expect(html).toContain('Show synth controls')
+    expect(html).toContain('class="bar-more"')
+  },
+)
