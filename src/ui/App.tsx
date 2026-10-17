@@ -158,25 +158,30 @@ export default function App() {
       return
     }
     const { library: here, song } = latest.current
+    const at = Date.now()
+    const songs = merge(forgetSent(withOpenSong(here, song, at), sent), pulled.records, {
+      at,
+      newId,
+    })
     const merged = mergeBand(
-      mergeTodos(
-        mergeSetlists(
-          merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
-          pulled.setlists,
-        ),
-        pulled.todos,
-      ),
+      mergeTodos(mergeSetlists(songs.library, pulled.setlists), pulled.todos),
       pulled.band,
     )
     setLibrary(merged)
     const open = openEntry(merged).song
     if (open !== song) dispatch({ kind: 'load', song: open })
-    const synced = `Synced at ${new Date().toLocaleTimeString()}.`
-    setSyncNote(
-      tooLong.length === 0
-        ? synced
-        : `${synced} Too long to sync, kept on this device: ${tooLong.join(', ')}.`,
-    )
+    const notes = [
+      `Synced at ${new Date().toLocaleTimeString()}.`,
+      ...(songs.conflicts.length === 0
+        ? []
+        : [
+            `Changed elsewhere too, so your version was kept as a copy: ${songs.conflicts.join(', ')}.`,
+          ]),
+      ...(tooLong.length === 0
+        ? []
+        : [`Too long to sync, kept on this device: ${tooLong.join(', ')}.`]),
+    ]
+    setSyncNote(notes.join(' '))
   }
 
   // Coming back to the tab is when another device is most likely to have

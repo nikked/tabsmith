@@ -1,5 +1,8 @@
 import {
+  clockOf,
+  isUnsynced,
   repair,
+  stampAfter,
   type Band,
   type BandField,
   type BandTodo,
@@ -8,6 +11,7 @@ import {
   type Setlist,
 } from './library.ts'
 import type { Song } from './model.ts'
+import { same } from './same.ts'
 
 /**
  * One song as every device can see it: its latest version, and whether it is
@@ -45,72 +49,109 @@ export const records = (library: Library): readonly Synced[] => [
   })),
 ]
 
+/** When a sync is merged, and how a song kept as a copy gets an id of its own. */
+export type Now = { readonly at: number; readonly newId: () => string }
+
 /**
- * Newest wins, one song at a time, and a tie keeps what is here. The library
- * comes back untouched when nothing remote changes it, so a sync that changed
- * nothing does not look like an edit worth syncing again.
- *
- * Whatever the sheet is now known to hold becomes each song's last synced
- * version: a newer copy taken from it, a song that arrived from it, or this
- * device's own version coming back with the same stamp it went up with.
- *
- * Songs already on the shelf keep their place; new ones join at the end. A
- * deletion only takes a song off the shelf: the sheet is what remembers it, so
- * one for a song this device does not have changes nothing. If the remote side
- * has deleted every song here, the shelf is kept as it is — a library cannot be
- * empty, and the next sync pushes these back.
+ * This device's version of a song the sheet has also changed, kept beside it
+ * under its own id and name so neither side's work is lost. It has never been
+ * synced, so it goes up with the next sync like any new song.
  */
-export const merge = (library: Library, remote: readonly Synced[]): Library => {
-  const known = new Map(records(library).map((record) => [record.id, record.at]))
-  const newer = remote.filter(
-    (record) =>
-      (record.active || known.has(record.id)) &&
-      record.at > (known.get(record.id) ?? Number.NEGATIVE_INFINITY),
-  )
-  const won = new Map(newer.map((record) => [record.id, record]))
-  // This device's version, as the sheet now holds it.
-  const echoed = new Map<string, number>(
-    remote.filter((record) => record.active).map((record) => [record.id, record.at]),
-  )
-  const confirmed = (entry: Entry): boolean =>
-    echoed.get(entry.id) === entry.updatedAt && entry.lastSynced?.at !== entry.updatedAt
-  if (newer.length === 0 && !library.songs.some(confirmed)) return library
+const conflictCopy = (entry: Entry, now: Now): Entry => ({
+  id: now.newId(),
+  song: {
+    ...entry.song,
+    title: `${entry.song.title || 'Untitled'} (conflict ${clockOf(now.at)})`,
+  },
+  updatedAt: now.at,
+  lastSynced: null,
+})
+
+const taken = (record: Extract<Synced, { active: true }>): Entry => ({
+  id: record.id,
+  song: record.song,
+  updatedAt: record.at,
+  lastSynced: { at: record.at, song: record.song },
+})
+
+/**
+ * What the sheet brought, set against what is here, one song at a time.
+ *
+ * A song the sheet holds this device's version of is now synced. One the sheet
+ * has a newer copy of is taken, unless it was also edited here since the two
+ * last agreed: then the sheet's copy takes its place and this version is kept
+ * beside it as a conflict copy, named for when, so the two can be put together
+ * by hand. A deletion from elsewhere takes a song off the shelf, unless it was
+ * edited here since, in which case it comes back. A song this device has no
+ * record of agreeing on yet — kept before syncs remembered — goes by newest
+ * stamp, as every song once did, since there is nothing to tell an edit by.
+ *
+ * Songs already on the shelf keep their place; new ones and copies join at the
+ * end. The library comes back untouched when nothing remote changes it, so a
+ * sync that changed nothing does not look like an edit worth syncing again. If
+ * the remote side has deleted every song here, the shelf is kept as it is — a
+ * library cannot be empty, and the next sync pushes these back.
+ */
+export const merge = (
+  library: Library,
+  remote: readonly Synced[],
+  now: Now,
+): { readonly library: Library; readonly conflicts: readonly string[] } => {
+  const theirs = new Map(remote.map((record) => [record.id, record]))
+  const copies: Entry[] = []
+  const conflicts: string[] = []
+  let changed = false
+
+  const settle = (entry: Entry): Entry | null => {
+    const record = theirs.get(entry.id)
+    if (record === undefined) return entry
+    if (record.active && record.at === entry.updatedAt) {
+      if (entry.lastSynced?.at === entry.updatedAt) return entry
+      changed = true
+      return { ...entry, lastSynced: { at: entry.updatedAt, song: entry.song } }
+    }
+    const base = entry.lastSynced
+    if (base === null) {
+      // No record of agreeing: newest stamp wins, as before syncs remembered.
+      if (record.at <= entry.updatedAt) return entry
+      changed = true
+      return record.active ? taken(record) : null
+    }
+    if (record.at <= base.at) return entry
+    changed = true
+    const editedHere = isUnsynced(entry)
+    if (!record.active) {
+      return editedHere ? { ...entry, updatedAt: stampAfter(record.at, now.at) } : null
+    }
+    if (!editedHere || same(entry.song, record.song)) return taken(record)
+    copies.push(conflictCopy(entry, now))
+    conflicts.push(entry.song.title || 'Untitled')
+    return taken(record)
+  }
 
   const kept = library.songs.flatMap((entry): Entry[] => {
-    const theirs = won.get(entry.id)
-    if (theirs === undefined) {
-      return [
-        confirmed(entry)
-          ? { ...entry, lastSynced: { at: entry.updatedAt, song: entry.song } }
-          : entry,
-      ]
-    }
-    return theirs.active
-      ? [
-          {
-            id: entry.id,
-            song: theirs.song,
-            updatedAt: theirs.at,
-            lastSynced: { at: theirs.at, song: theirs.song },
-          },
-        ]
-      : []
+    const settled = settle(entry)
+    return settled === null ? [] : [settled]
   })
   const here = new Set(library.songs.map((entry) => entry.id))
-  const arrived = newer.flatMap((record): Entry[] =>
-    !record.active || here.has(record.id)
-      ? []
-      : [
-          {
-            id: record.id,
-            song: record.song,
-            updatedAt: record.at,
-            lastSynced: { at: record.at, song: record.song },
-          },
-        ],
+  const gone = new Map(library.removed.map((each) => [each.id, each.at]))
+  const arrived = remote.flatMap((record): Entry[] =>
+    record.active &&
+    !here.has(record.id) &&
+    record.at > (gone.get(record.id) ?? Number.NEGATIVE_INFINITY)
+      ? [taken(record)]
+      : [],
   )
-  const removed = library.removed.filter((gone) => !won.has(gone.id))
-  return repair({ ...library, songs: [...kept, ...arrived], removed }) ?? library
+  const removed = library.removed.filter((each) => {
+    const record = theirs.get(each.id)
+    return record === undefined || record.at <= each.at
+  })
+  if (!changed && arrived.length === 0 && removed.length === library.removed.length) {
+    return { library, conflicts }
+  }
+  const merged =
+    repair({ ...library, songs: [...kept, ...arrived, ...copies], removed }) ?? library
+  return { library: merged, conflicts }
 }
 
 const withoutSentDeletions = <T extends Listed>(
