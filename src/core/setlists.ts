@@ -1,8 +1,18 @@
 import { stampAfter, type Entry, type Library, type Setlist } from './library.ts'
 
-/** A deleted setlist is kept for the sheet, so everything shown filters it out. */
+/**
+ * A deleted setlist is kept for the sheet, so everything shown filters it out.
+ * In their order, the first being the one that matters most; two made on two
+ * devices at once can share a position, and then keep the order they arrived in.
+ */
 export const activeSetlists = (library: Library): readonly Setlist[] =>
-  library.setlists.filter((setlist) => setlist.active)
+  library.setlists
+    .filter((setlist) => setlist.active)
+    .toSorted((a, b) => a.position - b.position)
+
+/** Where a new setlist goes: after every other. */
+export const nextPosition = (library: Library): number =>
+  Math.max(-1, ...library.setlists.map((setlist) => setlist.position)) + 1
 
 /**
  * The songs a setlist names, in its order. One that has since been deleted, or
@@ -11,7 +21,7 @@ export const activeSetlists = (library: Library): readonly Setlist[] =>
 export const songsOf = (library: Library, setlist: Setlist): readonly Entry[] =>
   setlist.songs.flatMap((id) => library.songs.filter((entry) => entry.id === id))
 
-/** The setlists a song is in, for showing next to it. */
+/** The setlists a song is in, in their order, for showing next to it. */
 export const setlistsWith = (library: Library, song: string): readonly Setlist[] =>
   activeSetlists(library).filter((setlist) => setlist.songs.includes(song))
 
@@ -58,7 +68,9 @@ const change = (
   library: Library,
   id: string,
   at: number,
-  edit: (setlist: Setlist) => Partial<Pick<Setlist, 'name' | 'songs' | 'active'>>,
+  edit: (
+    setlist: Setlist,
+  ) => Partial<Pick<Setlist, 'name' | 'songs' | 'active' | 'position'>>,
 ): Library => ({
   ...library,
   setlists: library.setlists.map((setlist) =>
@@ -73,6 +85,34 @@ export const renameSetlist = (library: Library, id: string, name: string, at: nu
 
 export const deleteSetlist = (library: Library, id: string, at: number) =>
   change(library, id, at, () => ({ active: false }))
+
+/**
+ * Swaps a setlist with the one above (-1) or below (1) it. Every shown setlist
+ * is numbered afresh from its new place, so positions two devices left equal
+ * come apart, and only the ones whose number changed are stamped for sync.
+ */
+export const moveSetlist = (
+  library: Library,
+  id: string,
+  step: -1 | 1,
+  at: number,
+): Library => {
+  const order = activeSetlists(library)
+  const from = order.findIndex((setlist) => setlist.id === id)
+  const moved = order[from]
+  const other = order[from + step]
+  if (moved === undefined || other === undefined) return library
+  const ids = order.map((setlist) => setlist.id)
+  ids[from] = other.id
+  ids[from + step] = moved.id
+  return ids.reduce(
+    (current, each, position) =>
+      current.setlists.find((setlist) => setlist.id === each)?.position === position
+        ? current
+        : change(current, each, at, () => ({ position })),
+    library,
+  )
+}
 
 const holding = (library: Library, id: string, song: string): Setlist | undefined =>
   library.setlists.find((setlist) => setlist.id === id && setlist.songs.includes(song))

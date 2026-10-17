@@ -94,7 +94,12 @@ const rowHeading = (row: Row): readonly string[] =>
  * One line of a rendered staff, with the aside that hangs off its end kept
  * apart, so a view can set it as a remark rather than as part of the tab.
  */
-export type StaffLine = { readonly text: string; readonly aside: string | null }
+export type StaffLine = {
+  readonly text: string
+  readonly aside: string | null
+  /** The chord names under the staff, which a view sets apart from the strings. */
+  readonly chords: boolean
+}
 
 /**
  * An aside belongs to the bars rather than naming them, so it hangs off the
@@ -112,11 +117,11 @@ const withAside = (
   const said = (text: string | undefined): string | null =>
     text === undefined || text === '' ? null : text
   return [
-    ...staff.map((text, slot) => ({ text, aside: said(lines[slot]) })),
+    ...staff.map((text, slot) => ({ text, aside: said(lines[slot]), chords: false })),
     ...lines
       .slice(staff.length)
       .filter((text) => text !== '')
-      .map((text) => ({ text: margin, aside: text })),
+      .map((text) => ({ text: margin, aside: text, chords: false })),
   ]
 }
 /** A bar's width in characters, its closing bar line included. */
@@ -175,13 +180,15 @@ export const staffLines = (
     )
     const chords = chordRow(system)
     return [
-      ...(index === 0 ? [] : [{ text: '', aside: null }]),
+      ...(index === 0 ? [] : [{ text: '', aside: null, chords: false }]),
       ...(index === lines.length - 1
         ? withAside(staff, row.aside)
-        : staff.map((text) => ({ text, aside: null }))),
+        : staff.map((text) => ({ text, aside: null, chords: false }))),
       ...(chords === null
         ? []
-        : [{ text: `${' '.repeat(labelWidth + 1)}${chords}`, aside: null }]),
+        : [
+            { text: `${' '.repeat(labelWidth + 1)}${chords}`, aside: null, chords: true },
+          ]),
     ]
   })
 }
@@ -217,11 +224,38 @@ export const renderScore = (score: Score, spacing: Spacing = 'dense'): string =>
  * An unnamed section is just a heading-less block of chords, and playing
  * something once is not a repeat.
  */
-export const sectionHeading = (section: Section): string => {
-  if (section.name === '') return ''
-  const repeat =
-    section.repeat === undefined || section.repeat < 2 ? '' : ` (x${section.repeat})`
-  return `${section.name}${repeat}`
+/** How many times a section is played, as its heading says it: ` (x2)`, or nothing for once. */
+export const repeatText = (section: Section): string =>
+  section.repeat === undefined || section.repeat < 2 ? '' : ` (x${section.repeat})`
+
+/**
+ * The parts of one line of a staff, for a view to set each kind apart the way
+ * an editor colours code: the string's name, bar lines, the dashes between
+ * notes, frets, and the techniques written beside them (h, p, b, /, ~, x…).
+ */
+export type TabPiece = {
+  readonly kind: 'label' | 'bar' | 'rule' | 'fret' | 'technique' | 'space'
+  readonly text: string
+}
+
+const pieceKind = (text: string): TabPiece['kind'] =>
+  text.startsWith('|')
+    ? 'bar'
+    : text.startsWith('-')
+      ? 'rule'
+      : /^\d/.test(text)
+        ? 'fret'
+        : /^\s/.test(text)
+          ? 'space'
+          : 'technique'
+
+export const tabPieces = (line: string): readonly TabPiece[] => {
+  const opening = line.indexOf('|')
+  const label = opening < 0 ? '' : line.slice(0, opening)
+  const pieces = [
+    ...line.slice(Math.max(0, opening)).matchAll(/\|+|-+|\d+|\s+|[^\d\s|-]+/g),
+  ].map(([text]): TabPiece => ({ kind: pieceKind(text), text }))
+  return label === '' ? pieces : [{ kind: 'label', text: label }, ...pieces]
 }
 
 /**
@@ -230,6 +264,28 @@ export const sectionHeading = (section: Section): string => {
  * step. The mark is kept as part of the text so the note lands in the column
  * the writer put it in.
  */
+// A chord as a chart writes one: a root, a quality or extension, and a bass.
+const CHORD =
+  /^[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|M)?\d*(?:(?:sus|add|b|#)\d+)*(?:\/[A-G][#b]?)?$/
+// What else a line of chords carries: bar lines, repeats, a held chord, no chord.
+const BESIDE_CHORDS = /^(?:\||\|\||:?\|:?|x\d+|\(x\d+\)|-+|%|N\.?C\.?|\.+)$/
+
+/**
+ * Whether a chart line is chords rather than words: every word on it a chord
+ * or what goes between chords, and at least one chord. A lyric that happens to
+ * start with A is still a lyric, since its other words are not chords.
+ */
+export const isChordLine = (line: string): boolean => {
+  const words = line
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word !== '')
+  return (
+    words.some((word) => CHORD.test(word)) &&
+    words.every((word) => CHORD.test(word) || BESIDE_CHORDS.test(word))
+  )
+}
+
 export const NOTE_MARK = '//'
 
 export const splitNote = (

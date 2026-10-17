@@ -26,9 +26,12 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, the **Home | Perform | Edit** toggle (§4b, §5) and, at the right,
-the sync button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is
-reached for while writing.
+The header carries the **Home | Perform | Edit** toggle (§4b, §5) and, at the right, the sync
+button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is reached
+for while writing. It carries no name or logo: the browser tab and the home-screen icon already
+say which app this is. On Home, with nothing else in it, it has no row of its own: on a wide screen
+the band's boxes start at the top beside its two buttons, and narrower than that the two buttons
+sit at the right of the Setlists heading instead, the same buttons drawn in a second place.
 
 A first visit's shelf starts with a demo song already written, because an empty editor and
 nothing saved to restore says nothing about what any of this is for, and the fastest way to say
@@ -48,11 +51,7 @@ file has to keep: a song with that title never goes to the sheet (§5), so every
 does not add another copy there. Renaming it is how the demo becomes one of your songs.
 
 The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
-note would. It sits with the name in a single bordered chip so the app announces itself as one
-object rather than as loose text in the header, and it stays at the volume of the
-buttons beside it, because the song's title is the biggest thing on the page and the app's name
-is not. The chip renders the favicon file itself, so the logo and the tab icon cannot drift
-apart.
+note would. It is the favicon and the home-screen icon.
 
 The editor is set like the page it prints rather than like a form. The song's title is the
 largest thing on it, section names are headings, and the fields have no boxes: an underline
@@ -169,7 +168,9 @@ Notes on the model:
   chord stays aligned even when one of its notes carries a technique.
 - **A chord name belongs to a column**, not to a bar or a beat: it is the annotation of the
   moment the column is. Absent and empty are the same thing, so an emptied field leaves no
-  `chord` key behind and never reaches the ASCII.
+  `chord` key behind and never reaches the ASCII. A column left unnamed shows the name its notes
+  make, read the way the staff reads them (`recognizedChords`): dim in its field in edit, as if
+  typed in Perform. It is worked out each time and never stored, so a typed name always wins.
 - **Bars own their columns.** Default 8, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
 - **A row can be titled**, because a tab is usually several named parts rather than one long
@@ -285,7 +286,9 @@ own undo stack for what is typed there, and it is the finer of the two.
 renderScore(score) => string
 renderSystems(score) => readonly string[]
 songParts(song) => readonly Part[]
-sectionHeading(section) => string
+repeatText(section) => string
+tabPieces(line) => readonly TabPiece[]
+isChordLine(line) => boolean
 ```
 
 **A song** is `songParts`: its bpm and key, its note, each section, and each system of the tab, in reading order
@@ -469,6 +472,10 @@ A link or decoration key on a cell that holds no fret — empty or muted — is 
 returns the state unchanged. Modifiers are always typed after the fret, so `9` then `h` gives
 `h9`.
 
+A song opened in Edit, from Perform or from the sidebar, puts the caret in its first section, the
+intro or the first verse, not in the grid: the grid draws its focus ring and scrolls to its cursor
+only once it is being typed in, so moving between Perform and Edit leaves the page where it was.
+
 Clicking a grid cell sets the cursor. Under each column sits a text field for its chord name,
 reached by `↓` from the lowest string or by clicking it, and left by `↑` or `↓`.
 Those are the only mouse interactions: no drag, no selection.
@@ -552,7 +559,7 @@ with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`
 rather than with the song: a phone and an iPad want different sizes for the same song, so they
 stay off the sheet. A song with no size chosen is fitted to the screen.
 
-**Sound level** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
+**Sound level, dB** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
 band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
 microphone closes while Perform is left or the page is hidden and opens again on coming back,
@@ -566,12 +573,14 @@ the last 3 seconds against a target set with − and + in the menu, 70 by defaul
 target only means something at a set distance — a voice reads about 6 dB less each time the
 distance doubles — so the device stays in one place on the stand. Tapping the chip starts the
 average again. The palette has no green and nothing in the app is loud, so a fine level is
-muted or plain and only too much takes colour.
+muted or plain and only too much takes colour. Until the first reading arrives the chip shows a struck-through microphone, since the
+microphone is what it is waiting on; tapping it starts the audio, which a browser holds back until
+the page is touched.
 
 The browser gives samples relative to the microphone's full scale, not sound pressure, so the
 level is A-weighted by three IIR sections (`aWeighting` in `core/level.ts`, by the bilinear
 transform of IEC 61672-1's poles), averaged as energy, and moved into dB(A) by an offset kept per
-device. **Calibrate…** asks what a sound level meter beside the device reads now, such as the
+device. **Calibrate mic** asks what a sound level meter beside the device reads now, such as the
 NIOSH SLM app, and keeps the difference. Asking for the microphone without echo cancellation is
 what turns Safari's automatic gain off: WebKit ignores `autoGainControl`, and with the gain on a
 loud band and a quiet room would read close to each other. Before building this a prototype was
@@ -645,25 +654,33 @@ why, in a dismissible line under the header — `localStorage` can discard a bad
 because nobody chose it, but a file is something you picked on purpose.
 
 Adding a song is one **+ New** menu beside the All songs heading on Home: Blank, Paste and
-Import. Copy as link and Export are on the `⋯` beside each song there. Back up all songs,
-Database sync and the theme are in the settings dialog behind the header's cog, being set for
-the whole app rather than for a song. A backup is the rows the sheet holds, deleted songs
-included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
-once per device and then left alone, so it is a dialog of its own, opened from the settings or
-from the sync button before it is set up. On a phone the header is the scarcest space on the
+Import. Copy as link and Export are on the `⋯` beside each song there. Download backup and
+Database sync are in the settings dialog behind the header's cog, being set for
+the whole app rather than for a song. A backup is every row the sheet holds, as this device
+last had them: the songs with deleted ones included, the setlists with their order, the band's
+todos, and its notes and name, written to one file: a copy of the sheet that does not need the
+sheet. Syncing first makes it the sheet's latest. Sync is set up once per device and then left
+alone, so it is a section of the settings dialog, opened from the cog or from the sync button
+before it is set up. On a phone the header is the scarcest space on the
 page, so it keeps to the toggle and two square buttons.
 
-**Copy song…** and **Delete song…** are at the foot of the editor, after the keys, and act on
-the open song. Copy asks for a name, then the copy joins the shelf and opens.
+Copying, deleting and putting a song in setlists are on its `⋯` on Home, not in the editor,
+which is for writing. Copy asks for a name, then the copy joins the shelf and opens.
 
-**Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's todo list
-and ideas at the top, then setlists on one side,
+**Home** is the page for arranging rather than writing (`SongsPage.tsx`). It has no view toggle
+in the header and marks no song as the open one: a song picked there opens in Perform, and that is
+the way out. It holds the band's notes and
+todo list at the top, side by side from an iPad held upright and the notes first above the list on a
+narrower one, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
-is lit while any is on and that stay on in this browser until turned off
-(`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
-song's bpm and key, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
+is lit while any is on, the heading then counting what is shown, e.g. Songs selected 5/13, and that stay on in this browser until turned off
+(`tabsmith.songFilters`), and sorted by name, last edit or bpm, each either way (`sortSongs`: a
+song with no bpm goes last both ways, and picking an order starts it A to Z, newest or slowest
+first), and each row shows the
+song's bpm and key, its open todos as a number with as many of their texts as fit before it, both of which open it in Edit with the first of them focused, the first setlist it is in
+(the one highest on Home, so a row stays one line) and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
 setlists it is in. Picking a song here opens it in Perform, since a song is mostly picked to be
 played; picked in the sidebar, it opens in the editor or Perform, whichever is up. Renaming the open song goes through the editor, which is what holds
@@ -686,14 +703,18 @@ On Home a song is dragged by its grip — from All songs into a setlist, within 
 setlist to reorder it, or from one setlist into another, which adds it there too — and lands
 where it is dropped (`placeInSetlist`). It is the same pointer-event drag a tab row uses, read
 from the page rather than one list, since a song crosses from one list to another. × takes a
-song out of a setlist and leaves it on the shelf, and a setlist's `⋯` renames or deletes it. All
+song out of a setlist and leaves it on the shelf, and a setlist's `⋯` moves it up or down,
+renames or deletes it. The setlists keep that order everywhere, by a `position` each one carries
+(`moveSetlist`); a move numbers every shown setlist afresh from its new place, so two made on two
+devices at once with the same position come apart, and only those whose number changed are
+stamped. All
 songs is in alphabetical order in the sidebar tree, since there it is for finding one. Every
 group there starts folded, so the sidebar is a short list of names to open rather than every
 song at once; opening or folding one is remembered per browser (`tabsmith.sidebarOpen`, open or
 not by id): it is how this person likes the sidebar, not something about the songs, so it does
-not sync. Which setlists the open song is in is **Setlists** at the foot of the page: a checkbox
-per setlist, ticked where the song is in it. Ticking adds and unticking takes out, and the menu
-stays open, since putting a song in three setlists should be three ticks. Deleting a setlist
+not sync. Which setlists a song is in is ticked in its `⋯` on Home: a checkbox per setlist, ticked
+where the song is in it. Ticking adds and unticking takes out, and the menu stays open, since
+putting a song in three setlists should be three ticks. Deleting a setlist
 asks for its name like deleting a song does, and only marks it inactive: it is kept, and synced,
 like a deleted song.
 
@@ -782,12 +803,23 @@ Setlists sync the same way, newest wins per setlist, in a `setlists` tab of thei
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
 tombstone. Like a deleted song, it stays on the device only until a sync has carried it to the
 sheet, and one pulled from the sheet only takes the setlist off the device. A script deployed before setlists answers without them, which changes nothing here.
+Each setlist's `position` is a column of its own. A row written before it has none, and the app
+reads the sheet's row order in its place; an app from before it sends none, and the sheet keeps
+the position the row already had.
 
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
 on each device until it is redeployed. The band's name and ideas sync beside it in a `band`
-tab, each by field name, the newer text winning whole.
+tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
+is still kept and synced, so a device that has it does not lose it.
+
+The notes are Markdown: headings, lists, quotes, bold, italic, code and links (`core/markdown.ts`).
+Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
+the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
+the marks kept and weight drawn as a shadow, so no character moves from under the caret.
+The browser tab takes the words of the notes' first `#` heading, wherever it is, as the page's
+title (`notesTitle`), so a band's tab reads as theirs; with none, it keeps the app's own.
 
 A todo's text and the ideas are written as typed, list dashes and indents included. A cell that
 starts with `=`, `+`, `-` or `@` is read as a formula, so `Code.gs` stores them as JSON strings,
@@ -823,7 +855,7 @@ it from triggering itself. The answer is merged into the shelf and editor as the
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
 one replaced or deleted.
 
-The URL and a token are typed into the sync dialog (the sync button, or the cog > Database sync) on each device
+The URL and a token are typed into Database sync in the settings dialog (the cog, or the sync button before sync is set up) on each device
 and kept in `localStorage` under `tabsmith.sync`. They are not built into the site: it is
 public, and a URL in its bundle would let anyone read and overwrite every song. The script
 refuses any request without the token. The app calls it a database and never names Google
@@ -866,8 +898,8 @@ the body is monospace, and nudging a chord a space over is easy once you can see
 
 - Vite + React + TypeScript, `strict` on, no `any`.
 - Vitest for the core. No React Testing Library; the UI is verified by running it.
-- Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin for the palette:
-  Latte in the light, Macchiato in the dark.
+- Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin Macchiato for the palette,
+  dark only.
 - oxlint and prettier, driven by the Makefile so CI and a terminal run the same commands.
 - zod, for validating documents and sync replies at the edge (§5). The only runtime dependency
   besides React, and used nowhere else.
@@ -890,6 +922,7 @@ src/
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     bandTodos.ts  the band's own todo list, ideas and name
+    markdown.ts   the band's notes as Markdown: lines in pieces to style, and blocks to read
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
     mergeSong.ts  a song changed on two devices, put together part by part
@@ -898,6 +931,8 @@ src/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
+    MarkdownLines.tsx Markdown styled in place, under the field it is typed in
+    MarkdownView.tsx Markdown set out to read: headings, lists, quotes and emphasis
     Synths.tsx    a song's synths in edit, and in a panel at the top of Perform
     Suggest.tsx   a field with its suggestions in a list drawn by the app
     SongNotes.tsx a song's todos and ideas in edit
@@ -909,14 +944,14 @@ src/
     Menu.tsx      a button and the popover it opens
     Toggle.tsx    a choice of two or three, with a thumb that slides to the one in force
     Paste.tsx     the Paste… dialog
-    Sync.tsx      the Database sync dialog
-    Settings.tsx  the settings dialog: backup, sync and theme
+    Sync.tsx      Database sync, a section of the settings dialog
+    Settings.tsx  the settings dialog: backup and sync
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
-  screen.ts       which page is up, kept so a reload comes back to it, and the theme
+  screen.ts       which page is up, kept so a reload comes back to it
   viewing.ts      how songs are shown on this device: each one's size and dense, tab or notation,
                   and whether synth settings show
   share.ts        a song in a link, and back

@@ -1,11 +1,13 @@
-import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { addBandTodo } from '../core/bandTodos.ts'
+import { notesTitle } from '../core/markdown.ts'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
-  activeSetlists,
   addSetlist,
   addToSetlist,
   deleteSetlist,
+  moveSetlist,
+  nextPosition,
   placeInSetlist,
   placeOf,
   removeFromSetlist,
@@ -53,7 +55,7 @@ import {
   type Settings,
 } from '../sync.ts'
 import { Chart } from './Chart.tsx'
-import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import type { MenuItem } from './Menu.tsx'
 import { Paste } from './Paste.tsx'
 import { Prompt } from './Prompt.tsx'
 import { Practice } from './Practice.tsx'
@@ -61,17 +63,9 @@ import { Shortcuts } from './Shortcuts.tsx'
 import { SongTree } from './SongList.tsx'
 import { SongsPage } from './SongsPage.tsx'
 import { SettingsDialog } from './Settings.tsx'
-import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 import { Toggle } from './Toggle.tsx'
-import {
-  loadMode,
-  loadTheme,
-  saveMode,
-  saveTheme,
-  type Mode,
-  type Theme,
-} from '../screen.ts'
+import { loadMode, saveMode, type Mode } from '../screen.ts'
 
 /**
  * Asking where to put a file is Chromium-only, and no other browser has an
@@ -108,21 +102,16 @@ type Asking =
   | { readonly kind: 'renameSetlist'; readonly id: string }
   | { readonly kind: 'deleteSetlist'; readonly id: string }
 
-/** A cog, the usual mark for settings. */
+/** The page's own title, from index.html, for when the notes give it none. */
+const PAGE_TITLE = document.title
+
+/** A cog, the usual mark for settings: a solid gear with a hole through it. */
 const CogIcon = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="16"
-    height="16"
-    aria-hidden="true"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-  >
-    <circle cx="8" cy="8" r="4.4" />
-    <circle cx="8" cy="8" r="1.8" />
-    <path d="M8 1.4v2.2M8 12.4v2.2M1.4 8h2.2M12.4 8h2.2M3.33 3.33l1.56 1.56M11.11 11.11l1.56 1.56M3.33 12.67l1.56-1.56M11.11 4.89l1.56-1.56" />
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+    <path
+      fillRule="evenodd"
+      d="M6.48 2.51 L6.65 0.32 L9.35 0.32 L9.52 2.51 L10.81 3.04 L12.47 1.61 L14.39 3.53 L12.96 5.19 L13.49 6.48 L15.68 6.65 L15.68 9.35 L13.49 9.52 L12.96 10.81 L14.39 12.47 L12.47 14.39 L10.81 12.96 L9.52 13.49 L9.35 15.68 L6.65 15.68 L6.48 13.49 L5.19 12.96 L3.53 14.39 L1.61 12.47 L3.04 10.81 L2.51 9.52 L0.32 9.35 L0.32 6.65 L2.51 6.48 L3.04 5.19 L1.61 3.53 L3.53 1.61 L5.19 3.04Z M11.30 8 a3.3 3.3 0 1 0 -6.60 0 a3.3 3.3 0 1 0 6.60 0Z"
+    />
   </svg>
 )
 
@@ -151,7 +140,6 @@ export default function App() {
   )
   const state = timeline.present
   const [mode, setMode] = useState<Mode>(loadMode)
-  const [theme, setTheme] = useState<Theme>(loadTheme)
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
@@ -176,8 +164,14 @@ export default function App() {
   const guide = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
-  const syncDialog = useRef<HTMLDialogElement>(null)
   const settingsDialog = useRef<HTMLDialogElement>(null)
+
+  // The browser tab is named after the band notes' first # heading, so a
+  // band's tab reads as theirs.
+  const title = notesTitle(library.band.ideas.text) ?? PAGE_TITLE
+  useEffect(() => {
+    document.title = title
+  }, [title])
 
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
@@ -192,13 +186,6 @@ export default function App() {
   useEffect(() => {
     saveMode(mode)
   }, [mode])
-
-  // Before the first paint, so a page set to light does not flash dark first.
-  useLayoutEffect(() => {
-    saveTheme(theme)
-    if (theme === 'system') delete document.documentElement.dataset.theme
-    else document.documentElement.dataset.theme = theme
-  }, [theme])
 
   // A sync answers after the render that sent it, so it reads the shelf and
   // the editor as they are when the answer lands rather than as they were.
@@ -418,6 +405,16 @@ export default function App() {
     if (mode === 'songs') setMode('practice')
   }
 
+  // Set by a todo count on Home and cleared once the todo has focus, so only
+  // that one arrival in the editor moves the focus.
+  const [focusTodo, setFocusTodo] = useState(false)
+  const editFrom = (song: string) => {
+    switchTo(song)
+    setActiveSetlist(null)
+    setMode('edit')
+    setFocusTodo(true)
+  }
+
   /** A song as it is now: the open one as the editor holds it, the rest as shelved. */
   const songOf = (id: string): Song | undefined =>
     id === library.open
@@ -562,19 +559,62 @@ export default function App() {
     )
   }
 
+  // Sync and, on Home, settings: in the header, and on a narrower Home also in
+  // the Setlists heading, where they cost no row of their own (CSS shows one).
+  const appButtons = (
+    <>
+      <button
+        type="button"
+        className={busy ? 'sync-now busy' : 'sync-now'}
+        aria-label={
+          syncWith === null
+            ? 'Set up sync'
+            : pending > 0
+              ? `Sync now, ${pending} not synced`
+              : 'Sync now'
+        }
+        title={
+          syncWith === null
+            ? 'Set up sync'
+            : busy
+              ? 'Syncing…'
+              : pending > 0
+                ? `${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`
+                : 'Sync now'
+        }
+        onClick={() =>
+          syncWith === null ? show(settingsDialog.current) : void sync(syncWith)
+        }
+      >
+        <SyncIcon />
+        {/* On the button rather than beside it, so a phone's header keeps
+          to one line however many there are. */}
+        {syncWith !== null && pending > 0 && (
+          <span className="sync-count" aria-hidden="true">
+            {pending}
+          </span>
+        )}
+      </button>
+      {/* Settings are for the whole app, so they are with the songs on Home
+        rather than over a song being written or read. */}
+      {mode === 'songs' && (
+        <button
+          type="button"
+          className="settings-open"
+          aria-label="Settings"
+          title="Settings"
+          onClick={() => show(settingsDialog.current)}
+        >
+          <CogIcon />
+        </button>
+      )}
+    </>
+  )
+
   return (
     <main>
       {!focused && (
         <header>
-          <h1>
-            <img
-              src={`${import.meta.env.BASE_URL}favicon.svg`}
-              alt=""
-              width="20"
-              height="20"
-            />
-            <span className="brand-name">tabsmith</span>
-          </h1>
           <input
             ref={picker}
             type="file"
@@ -586,66 +626,25 @@ export default function App() {
               if (file !== undefined) void loadFromDisk(file)
             }}
           />
-          <Toggle
-            label="View"
-            options={[
-              { value: 'songs', label: 'Home' },
-              { value: 'practice', label: 'Perform' },
-              { value: 'edit', label: 'Edit' },
-            ]}
-            value={mode}
-            onChange={setMode}
-          />
+          {/* Home is left by picking a song, so it needs no way out of its own. */}
+          {mode !== 'songs' && (
+            <Toggle
+              label="View"
+              options={[
+                { value: 'songs', label: 'Home' },
+                { value: 'practice', label: 'Perform' },
+                { value: 'edit', label: 'Edit' },
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
+          )}
           {copied && (
             <span className="link-copied" role="status">
               Link copied
             </span>
           )}
-          <button
-            type="button"
-            className={busy ? 'sync-now busy' : 'sync-now'}
-            aria-label={
-              syncWith === null
-                ? 'Set up sync'
-                : pending > 0
-                  ? `Sync now, ${pending} not synced`
-                  : 'Sync now'
-            }
-            title={
-              syncWith === null
-                ? 'Set up sync'
-                : busy
-                  ? 'Syncing…'
-                  : pending > 0
-                    ? `${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`
-                    : 'Sync now'
-            }
-            onClick={() =>
-              syncWith === null ? show(syncDialog.current) : void sync(syncWith)
-            }
-          >
-            <SyncIcon />
-            {/* On the button rather than beside it, so a phone's header keeps
-                to one line however many there are. */}
-            {syncWith !== null && pending > 0 && (
-              <span className="sync-count" aria-hidden="true">
-                {pending}
-              </span>
-            )}
-          </button>
-          {/* Settings are for the whole app, so they are with the songs on Home
-              rather than over a song being written or read. */}
-          {mode === 'songs' && (
-            <button
-              type="button"
-              className="settings-open"
-              aria-label="Settings"
-              title="Settings"
-              onClick={() => show(settingsDialog.current)}
-            >
-              <CogIcon />
-            </button>
-          )}
+          {appButtons}
         </header>
       )}
       {error !== null && (
@@ -659,7 +658,9 @@ export default function App() {
       {mode === 'songs' ? (
         <SongsPage
           library={library}
+          controls={appButtons}
           onOpen={openFrom}
+          onEdit={editFrom}
           onRename={(song) => setAsking({ kind: 'rename', song })}
           onCopy={(song) => setAsking({ kind: 'copy', song })}
           onCopyLink={(id) => {
@@ -676,6 +677,9 @@ export default function App() {
           onNewSetlist={() => setAsking({ kind: 'newSetlist', adding: null })}
           onRenameSetlist={(id) => setAsking({ kind: 'renameSetlist', id })}
           onDeleteSetlist={(id) => setAsking({ kind: 'deleteSetlist', id })}
+          onMoveSetlist={(id, step) =>
+            changeSetlists((current, at) => moveSetlist(current, id, step, at))
+          }
           onRemoveFromSetlist={(setlist, song) =>
             changeSetlists((current, at) => removeFromSetlist(current, setlist, song, at))
           }
@@ -713,9 +717,12 @@ export default function App() {
           ) : (
             <div className="editing">
               <Chart
+                songId={library.open}
                 song={state.song}
                 songs={library.songs.map((entry) => entry.song)}
                 dispatch={dispatch}
+                focusTodo={focusTodo}
+                onTodoFocused={() => setFocusTodo(false)}
               />
               <TabGrid
                 state={state}
@@ -723,47 +730,6 @@ export default function App() {
                 onShowKeys={() => show(guide.current)}
               />
               <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
-              <div className="song-actions">
-                <Menu label="Setlists ▾" title="Setlists this song is in">
-                  <MenuChecks
-                    items={activeSetlists(library).map((setlist) => ({
-                      id: setlist.id,
-                      label: setlist.name,
-                      checked: setlist.songs.includes(library.open),
-                      onToggle: () => toggleSetlist(setlist.id, library.open),
-                    }))}
-                  />
-                  <MenuItems
-                    items={[
-                      {
-                        label: 'New setlist…',
-                        onSelect: () =>
-                          setAsking({ kind: 'newSetlist', adding: library.open }),
-                        quiet: true,
-                      },
-                    ]}
-                  />
-                </Menu>
-                <button
-                  type="button"
-                  onClick={() => setAsking({ kind: 'copy', song: library.open })}
-                >
-                  Copy song…
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={library.songs.length <= 1}
-                  title={
-                    library.songs.length <= 1
-                      ? 'Your only song cannot be deleted'
-                      : undefined
-                  }
-                  onClick={() => askToDelete(library.open)}
-                >
-                  Delete song…
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -827,6 +793,7 @@ export default function App() {
                 name: name.trim(),
                 songs: asking.adding === null ? [] : [asking.adding],
                 active: true,
+                position: nextPosition(current),
                 updatedAt: at,
                 syncedAt: null,
               }),
@@ -875,18 +842,9 @@ export default function App() {
       )}
       <SettingsDialog
         dialog={settingsDialog}
-        theme={theme}
-        onTheme={setTheme}
-        onBackUp={() => void backUp()}
-        onSync={() => {
-          settingsDialog.current?.close()
-          show(syncDialog.current)
-        }}
-      />
-      <Sync
-        dialog={syncDialog}
         syncWith={syncWith}
         syncNote={syncNote}
+        onBackUp={() => void backUp()}
         onConnect={connect}
         onSync={() => {
           if (syncWith !== null) void sync(syncWith)

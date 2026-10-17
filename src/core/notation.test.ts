@@ -6,6 +6,7 @@ import {
   notation,
   openPitches,
   placeOctaves,
+  recognizedChords,
   rhythm,
   suggestKey,
   writtenPitch,
@@ -13,7 +14,7 @@ import {
   type Event,
   type Measure,
 } from './notation.ts'
-import { emptyScore, TUNINGS, type Bar, type Cell } from './model.ts'
+import { emptyScore, TUNINGS, type Bar, type Cell, type Column } from './model.ts'
 
 const fret = (n: number): Cell => ({ kind: 'fret', fret: n })
 
@@ -267,6 +268,33 @@ describe('a named chord on the staff', () => {
       chordIn([fret(0), fret(0), fret(0), fret(2), fret(2), fret(0)])?.pitches,
     ).toHaveLength(6)
     expect(chordIn([fret(0), fret(5), null, null, null, null])?.pitches).toHaveLength(1)
+  })
+})
+
+describe('recognizedChords', () => {
+  const namesOf = (...columns: readonly Column[]): readonly (string | undefined)[] =>
+    recognizedChords({
+      ...emptyScore(),
+      rows: [{ bars: [{ columns }] }],
+    }).rows[0]?.bars[0]?.columns.map((column) => column.chord) ?? []
+  const am: readonly (Cell | null)[] = [fret(0), fret(1), fret(2), fret(2), fret(0), null]
+
+  it('names an unnamed column by its notes, as the staff does', () => {
+    expect(namesOf({ cells: am })).toEqual(['Am'])
+    expect(namesOf({ cells: am, chord: ' ' })).toEqual(['Am'])
+  })
+
+  it('keeps a typed name, even one the notes do not spell', () => {
+    expect(namesOf({ cells: am, chord: 'C6' })).toEqual(['C6'])
+  })
+
+  it('leaves single notes, empty columns and unnamed shapes unnamed', () => {
+    expect(
+      namesOf({ cells: on(0, fret(3)) }, { cells: on(0, fret(3)).map(() => null) }),
+    ).toEqual([undefined, undefined])
+    expect(namesOf({ cells: [fret(0), fret(6), null, null, null, null] })).toEqual([
+      undefined,
+    ])
   })
 })
 

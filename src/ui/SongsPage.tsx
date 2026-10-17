@@ -1,17 +1,17 @@
-import { useState, type PointerEvent } from 'react'
+import { useState, type PointerEvent, type ReactNode } from 'react'
 import { z } from 'zod'
 import {
-  byEdited,
-  byTitle,
   clockOf,
+  DEFAULT_DIRECTION,
   hasStructure,
   hasTab,
   hasTodo,
-  openEntry,
-  openTodos,
+  sortSongs,
   titleOf,
+  type Direction,
   type Entry,
   type Library,
+  type SongOrder,
 } from '../core/library.ts'
 import {
   activeBandTodos,
@@ -21,11 +21,47 @@ import {
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
+import { isOpen } from '../core/model.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Checklist } from './Checklist.tsx'
+import { MarkdownLines } from './MarkdownLines.tsx'
+import { MarkdownView } from './MarkdownView.tsx'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
+
+/** An arrow up and one down side by side, the one in force drawn full and the other faint. */
+const DirectionIcon = ({ direction }: { readonly direction: Direction }) => (
+  <svg
+    viewBox="0 0 16 16"
+    width="14"
+    height="14"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 14V2M2 5l3-3 3 3" opacity={direction === 'asc' ? 1 : 0.35} />
+    <path d="M11 2v12M8 11l3 3 3-3" opacity={direction === 'desc' ? 1 : 0.35} />
+  </svg>
+)
+
+/** A plus drawn rather than typed, so it sits level with the word beside it. */
+const PlusIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="12"
+    height="12"
+    aria-hidden="true"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
+    <path d="M8 2.5v11M2.5 8h11" />
+  </svg>
+)
 
 /** A funnel, the usual mark for narrowing a list. */
 const FunnelIcon = () => (
@@ -47,6 +83,10 @@ type Props = {
   readonly library: Library
   /** The setlist it was opened from, or null from All songs. */
   readonly onOpen: (song: string, setlist: string | null) => void
+  /** Sync and settings, shown in the Setlists heading where Home has no header row. */
+  readonly controls: ReactNode
+  /** Straight to Edit, where a song's todos are ticked off. */
+  readonly onEdit: (song: string) => void
   readonly onRename: (song: string) => void
   readonly onCopy: (song: string) => void
   readonly onCopyLink: (song: string) => void
@@ -58,6 +98,7 @@ type Props = {
   readonly onNewSetlist: () => void
   readonly onRenameSetlist: (setlist: string) => void
   readonly onDeleteSetlist: (setlist: string) => void
+  readonly onMoveSetlist: (setlist: string, step: -1 | 1) => void
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
   readonly onAddBandTodo: () => void
@@ -135,7 +176,6 @@ const edited = (entry: Entry): string =>
  */
 export function SongsPage(props: Props) {
   const { library, onOpen, onPlace } = props
-  const open = openEntry(library).id
   const bandTodos = activeBandTodos(library)
   // The checklist counts rows; the library knows items by id.
   const onBandTodo = (
@@ -145,10 +185,16 @@ export function SongsPage(props: Props) {
     const todo = bandTodos[index]
     if (todo !== undefined) props.onBandEdit((current, at) => edit(current, todo.id, at))
   }
-  const [order, setOrder] = useState<'name' | 'edited'>('name')
+  const [writingNotes, setWritingNotes] = useState(false)
+  const [order, setOrder] = useState<SongOrder>('name')
+  const [direction, setDirection] = useState<Direction>(DEFAULT_DIRECTION.name)
+  const orderBy = (next: SongOrder) => {
+    setOrder(next)
+    setDirection(DEFAULT_DIRECTION[next])
+  }
   const [drag, setDrag] = useState<Drag | null>(null)
 
-  const sorted = order === 'name' ? byTitle(library.songs) : byEdited(library.songs)
+  const sorted = sortSongs(library.songs, order, direction)
   const [only, setOnly] = useState(rememberedFilters)
   const shown = sorted.filter(
     (entry) =>
@@ -211,60 +257,90 @@ export function SongsPage(props: Props) {
 
   return (
     <div className={`songs-page${drag === null ? '' : ' dragging'}`}>
-      <input
-        className="band-name"
-        aria-label="Band name"
-        placeholder="Band name"
-        value={library.band.name.text}
-        onChange={(event) => {
-          const text = event.target.value
-          props.onBandEdit((current, at) => setBandField(current, 'name', text, at))
-        }}
-      />
-      <section className="band-todo" aria-label="Band">
-        <Checklist
-          title="TODO"
-          items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
-          onAdd={props.onAddBandTodo}
-          onText={(index, text) =>
-            onBandTodo(index, (current, id, at) => setBandTodoText(current, id, text, at))
-          }
-          onToggle={(index) => onBandTodo(index, toggleBandTodo)}
-          onRemove={(index) => onBandTodo(index, removeBandTodo)}
-          onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
-        />
-        <label className="ideas">
-          <span className="checklist-title">Ideas</span>
-          <textarea
-            aria-label="Ideas"
-            placeholder="Covers to learn, a set idea, anything not a song yet"
-            rows={Math.max(1, library.band.ideas.text.split('\n').length)}
-            value={library.band.ideas.text}
-            onChange={(event) => {
-              const text = event.target.value
-              props.onBandEdit((current, at) => setBandField(current, 'ideas', text, at))
-            }}
+      {/* The notes first: on a narrow screen they are what is read before the list. */}
+      <div className="band-boxes">
+        <section className="band-box band-notes" aria-label="Band notes">
+          {writingNotes || library.band.ideas.text.trim() === '' ? (
+            // A textarea cannot style part of its text, so the notes are drawn again
+            // underneath with their Markdown styled, and sized by that copy so the
+            // two always wrap alike; the field on top shows only its caret.
+            <label className="ideas markdown-field">
+              <span className="markdown-mirror" aria-hidden="true">
+                <MarkdownLines text={library.band.ideas.text} />
+              </span>
+              <textarea
+                aria-label="Ideas"
+                placeholder="Jot something down…"
+                value={library.band.ideas.text}
+                autoFocus={writingNotes}
+                onFocus={(event) => {
+                  const end = event.currentTarget.value.length
+                  event.currentTarget.setSelectionRange(end, end)
+                }}
+                onBlur={() => setWritingNotes(false)}
+                onChange={(event) => {
+                  const text = event.target.value
+                  props.onBandEdit((current, at) =>
+                    setBandField(current, 'ideas', text, at),
+                  )
+                }}
+              />
+            </label>
+          ) : (
+            // Read the way a README is; clicked or tabbed into, it is written in
+            // again. A link takes its own click rather than opening the notes.
+            <div
+              className="markdown-view"
+              tabIndex={0}
+              aria-label="Ideas, select to edit"
+              onClick={(event) => {
+                if (!(event.target instanceof HTMLAnchorElement)) setWritingNotes(true)
+              }}
+              onFocus={(event) => {
+                if (event.target === event.currentTarget) setWritingNotes(true)
+              }}
+            >
+              <MarkdownView text={library.band.ideas.text} />
+            </div>
+          )}
+        </section>
+        <section className="band-box band-todo" aria-label="Band todos">
+          <Checklist
+            title="TODO"
+            items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
+            onAdd={props.onAddBandTodo}
+            onText={(index, text) =>
+              onBandTodo(index, (current, id, at) =>
+                setBandTodoText(current, id, text, at),
+              )
+            }
+            onToggle={(index) => onBandTodo(index, toggleBandTodo)}
+            onRemove={(index) => onBandTodo(index, removeBandTodo)}
+            onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
           />
-        </label>
-      </section>
+        </section>
+      </div>
       <section className="setlists-panel">
         <div className="panel-head">
           <h2>Setlists</h2>
           <button
             type="button"
+            className="add-new"
             aria-label="New setlist"
             title="New setlist"
             onClick={props.onNewSetlist}
           >
-            + New
+            <PlusIcon />
+            New
           </button>
+          <div className="page-controls">{props.controls}</div>
         </div>
         {activeSetlists(library).length === 0 && (
           <p className="panel-empty">
             No setlists yet. Make one, then drag songs into it from All songs.
           </p>
         )}
-        {activeSetlists(library).map((setlist) => {
+        {activeSetlists(library).map((setlist, index, shown) => {
           const entries = songsOf(library, setlist)
           const others = entries.filter((entry) => entry.id !== drag?.song)
           return (
@@ -279,6 +355,18 @@ export function SongsPage(props: Props) {
                 <Menu label="⋯" title={`${setlist.name} setlist`}>
                   <MenuItems
                     items={[
+                      {
+                        label: 'Move up',
+                        onSelect: () => props.onMoveSetlist(setlist.id, -1),
+                        keepsOpen: true,
+                        disabled: index === 0,
+                      },
+                      {
+                        label: 'Move down',
+                        onSelect: () => props.onMoveSetlist(setlist.id, 1),
+                        keepsOpen: true,
+                        disabled: index === shown.length - 1,
+                      },
                       {
                         label: 'Rename…',
                         onSelect: () => props.onRenameSetlist(setlist.id),
@@ -300,7 +388,7 @@ export function SongsPage(props: Props) {
                     <li
                       key={entry.id}
                       data-song={entry.id}
-                      className={`${entry.id === open ? 'current' : ''}${mark(setlist.id, others, entry)}`}
+                      className={mark(setlist.id, others, entry).trim() || undefined}
                     >
                       <button
                         type="button"
@@ -335,9 +423,21 @@ export function SongsPage(props: Props) {
 
       <section className="all-songs">
         <div className="panel-head">
-          <h2>All songs</h2>
+          <h2>
+            {filtering
+              ? `Songs selected ${shown.length}/${library.songs.length}`
+              : 'All songs'}
+          </h2>
           <div className="new-song">
-            <Menu label="+ New" title="New song">
+            <Menu
+              label={
+                <>
+                  <PlusIcon />
+                  New
+                </>
+              }
+              title="New song"
+            >
               <MenuItems items={props.adding} />
             </Menu>
           </div>
@@ -379,10 +479,20 @@ export function SongsPage(props: Props) {
               options={[
                 { value: 'name', label: 'Name' },
                 { value: 'edited', label: 'Last edited' },
+                { value: 'bpm', label: 'BPM' },
               ]}
               value={order}
-              onChange={setOrder}
+              onChange={orderBy}
             />
+            <button
+              type="button"
+              className="song-direction"
+              aria-label={direction === 'asc' ? 'Ascending' : 'Descending'}
+              title={direction === 'asc' ? 'Ascending' : 'Descending'}
+              onClick={() => setDirection(direction === 'asc' ? 'desc' : 'asc')}
+            >
+              <DirectionIcon direction={direction} />
+            </button>
           </div>
         </div>
         {shown.length === 0 ? (
@@ -392,8 +502,9 @@ export function SongsPage(props: Props) {
             {shown.map((entry) => {
               const title = titleOf(entry)
               const inSetlists = setlistsWith(library, entry.id)
+              const todos = entry.song.todos.filter(isOpen)
               return (
-                <li key={entry.id} className={entry.id === open ? 'current' : undefined}>
+                <li key={entry.id}>
                   <button type="button" {...grip(entry.id, null, title)}>
                     ⠿
                   </button>
@@ -409,13 +520,30 @@ export function SongsPage(props: Props) {
                       </span>
                     )}
                   </button>
-                  {openTodos(entry) > 0 && (
-                    <span className="chip song-todo" title="Todos still to do">
-                      {openTodos(entry)} todo
-                    </span>
+                  {todos.length > 0 && (
+                    <button
+                      type="button"
+                      className="song-todos"
+                      // One todo is short enough to read on hover; more are counted.
+                      title={
+                        todos.length === 1
+                          ? todos[0]?.text
+                          : `${todos.length} todos still to do, in Edit`
+                      }
+                      onClick={() => props.onEdit(entry.id)}
+                    >
+                      {/* As many as fit on the row's one line; the rest wrap out of sight. */}
+                      <span className="song-todo-texts">
+                        {todos.map((todo, index) => (
+                          <span key={index}>{todo.text}</span>
+                        ))}
+                      </span>
+                      <span className="chip song-todo">{todos.length}</span>
+                    </button>
                   )}
                   <span className="song-setlists">
-                    {inSetlists.map((setlist) => (
+                    {/* Only the setlist that matters most, so a row stays one line. */}
+                    {inSetlists.slice(0, 1).map((setlist) => (
                       <span key={setlist.id} className="chip">
                         {setlist.name}
                       </span>

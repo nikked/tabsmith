@@ -39,16 +39,19 @@ function Controls({
 }) {
   return (
     <>
-      <span className="synth-kind" style={{ gridRow: row, gridColumn: 1 }}>
+      <span
+        className={`synth-kind ${kind.toLowerCase()}`}
+        style={{ gridRow: row, gridColumn: 1 }}
+      >
         {kind}s
       </span>
       {values.map((value, index) => (
         <label
           key={index}
-          className="synth-control"
+          className={`synth-control ${kind.toLowerCase()}`}
           style={{ gridRow: row, gridColumn: index + 2 }}
         >
-          <span>{index + 1}</span>
+          <span className="synth-mark">{index + 1}</span>
           <Suggest
             cell={{ row: field, col: index + 1 }}
             label={`${kind} ${index + 1}`}

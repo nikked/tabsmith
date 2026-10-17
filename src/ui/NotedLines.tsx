@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { NOTE_MARK, splitNote } from '../core/render.ts'
+import { isChordLine, NOTE_MARK, splitNote } from '../core/render.ts'
 
 /**
  * A section body with each line's note set apart from it. The mark is still
@@ -11,7 +11,7 @@ export function NotedLines({ body }: { readonly body: string }) {
     return (
       <Fragment key={index}>
         {index > 0 && '\n'}
-        {text}
+        {isChordLine(text) ? <span className="chord-line">{text}</span> : text}
         {note !== null && (
           <>
             <span className="note-mark">{NOTE_MARK}</span>

@@ -1,34 +1,6 @@
-/* Catppuccin: Latte in the light, Macchiato in the dark. The names on the right
-   are the palette's, so a token can be re-picked without guessing at a hex. */
+/* Catppuccin Macchiato, the only theme. The names on the right are the
+   palette's, so a token can be re-picked without guessing at a hex. */
 :root {
-  --bg: #eff1f5; /* base */
-  --raised: #e6e9ef; /* mantle */
-  --fg: #4c4f69; /* text */
-  --muted: #8c8fa1; /* overlay1 */
-  --line: #bcc0cc; /* surface1 */
-  --cursor: #df8e1d; /* yellow */
-  --on-cursor: #eff1f5; /* base */
-  --alert: #d20f39; /* red */
-  color-scheme: light dark;
-}
-
-/* The system's choice unless one was made in the menu, which sets data-theme.
-   The dark palette is written out twice because a media query and an
-   attribute cannot share one rule. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #24273a; /* base */
-    --raised: #1e2030; /* mantle */
-    --fg: #cad3f5; /* text */
-    --muted: #8087a2; /* overlay1 */
-    --line: #494d64; /* surface1 */
-    --cursor: #eed49f; /* yellow */
-    --on-cursor: #24273a; /* base */
-    --alert: #ed8796; /* red */
-  }
-}
-
-:root[data-theme='dark'] {
   --bg: #24273a; /* base */
   --raised: #1e2030; /* mantle */
   --fg: #cad3f5; /* text */
@@ -37,11 +9,22 @@
   --cursor: #eed49f; /* yellow */
   --on-cursor: #24273a; /* base */
   --alert: #ed8796; /* red */
+  /* Accents, paired into the lander's gradients; text on them is --on-accent. */
+  --peach: #f5a97f; /* peach */
+  --pink: #f5bde6; /* pink */
+  --maroon: #ee99a0; /* maroon */
+  --mauve: #c6a0f6; /* mauve */
+  --blue: #8aadf4; /* blue */
+  --sapphire: #7dc4e4; /* sapphire */
+  --green: #a6da95; /* green */
+  --sky: #91d7e3; /* sky */
+  --overlay0: #6e738d; /* overlay0 */
+  --overlay2: #939ab7; /* overlay2 */
+  --lavender: #b7bdf8; /* lavender */
+  --teal: #8bd5ca; /* teal */
+  --yellow: #eed49f; /* yellow */
+  --on-accent: #181926; /* crust */
   color-scheme: dark;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
 }
 
 body {
@@ -55,15 +38,25 @@ body {
 }
 
 main {
+  --page-top: 1.5rem;
   max-width: 120rem;
   margin: 0 auto;
   padding: 1.5rem;
   /* Opened from a home screen the page runs under the status bar; outside one
      the inset is nothing, so this is the plain padding everywhere else. */
-  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--page-top) + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* On a laptop or a desktop, more room above the page: with no name in the
+   header, the first thing on it would otherwise sit tight under the browser's
+   own bar. A fine pointer is what tells a MacBook from an iPad as wide. */
+@media (min-width: 64rem) and (pointer: fine) {
+  main {
+    --page-top: 2.5rem;
+  }
 }
 
 /* A strip of the page's own colour behind the status bar, so the song does not
@@ -87,42 +80,21 @@ body::before {
   }
 }
 
-/* Centred, not baseline-aligned: the name sits in a padded chip whose baseline
-   is not the text's, so baselines would hang it above the buttons. */
+/* Opened from a home screen, iOS blurs a strip under the status bar into its
+   glass, and the page's top would sit in it; Safari's own bar has no such edge. */
+@media (max-width: 64rem) and (display-mode: standalone) {
+  main {
+    padding-top: calc(1.6rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Centred, not baseline-aligned: the toggle and the square buttons are padded
+   boxes whose baselines are not their text's. */
 header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-}
-
-/**
- * The mark and the name sit in one pill, so the app's name reads as a single
- * object rather than as loose text among the controls. The mark is the favicon
- * itself — one file, so the two cannot drift apart.
- *
- * Same shell as the header's controls, a size up and in the full text colour:
- * it is the one thing in the header that is not a control.
- */
-h1 {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 1rem 0.35rem 0.55rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--fg);
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  margin: 0;
-}
-
-h1 img {
-  display: block;
-  width: 24px;
-  height: 24px;
 }
 
 .staff {
@@ -295,8 +267,11 @@ h1 img {
   border-bottom: 1px solid var(--fg);
 }
 
+/* A touch smaller than the frets above, so a long name like Emaj7/B widens its
+   column less. */
 .chord {
   font: inherit;
+  font-size: 0.9em;
   width: 100%;
   min-width: 2.5em;
   box-sizing: border-box;
@@ -307,6 +282,12 @@ h1 img {
   background: transparent;
   border: none;
   border-bottom: 1px dashed var(--line);
+}
+
+/* A name the notes make, not one typed: shown dim, so it reads as a suggestion. */
+.chord::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
 }
 
 .chord:focus {
@@ -440,32 +421,54 @@ h1 img {
 
 .checklist li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 
 .checklist input[type='checkbox'] {
-  margin: 0;
+  /* Level with the first line of the text, however many lines it runs to. */
+  margin: calc(0.15rem + 0.2em) 0 0;
   accent-color: var(--muted);
 }
 
-.checklist input[type='text'] {
+/* The text and an invisible copy of it share one grid cell: the copy wraps and
+   sets the height, and the textarea over it fills that, a line per line. */
+.checklist-text {
+  display: grid;
   flex: 1;
   min-width: 0;
+}
+
+.checklist-text::after {
+  content: attr(data-text) ' ';
+  visibility: hidden;
+  white-space: pre-wrap;
+}
+
+.checklist-text::after,
+.checklist-text textarea {
+  grid-area: 1 / 1;
   padding: 0.15rem 0;
   font: inherit;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.checklist-text textarea {
+  overflow: hidden;
   color: inherit;
   background: transparent;
   border: none;
   border-radius: 0;
+  resize: none;
 }
 
-.checklist input[type='text']:focus {
+.checklist-text textarea:focus {
   outline: none;
   box-shadow: inset 0 -1px 0 var(--fg);
 }
 
-.checklist li.done input[type='text'] {
+.checklist li.done .checklist-text textarea {
   color: var(--muted);
   text-decoration: line-through;
 }
@@ -653,16 +656,16 @@ h1 img {
   display: grid;
   grid-template-columns: auto auto 1fr;
   align-items: center;
-  gap: 0.35em 0.6em;
+  gap: 0.25em 0.55em;
   width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 0.4em 0.9em 0.4em 0.4em;
+  padding: 0.3em 0.75em 0.3em 0.3em;
   font-family: system-ui, sans-serif;
   /* Set to the page's size, not the song's: A− and A+ size what is read
      while playing, and the patches are set before it starts. */
-  font-size: 1rem;
+  font-size: 0.9rem;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -677,12 +680,12 @@ h1 img {
 /* Lit the way the chosen page is in the header's toggle, so a synth reads as
    a setting being shown rather than a line of the song. */
 .synth-list .synth-name {
-  padding: 0.1em 0.65em;
-  font-weight: 700;
+  padding: 0 0.5em;
+  font-weight: 600;
   text-align: center;
   color: var(--bg);
   background: var(--fg);
-  border-radius: 7px;
+  border-radius: 6px;
 }
 
 /* The patch it is set to reads as a value of the synth, not part of its name. */
@@ -698,22 +701,33 @@ h1 img {
   margin: 0 0 0 0.65em;
 }
 
-/* The dials and the knobs each keep together, a rule between them marking
-   where the one set ends and the other starts. */
-.synth-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15em 0.9em;
+/* Each control is its number in a mark, then what it does: a dial's mark is
+   round and a knob's square, and each kind keeps its own colour, so the two
+   tell apart at a glance without a word or a rule between them. */
+.synth-setting {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
 }
 
-.synth-group + .synth-group {
-  padding-left: 0.9em;
-  border-left: 1px solid var(--line);
+.synth-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  font-size: 0.7em;
+  font-weight: 600;
+  /* A digit has no descender, so the room a line keeps for one would sink it. */
+  line-height: 1;
+  border: 1px solid currentColor;
 }
 
-.synth-label {
-  font-size: 0.85em;
-  color: var(--muted);
+.dial .synth-mark {
+  border-radius: 50%;
+}
+
+.knob .synth-mark {
+  border-radius: 0.3em;
 }
 
 /* A phone has no width to spare, and the patches are glanced at, not read
@@ -1026,8 +1040,9 @@ h1 img {
   display: flex;
   flex-direction: column;
   gap: 2.5em;
-  color: #000;
-  background: #fff;
+  /* White with only a breath of warmth, so it reads as paper rather than a screen. */
+  color: #1a1a1a;
+  background: #fffffd;
   border-radius: 0.3rem;
 }
 
@@ -1330,7 +1345,6 @@ button {
 
 .guide::backdrop,
 .paste::backdrop,
-.sync-dialog::backdrop,
 .settings-dialog::backdrop,
 .prompt::backdrop {
   background: rgb(0 0 0 / 55%);
@@ -1393,7 +1407,6 @@ button {
   color: var(--alert);
 }
 
-.sync-dialog,
 .settings-dialog,
 /* The body's font, set again for a prompt opened inside Perform, which would
    otherwise take the song's face and size: a field under 16px makes iOS zoom. */
@@ -1413,10 +1426,60 @@ button {
   border-radius: 6px;
 }
 
-.sync-dialog h2,
 .settings-dialog h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.9rem;
   font-size: 1.1rem;
+  color: var(--mauve);
+}
+
+/* Closing is a corner ✕ rather than a button of its own beside the actions. */
+.dialog-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  border: none;
+  border-radius: 8px;
+}
+
+.dialog-close:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+/* An action tinted with its own colour, the background barely there. */
+.tint-green,
+.tint-blue,
+.tint-red {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--raised));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 8px;
+}
+
+.tint-green:hover,
+.tint-blue:hover,
+.tint-red:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--raised));
+}
+
+.tint-green {
+  --accent: var(--green);
+}
+
+.tint-blue {
+  --accent: var(--blue);
+}
+
+/* Undoing something, such as cutting the link to the sheet. */
+.tint-red {
+  --accent: var(--alert);
 }
 
 /* Hung off its setlist's name by a guide line, like a folder's contents: enough
@@ -1693,19 +1756,39 @@ button {
   margin-left: 0;
 }
 
-.sync-now.busy svg {
-  animation: turn 0.9s linear infinite;
+/* While syncing the arrows keep still and a soft blue glow breathes behind
+   them: under way, without anything spinning for attention. */
+.sync-now.busy {
+  color: var(--blue);
 }
 
-/* Anticlockwise, the way the arrows point. */
-@keyframes turn {
+.sync-now.busy::before {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blue), transparent 70%);
+  opacity: 0.35;
+  animation: breathe 1.6s ease-in-out infinite alternate;
+}
+
+.sync-now svg {
+  position: relative;
+}
+
+@keyframes breathe {
+  from {
+    opacity: 0.15;
+    transform: scale(0.85);
+  }
   to {
-    transform: rotate(-360deg);
+    opacity: 0.45;
+    transform: scale(1.1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sync-now.busy svg {
+  .sync-now.busy::before {
     animation: none;
   }
 }
@@ -1816,15 +1899,6 @@ header .menu-open:has(+ .menu:popover-open) {
   }
 }
 
-/* At the foot of the page, after the keys: acting on the whole song is the
-   last thing you do with it, not something to reach for while writing. */
-.song-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-
 .danger {
   color: var(--alert);
 }
@@ -1833,7 +1907,6 @@ header .menu-open:has(+ .menu:popover-open) {
   border-color: var(--alert);
 }
 
-.song-actions button:disabled,
 .prompt button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -1944,7 +2017,8 @@ header .menu-open:has(+ .menu:popover-open) {
 
 .menu-check input {
   margin: 0;
-  accent-color: var(--fg);
+  /* Ticked like any choice in force, in the mauve the app uses for those. */
+  accent-color: var(--mauve);
 }
 
 /* The editor and, where there is room for both, the songs beside it. Below that
@@ -1989,19 +2063,15 @@ header .menu-open:has(+ .menu:popover-open) {
   gap: 0.5rem;
 }
 
-.sync-dialog form,
-.settings-dialog form {
-  margin-top: 1.5rem;
-}
-
+/* A section of Settings, under a small heading of its own. */
 .settings-dialog h3 {
-  margin: 1.25rem 0 0.4rem;
+  margin: 1.25rem 0 0.5rem;
   font-size: 0.8rem;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--muted);
 }
 
-.sync-dialog form.sync {
+.settings-dialog form.sync {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2009,7 +2079,7 @@ header .menu-open:has(+ .menu:popover-open) {
   margin-top: 0;
 }
 
-.sync-dialog .sync input {
+.settings-dialog .sync input {
   font: inherit;
   box-sizing: border-box;
   width: 100%;
@@ -2020,7 +2090,7 @@ header .menu-open:has(+ .menu:popover-open) {
   border-radius: 4px;
 }
 
-.sync-dialog .sync-note {
+.settings-dialog .sync-note {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
@@ -2247,46 +2317,78 @@ kbd {
 
   /* Side by side, the two headings below sit on one line close under the box,
      so the band's part of the page needs a little more air before them. */
-  .band-todo {
+  .band-boxes {
     margin-bottom: 1rem;
   }
 }
 
-/* The band's name heads the page, an underline only while it is being edited.
-   It spans both columns, above the band's box. */
-.band-name {
+/* The band's own notes and list, boxed the way the synth settings are, so they
+   read as the band's rather than as one of the songs below. Side by side where
+   a laptop has the width, one above the other on a tablet or a phone. */
+.band-boxes {
+  display: grid;
   grid-column: 1 / -1;
-  max-width: 44rem;
-  margin-bottom: -1.2rem;
-  padding: 0.1rem 0;
-  font: inherit;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: inherit;
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  gap: 1rem;
+  align-items: start;
 }
 
-.band-name:hover {
-  box-shadow: inset 0 -1px 0 var(--line);
+/* Two columns from an iPad held upright (the mini is 744px), as each still has
+   the width of a short note; a phone keeps one. */
+@media (min-width: 46rem) {
+  .band-boxes {
+    grid-template-columns: repeat(2, minmax(0, 44rem));
+  }
 }
 
-.band-name:focus {
-  outline: none;
-  box-shadow: inset 0 -1px 0 var(--fg);
+@media (min-width: 88rem) {
+  /* With room to spare beside the boxes, Home has no header row of its own:
+     sync and settings sit in the top corner and the boxes start at the top
+     beside them, kept clear of the two buttons. */
+  main:has(> .songs-page) {
+    position: relative;
+  }
+
+  main:has(> .songs-page) > header {
+    gap: 0.4rem;
+    position: absolute;
+    top: calc(var(--page-top) + env(safe-area-inset-top, 0px));
+    right: 1.5rem;
+  }
+
+  .band-boxes {
+    margin-right: 6.5rem;
+  }
 }
 
-/* The band's own list and notes, boxed the way the synth settings are, so they
-   read as the band's rather than as one of the songs below. */
-.band-todo {
+/* Narrower than that, Home has no header row at all: sync and settings sit at
+   the right of the Setlists heading, which has the room, and the header only
+   appears to say a link was copied. */
+.page-controls {
+  display: none;
+  gap: 0.4rem;
+}
+
+@media not all and (min-width: 88rem) {
+  main:has(> .songs-page) > header .sync-now,
+  main:has(> .songs-page) > header .settings-open {
+    display: none;
+  }
+
+  main:has(> .songs-page) > header:not(:has(.link-copied)) {
+    display: none;
+  }
+
+  .page-controls {
+    display: flex;
+  }
+}
+
+.band-box {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  grid-column: 1 / -1;
   box-sizing: border-box;
   width: 100%;
-  max-width: 44rem;
   padding: 0.7rem 0.9rem;
   font-size: 0.9rem;
   background: var(--raised);
@@ -2296,7 +2398,7 @@ kbd {
 
 /* The same free text as a song's ideas, outside the chart's fields. The box
    around it already says where it is, so it draws no rule of its own. */
-.band-todo .ideas textarea {
+.band-notes .ideas textarea {
   padding: 0.15rem 0;
   font: inherit;
   color: inherit;
@@ -2307,8 +2409,205 @@ kbd {
   resize: none;
 }
 
-.band-todo .ideas textarea:focus {
+.band-notes .ideas textarea:focus {
   outline: none;
+}
+
+/* The styled copy sets the height and the field lies exactly over it, so both
+   break their lines in the same places and the field never scrolls. */
+.markdown-field {
+  position: relative;
+}
+
+.markdown-mirror {
+  min-height: 1lh;
+  padding: 0.15rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.band-notes .markdown-field textarea {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  color: transparent;
+  caret-color: var(--fg);
+}
+
+.markdown-field textarea::placeholder {
+  color: var(--muted);
+}
+
+.markdown-field textarea::selection {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--cursor) 35%, transparent);
+}
+
+/* Markdown in the colours of Catppuccin's editor themes: headings by level, bold
+   maroon, code green, links lavender, the marks themselves dimmed. While it is
+   written, weight is drawn with a shadow rather than a bolder face, which would
+   widen the words and leave the caret behind. */
+.md-mark {
+  color: var(--overlay0);
+}
+
+/* Each level its own colour, warm to cool as Catppuccin's Markdown themes run,
+   softened into the text so a page of notes stays calm. */
+:root {
+  --h1-colour: color-mix(in srgb, var(--peach) 75%, var(--fg));
+  --h2-colour: color-mix(in srgb, var(--yellow) 75%, var(--fg));
+  --h3-colour: color-mix(in srgb, var(--teal) 75%, var(--fg));
+  --h4-colour: color-mix(in srgb, var(--blue) 75%, var(--fg));
+}
+
+.md-mark:has(+ .md-h1),
+.md-h1 {
+  color: var(--h1-colour);
+}
+
+.md-mark:has(+ .md-h2),
+.md-h2 {
+  color: var(--h2-colour);
+}
+
+.md-mark:has(+ .md-h3),
+.md-h3 {
+  color: var(--h3-colour);
+}
+
+.md-mark:has(+ .md-h4),
+.md-h4 {
+  color: var(--h4-colour);
+}
+
+.md-heading {
+  text-shadow: 0.03em 0 0 currentColor;
+}
+
+.md-bold {
+  color: var(--maroon);
+  text-shadow: 0.03em 0 0 currentColor;
+}
+
+.md-italic {
+  font-style: normal;
+  color: var(--overlay2);
+}
+
+.md-code {
+  color: var(--green);
+}
+
+.md-link,
+.md-image {
+  color: var(--lavender);
+}
+
+/* Read, the notes are set out the way a README is: headings by size, lists
+   bulleted, quotes barred, and the marks gone. */
+.markdown-view {
+  cursor: text;
+  overflow-wrap: break-word;
+}
+
+.markdown-view:focus {
+  outline: none;
+}
+
+.markdown-view > :first-child {
+  margin-top: 0;
+}
+
+.markdown-view > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-view :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.1em 0 0.5em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-view h1 {
+  font-size: 1.6em;
+  color: var(--h1-colour);
+}
+
+.markdown-view h2 {
+  font-size: 1.3em;
+  color: var(--h2-colour);
+}
+
+.markdown-view h3 {
+  font-size: 1.1em;
+  color: var(--h3-colour);
+}
+
+/* The band's list sits beside its notes, so its heading reads as one of
+   theirs: set the way a ## is. */
+.band-todo h3.checklist-title {
+  margin: 0 0 0.3em;
+  font-size: 1.3em;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--h2-colour);
+}
+
+.markdown-view :is(h4, h5, h6) {
+  font-size: 1em;
+  color: var(--h4-colour);
+}
+
+.markdown-view p,
+.markdown-view ul,
+.markdown-view ol {
+  margin: 0 0 0.7em;
+}
+
+.markdown-view ul,
+.markdown-view ol {
+  padding-left: 1.6em;
+}
+
+.markdown-view blockquote {
+  margin: 0 0 0.7em;
+  padding: 0.1em 0 0.1em 0.8em;
+  color: var(--overlay2);
+  border-left: 3px solid var(--line);
+}
+
+.markdown-view li::marker {
+  color: var(--overlay0);
+}
+
+.markdown-view strong {
+  color: var(--maroon);
+}
+
+.markdown-view em {
+  color: var(--overlay2);
+}
+
+.markdown-view code {
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--green);
+  background: color-mix(in srgb, var(--bg) 60%, black);
+  border-radius: 4px;
+}
+
+.markdown-view img {
+  display: block;
+  max-width: 100%;
+  margin: 0.4em 0;
+  border-radius: 6px;
+}
+
+.markdown-view a {
+  color: var(--lavender);
+  text-underline-offset: 0.15em;
 }
 
 .songs-page.dragging {
@@ -2342,6 +2641,28 @@ kbd {
 
 .new-song {
   margin-right: auto;
+}
+
+/* Making something is the one thing on Home worth reaching for, so + New is a
+   pill in one of the palette's own gradients, the way Catppuccin's lander does it. */
+.add-new,
+.new-song .menu-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.9rem 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: linear-gradient(90deg, var(--pink), var(--mauve));
+  border: none;
+  border-radius: 999px;
+  transition: filter 160ms;
+}
+
+.add-new:hover,
+.new-song .menu-open:hover {
+  filter: brightness(1.08) saturate(1.1);
 }
 
 .panel-empty {
@@ -2415,25 +2736,59 @@ kbd {
   display: flex;
 }
 
-/* On or off, each on its own: a filter is a narrowing you add, not one of a
-   set of choices, so it is a pressable chip rather than a toggle. */
+/* Three orders share a phone's width with the funnel and the direction, so each
+   stays on one line and gives up some padding there instead. */
+.song-order .toggle button {
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .song-order .toggle button {
+    padding-inline: 0.45rem;
+  }
+}
+
+/* The funnel and the direction sit in the same well and border as the order
+   toggle beside them, so the three read as one row of controls. */
+.song-direction,
 .song-filters .menu-open {
   display: grid;
   place-items: center;
   padding: 0 0.55rem;
-  border-radius: 8px;
   color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition:
+    color 220ms,
+    background 220ms;
 }
 
+.song-direction:hover,
 .song-filters .menu-open:hover {
   color: var(--fg);
 }
 
-/* Lit like a pressed filter was, while any filter is on. */
+/* On or off, each on its own: a filter is a narrowing you add, not one of a
+   set of choices. While any is on the funnel itself lights up. */
 .song-filters.on .menu-open {
-  color: var(--bg);
-  background: var(--muted);
-  border-color: var(--muted);
+  color: var(--mauve);
+}
+
+/* Filled in as well as lit, so on and off differ in shape, not just colour. */
+.song-filters.on .menu-open svg {
+  fill: currentColor;
+}
+
+/* The order in force, and a choice in a menu, lit like the view you are in. */
+.song-order .toggle.small::before,
+.menu .toggle.small::before {
+  background: linear-gradient(90deg, var(--mauve), var(--lavender));
+}
+
+.song-order .toggle button[aria-pressed='true'],
+.menu .toggle button[aria-pressed='true'] {
+  color: var(--on-accent);
 }
 
 /* One row per song: what it is on the left, where it is used and when it was
@@ -2456,10 +2811,6 @@ kbd {
 
 .song-rows li:hover {
   background: color-mix(in srgb, var(--fg) 5%, transparent);
-}
-
-.song-rows li.current {
-  background: color-mix(in srgb, var(--fg) 9%, transparent);
 }
 
 .song-rows .grip {
@@ -2493,11 +2844,60 @@ kbd {
   white-space: nowrap;
 }
 
-/* Work left on a song reads before where it is played, and a little louder. */
+/* Work left on a song reads before where it is played, and a little louder.
+   Its todos take the room the title leaves, and all of it opens them in Edit. */
+.song-rows li:has(.song-todos) .pick {
+  flex: 0 1 auto;
+}
+
+.song-todos {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
 .chip.song-todo {
   flex: none;
   color: var(--fg);
   border-color: var(--muted);
+}
+
+/* One line high: a todo that does not fit wraps onto the hidden next one, so
+   only whole ones show, and a lone one too long for the room is cut short. */
+.song-todo-texts {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 0.9rem;
+  min-width: 0;
+  max-height: 1.3em;
+  overflow: hidden;
+  /* Sized by the row, never by its own text, or a long todo widens the page. */
+  contain: inline-size;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.song-todo-texts > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-todos:hover .song-todo-texts {
+  color: var(--fg);
 }
 
 .song-facts,
@@ -2537,6 +2937,53 @@ kbd {
   color: var(--muted);
 }
 
+/* The Perform menu in groups: the setlist at the top, then the view and the
+   sound level each a panel of its own. */
+.menu-section.menu-panel {
+  margin: 0.35rem 0 0;
+  padding: 0.15rem 0 0.4rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.menu-heading {
+  margin: 0.45rem 0.7rem 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.setlist-heading {
+  color: var(--setlist-colour);
+}
+
+.menu-count {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.menu .menu-value {
+  color: var(--peach);
+}
+
+/* An action in a menu sits as a button of its own across the menu's width. */
+.menu .menu-action {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 1.4rem);
+  margin: 0.35rem 0.7rem 0;
+  padding: 0.35rem 0.7rem;
+  text-align: center;
+}
+
+.menu .menu-action.tint-blue {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.menu .menu-action.tint-blue:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--raised));
+}
+
 /* Follows the pointer while a song is dragged, so it is clear what is moving
    and where it would land. */
 .drag-label {
@@ -2553,27 +3000,13 @@ kbd {
 }
 
 /* An iPhone has room for the header on one row only if every control gives a
-   little: the logo keeps its mark and lets its name go to screen readers only,
-   and the controls and the gaps between them shrink. In Practice the song's
+   little: the controls and the gaps between them shrink. In Practice the song's
    title takes a line of its own, so it is never squeezed to a letter, and the
    controls sit compactly on the line under it. */
 @media (max-width: 40rem) {
   header {
     flex-wrap: nowrap;
     gap: 0.4rem;
-  }
-
-  h1 {
-    padding: 0.35rem;
-  }
-
-  .brand-name {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 
   header .menu-open {
@@ -2652,4 +3085,157 @@ kbd {
   min-width: 2.5rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+/*
+ * Colour roles, the same on every page, read the way Catppuccin's editor
+ * themes colour code, so one colour always means one thing:
+ *   the song's title           name               mauve, as a keyword
+ *   setlist                                       peach softened into the text
+ *   fret, repeat               number             peach
+ *   heading                    keyword            mauve
+ *   chord                      function           blue
+ *   string name                type               yellow
+ *   synth                      parameter          maroon (an outline in Perform)
+ *   bar line                   operator           sky
+ *   technique                  string             green
+ *   dashes                     punctuation        overlay0
+ *   note, aside                comment            overlay2, italic
+ *   dial  teal     knob  lavender     work left to do  red softened into the text
+ *   Home's headings stay plain, so mauve marks a song's own parts;
+ *   bpm, key and note: yellow softened into the text; synth sounds stay plain
+ *   where you are: the lander's gradients
+ */
+:root {
+  --setlist-colour: color-mix(in srgb, var(--peach) 65%, var(--fg));
+  --facts-colour: color-mix(in srgb, var(--yellow) 70%, var(--fg));
+  --todo-colour: color-mix(in srgb, var(--alert) 70%, var(--fg));
+}
+
+.practice .bar-title,
+.chart .title {
+  color: var(--mauve);
+}
+
+.setlist-card-head h3,
+.song-tree .setlist:not(.all) .setlist-name,
+.step-where {
+  color: var(--setlist-colour);
+}
+
+.song-setlists .chip {
+  color: var(--setlist-colour);
+  border-color: color-mix(in srgb, var(--setlist-colour) 45%, transparent);
+}
+
+/* bpm, key and note, wherever they show: a hint of yellow, nothing louder. */
+.song-facts,
+.practice-song .facts .chip,
+.chart .facts .chip {
+  color: var(--facts-colour);
+}
+
+.practice-song .facts .chip,
+.chart .facts .chip {
+  border-color: color-mix(in srgb, var(--yellow) 40%, var(--line));
+}
+
+.practice-song .repeat-count,
+.chart .repeat,
+.practice-song .piece-fret,
+.cell:not(.current) {
+  color: var(--peach);
+}
+
+.practice-song h3,
+.practice-song h4,
+.chart .section-name,
+.row-title {
+  color: var(--mauve);
+}
+
+.chord-line,
+.chord {
+  color: var(--blue);
+}
+
+.chord::placeholder {
+  color: var(--blue);
+  opacity: 0.45;
+}
+
+.practice-song .piece-label,
+.staff .label,
+.synth-list .synth-sound,
+.chart .synth-sound {
+  color: color-mix(in srgb, var(--fg) 75%, var(--muted));
+}
+
+.chart .synth-name {
+  color: var(--maroon);
+}
+
+.practice-song .synth-list .synth-name {
+  color: var(--maroon);
+  background: none;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.practice-song .piece-bar,
+.staff .barline {
+  color: var(--sky);
+}
+
+.practice-song .piece-technique {
+  color: var(--green);
+}
+
+.practice-song .piece-rule {
+  color: var(--overlay0);
+}
+
+.line-note,
+.tab-aside,
+.tab-note,
+.row-note,
+.row-aside {
+  font-style: italic;
+  color: var(--overlay2);
+}
+
+/* In edit a note was picked out with a highlight; the comment's colour does that now. */
+.chart .line-note {
+  background: none;
+}
+
+.synth-setting.dial,
+.synth-kind.dial,
+.synth-control.dial,
+.chart .synth-control.dial input {
+  color: var(--teal);
+}
+
+.synth-setting.knob,
+.synth-kind.knob,
+.synth-control.knob,
+.chart .synth-control.knob input {
+  color: var(--lavender);
+}
+
+h3.checklist-title {
+  color: var(--todo-colour);
+}
+
+.chip.song-todo {
+  color: var(--todo-colour);
+  border-color: color-mix(in srgb, var(--todo-colour) 60%, transparent);
+}
+
+/* Where you are, Home, Perform or Edit, lit like any choice in force. */
+header .toggle::before {
+  background: linear-gradient(90deg, var(--mauve), var(--lavender));
+}
+
+header .toggle button[aria-pressed='true'] {
+  color: var(--on-accent);
 }

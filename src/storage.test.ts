@@ -514,6 +514,31 @@ describe('loadLibrary', () => {
     })
   })
 
+  it('orders setlists saved before they had an order as they were listed', () => {
+    const old = (id: string) => ({ id, name: id, songs: [], active: true, updatedAt: 1 })
+    storage(
+      new Map([
+        [
+          'tabsmith.library',
+          JSON.stringify({
+            version: 1,
+            library: {
+              songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }],
+              open: 'a',
+              setlists: [old('first'), old('second')],
+            },
+          }),
+        ],
+      ]),
+    )
+    expect(
+      loadLibrary()?.setlists.map((setlist) => [setlist.id, setlist.position]),
+    ).toEqual([
+      ['first', 0],
+      ['second', 1],
+    ])
+  })
+
   it('sets aside a shelf it cannot read before anything saves over it', () => {
     const stored = new Map([
       ['tabsmith.library', JSON.stringify({ version: 99, library: {} })],

@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from 'react'
 import type { Action } from '../core/edit.ts'
 import {
   KEYS,
@@ -15,10 +15,15 @@ import { Suggest } from './Suggest.tsx'
 import { Synths } from './Synths.tsx'
 
 type Props = {
+  /** Which song this is, so opening another starts it at its first section again. */
+  readonly songId: string
   readonly song: Song
   /** Every song on the shelf, for the synth settings earlier songs used. */
   readonly songs: readonly Song[]
   readonly dispatch: (action: Action) => void
+  /** Opened from a todo count on Home, so the first todo left takes focus. */
+  readonly focusTodo: boolean
+  readonly onTodoFocused: () => void
 }
 
 /** Digits only, and nothing typed or a zero is no tempo at all. */
@@ -68,12 +73,28 @@ const parseRepeat = (raw: string): number | undefined => {
   return raw === '' || !Number.isInteger(value) || value < 1 ? undefined : value
 }
 
-export function Chart({ song, songs, dispatch }: Props) {
+export function Chart({
+  songId,
+  song,
+  songs,
+  dispatch,
+  focusTodo,
+  onTodoFocused,
+}: Props) {
   const setSection = (index: number, section: Section) =>
     dispatch({ kind: 'setSection', index, section })
   const articles = useRef<Record<number, HTMLElement | null>>({})
   const bodies = useRef<Record<number, HTMLTextAreaElement | null>>({})
   const mirrors = useRef<Record<number, HTMLPreElement | null>>({})
+
+  // A song opened for writing starts at its first section, the intro or the
+  // first verse, unless it was opened for a todo, which takes the focus itself.
+  const startWriting = useEffectEvent(() => {
+    if (!focusTodo) bodies.current[0]?.focus()
+  })
+  useEffect(() => {
+    startWriting()
+  }, [songId])
   const suggested = suggestKey(song.tab)
   const [drag, setDrag] = useState<{ readonly from: number; readonly to: number } | null>(
     null,
@@ -162,7 +183,12 @@ export function Chart({ song, songs, dispatch }: Props) {
 
       <Synths song={song} songs={songs} dispatch={dispatch} />
 
-      <SongNotes song={song} dispatch={dispatch} />
+      <SongNotes
+        song={song}
+        dispatch={dispatch}
+        focusTodo={focusTodo}
+        onTodoFocused={onTodoFocused}
+      />
 
       {song.chart.map((section, index) => (
         <article

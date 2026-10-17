@@ -1,47 +1,49 @@
 import type { RefObject } from 'react'
-import type { Theme } from '../screen.ts'
-import { Toggle } from './Toggle.tsx'
+import type { Settings } from '../sync.ts'
+import { Sync } from './Sync.tsx'
 
 type Props = {
   readonly dialog: RefObject<HTMLDialogElement | null>
-  readonly theme: Theme
-  readonly onTheme: (theme: Theme) => void
+  readonly syncWith: Settings | null
+  readonly syncNote: string | null
   readonly onBackUp: () => void
+  readonly onConnect: (to: Settings | null) => void
   readonly onSync: () => void
 }
 
 /**
- * What is set for the whole app on this device rather than for a song. A song's
- * own actions are on the ⋯ beside it on Home.
+ * What is set for the whole app on this device rather than for a song: the
+ * backup and the database sync, in one dialog. A song's own actions are on the
+ * ⋯ beside it on Home.
  */
-export function SettingsDialog({ dialog, theme, onTheme, onBackUp, onSync }: Props) {
+export function SettingsDialog({
+  dialog,
+  syncWith,
+  syncNote,
+  onBackUp,
+  onConnect,
+  onSync,
+}: Props) {
   return (
     <dialog ref={dialog} className="settings-dialog">
       <h2>Settings</h2>
-      <div className="shelf-actions">
-        <button type="button" onClick={onBackUp}>
-          Back up all songs
+      {/* A dialog form closes it, the way Escape and a click outside do. */}
+      <form method="dialog">
+        <button type="submit" className="dialog-close" aria-label="Close" title="Close">
+          ✕
         </button>
-        <button type="button" onClick={onSync}>
-          Database sync
+      </form>
+      <div className="shelf-actions">
+        <button type="button" className="tint-green" onClick={onBackUp}>
+          Download backup
         </button>
       </div>
-      <h3>Theme</h3>
-      <Toggle
-        small
-        label="Theme"
-        options={[
-          { value: 'dark', label: 'Dark' },
-          { value: 'light', label: 'Light' },
-          { value: 'system', label: 'System' },
-        ]}
-        value={theme}
-        onChange={onTheme}
+      <Sync
+        syncWith={syncWith}
+        syncNote={syncNote}
+        onConnect={onConnect}
+        onSync={onSync}
       />
-
-      <form method="dialog">
-        <button type="submit">Done</button>
-      </form>
     </dialog>
   )
 }
