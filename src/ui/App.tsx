@@ -573,7 +573,11 @@ export default function App() {
             />
           ) : (
             <div className="editing">
-              <Chart song={state.song} dispatch={dispatch} />
+              <Chart
+                song={state.song}
+                songs={library.songs.map((entry) => entry.song)}
+                dispatch={dispatch}
+              />
               <TabGrid
                 state={state}
                 dispatch={dispatch}

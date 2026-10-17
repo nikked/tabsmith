@@ -817,6 +817,7 @@ src/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
+    Synths.tsx    a song's synths in edit, and in a panel at the top of Practice
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
     SongList.tsx  the setlist tree beside the editor, for switching songs

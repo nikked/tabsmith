@@ -418,6 +418,85 @@ h1 img {
   margin-top: 0.4rem;
 }
 
+/* The synth patches sit under the song's facts as a short form of their own:
+   one line per synth, its dials and knobs indented under it. */
+.synths {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /* Part of the song's heading, so closer under the facts than the gap the
+     chart keeps between its blocks. */
+  margin-top: -0.8rem;
+  font-size: 0.9rem;
+}
+
+.synth {
+  display: grid;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+}
+
+.synth-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chart .synth-name {
+  min-width: 0;
+  font-weight: 700;
+}
+
+.chart .synth-sound {
+  min-width: 0;
+}
+
+.synth-kind {
+  padding-left: 1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.synth-control {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.chart .synth-control input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+
+.synth button {
+  padding: 0 0.45rem;
+  color: var(--muted);
+  border-color: transparent;
+}
+
+.synth button:hover {
+  color: var(--fg);
+  border-color: var(--line);
+}
+
+.synth-add .chip {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: transparent;
+}
+
+.synth-add .chip:hover {
+  color: var(--fg);
+}
+
 /* Close under the title in the bar, past the gap the song's parts keep apart. */
 .practice-song .facts {
   margin-top: -0.6em;

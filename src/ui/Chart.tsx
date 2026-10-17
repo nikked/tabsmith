@@ -10,9 +10,12 @@ import {
 } from '../core/model.ts'
 import { suggestKey } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
+import { Synths } from './Synths.tsx'
 
 type Props = {
   readonly song: Song
+  /** Every song on the shelf, for the synth settings earlier songs used. */
+  readonly songs: readonly Song[]
   readonly dispatch: (action: Action) => void
 }
 
@@ -63,7 +66,7 @@ const parseRepeat = (raw: string): number | undefined => {
   return raw === '' || !Number.isInteger(value) || value < 1 ? undefined : value
 }
 
-export function Chart({ song, dispatch }: Props) {
+export function Chart({ song, songs, dispatch }: Props) {
   const setSection = (index: number, section: Section) =>
     dispatch({ kind: 'setSection', index, section })
   const articles = useRef<Record<number, HTMLElement | null>>({})
@@ -154,6 +157,8 @@ export function Chart({ song, dispatch }: Props) {
           </label>
         </div>
       </div>
+
+      <Synths song={song} songs={songs} dispatch={dispatch} />
 
       <datalist id="section-names">
         {SECTION_NAMES.map((name) => (
