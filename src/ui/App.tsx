@@ -582,16 +582,19 @@ export default function App() {
               if (file !== undefined) void loadFromDisk(file)
             }}
           />
-          <Toggle
-            label="View"
-            options={[
-              { value: 'songs', label: 'Home' },
-              { value: 'practice', label: 'Perform' },
-              { value: 'edit', label: 'Edit' },
-            ]}
-            value={mode}
-            onChange={setMode}
-          />
+          {/* Home is left by picking a song, so it needs no way out of its own. */}
+          {mode !== 'songs' && (
+            <Toggle
+              label="View"
+              options={[
+                { value: 'songs', label: 'Home' },
+                { value: 'practice', label: 'Perform' },
+                { value: 'edit', label: 'Edit' },
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
+          )}
           {copied && (
             <span className="link-copied" role="status">
               Link copied
