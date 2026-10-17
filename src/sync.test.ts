@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Library } from './core/library.ts'
 import { emptySong } from './core/model.ts'
 import { DEMO_TITLE } from './demo.ts'
-import { fromWire, setlistsToWire, toSheet, toWire } from './sync.ts'
+import { fromWire, setlistsToWire, todosToWire, toSheet, toWire } from './sync.ts'
 
 const library: Library = {
   songs: [{ id: 'a', song: { ...emptySong(), title: 'Slow Machine' }, updatedAt: 1 }],
@@ -12,7 +12,10 @@ const library: Library = {
     { id: 'gig', name: 'Friday', songs: ['a', 'b'], active: true, updatedAt: 3 },
     { id: 'old', name: 'Spring tour', songs: [], active: false, updatedAt: 4 },
   ],
-  todos: [],
+  todos: [
+    { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
+    { id: 't2', text: 'Book the room', done: false, active: false, updatedAt: 6 },
+  ],
 }
 
 describe('sync wire format', () => {
@@ -27,6 +30,7 @@ describe('sync wire format', () => {
       ok: true,
       records: sent,
       setlists: setlistsToWire(library),
+      todos: todosToWire(library),
     })
     expect(pulled).toEqual({
       ok: true,
@@ -35,6 +39,7 @@ describe('sync wire format', () => {
         { id: 'b', at: 2, active: false, song: library.removed[0]?.song },
       ],
       setlists: library.setlists,
+      todos: library.todos,
     })
   })
 
@@ -52,7 +57,7 @@ describe('sync wire format', () => {
     expect(sent.map(({ id }) => id)).toEqual(['mine'])
   })
 
-  it('reads a sheet from before songs were packed, deleted songs kept or setlists existed', async () => {
+  it('reads a sheet from before songs were packed, deleted songs kept, setlists or todos existed', async () => {
     const [kept] = toWire(library)
     const pulled = await fromWire({
       ok: true,
@@ -68,6 +73,7 @@ describe('sync wire format', () => {
         { id: 'b', at: 2, active: false, song: null },
       ],
       setlists: [],
+      todos: [],
     })
   })
 
@@ -86,6 +92,10 @@ describe('sync wire format', () => {
         { id: 'gig', at: 1, name: 'Friday', songs: 'a,b', active: true },
         { id: 'ok', at: 1, name: 'Rehearsal', songs: ['a'], active: true },
       ],
+      todos: [
+        { id: 'loose', at: 1, text: 'Strings', done: 'yes', active: true },
+        { id: 'room', at: 2, text: 'Book the room', done: false, active: true },
+      ],
     })
     expect(pulled).toEqual({
       ok: true,
@@ -95,6 +105,9 @@ describe('sync wire format', () => {
       ],
       setlists: [
         { id: 'ok', name: 'Rehearsal', songs: ['a'], active: true, updatedAt: 1 },
+      ],
+      todos: [
+        { id: 'room', text: 'Book the room', done: false, active: true, updatedAt: 2 },
       ],
     })
   })

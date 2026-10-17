@@ -7,8 +7,9 @@ import {
   setBandTodoText,
   toggleBandTodo,
 } from './bandTodos.ts'
-import type { Library } from './library.ts'
+import type { BandTodo, Library } from './library.ts'
 import { emptySong } from './model.ts'
+import { forgetSent, mergeTodos } from './sync.ts'
 
 const shelf: Library = {
   songs: [{ id: 's', song: emptySong(), updatedAt: 0 }],
@@ -56,5 +57,48 @@ describe('band todos', () => {
     const removed = removeBandTodo(room, 'b', 7)
     expect(listed(removed)).toEqual([['Buy strings', false]])
     expect(removed.todos).toHaveLength(2)
+  })
+})
+
+describe('syncing band todos', () => {
+  const todo = (id: string, text: string, at: number, active = true): BandTodo => ({
+    id,
+    text,
+    done: false,
+    active,
+    updatedAt: at,
+  })
+  const here: Library = {
+    ...shelf,
+    todos: [todo('a', 'Buy strings', 5), todo('b', 'Book the room', 5)],
+  }
+
+  it('takes the newer copy of each item and keeps this one on a tie', () => {
+    const merged = mergeTodos(here, [todo('a', 'Buy 10s', 6), todo('b', 'Book it', 5)])
+    expect(merged.todos.map((each) => each.text)).toEqual(['Buy 10s', 'Book the room'])
+  })
+
+  it('adds new items at the end, but not ones cleared before this device saw them', () => {
+    const merged = mergeTodos(here, [todo('c', 'Tune', 1), todo('d', 'Old', 1, false)])
+    expect(merged.todos.map((each) => each.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('takes an item cleared elsewhere off this device', () => {
+    expect(
+      mergeTodos(here, [todo('a', 'Buy strings', 7, false)]).todos.map((each) => each.id),
+    ).toEqual(['b'])
+  })
+
+  it('comes back as it was when nothing newer arrived', () => {
+    expect(mergeTodos(here, [todo('a', 'Buy strings', 4)])).toBe(here)
+  })
+
+  it('forgets cleared items once a sync has sent them, not ones cleared since', () => {
+    const sent: Library = {
+      ...here,
+      todos: [todo('a', 'Buy strings', 6, false), here.todos[1] ?? todo('b', '', 0)],
+    }
+    const now: Library = { ...sent, todos: [...sent.todos, todo('c', 'Tune', 8, false)] }
+    expect(forgetSent(now, sent).todos.map((each) => each.id)).toEqual(['b', 'c'])
   })
 })

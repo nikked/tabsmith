@@ -22,7 +22,7 @@ import {
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
-import { forgetSent, merge, mergeSetlists } from '../core/sync.ts'
+import { forgetSent, merge, mergeSetlists, mergeTodos } from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -38,6 +38,7 @@ import {
   loadSettings,
   saveSettings,
   setlistsToWire,
+  todosToWire,
   syncLibrary,
   toWire,
   type Settings,
@@ -156,9 +157,12 @@ export default function App() {
       return
     }
     const { library: here, song } = latest.current
-    const merged = mergeSetlists(
-      merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
-      pulled.setlists,
+    const merged = mergeTodos(
+      mergeSetlists(
+        merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
+        pulled.setlists,
+      ),
+      pulled.todos,
     )
     setLibrary(merged)
     const open = openEntry(merged).song
@@ -387,12 +391,16 @@ export default function App() {
     saveFile(encode(song), filenameFor(song), 'tabsmith song')
 
   /**
-   * The rows the sheet holds, deleted songs and setlists included, so a backup
+   * The rows the sheet holds, deleted songs, setlists and todos included, so a backup
    * is a copy of the sheet that does not need the sheet.
    */
   const backUp = () => {
     const saved = withOpenSong(library, state.song, Date.now())
-    const rows = { songs: toWire(saved), setlists: setlistsToWire(saved) }
+    const rows = {
+      songs: toWire(saved),
+      setlists: setlistsToWire(saved),
+      todos: todosToWire(saved),
+    }
     const day = new Date().toISOString().slice(0, 10)
     return saveFile(
       JSON.stringify(rows, null, 2),
