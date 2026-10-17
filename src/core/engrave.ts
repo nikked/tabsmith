@@ -25,6 +25,10 @@ export const PAD = 2
 export const NAME = 1.6
 export const NAME_ROOM = 2.5
 const OTTAVA_ROOM = 2
+// How far the G clef's curl and tail reach past the top and bottom lines (SMuFL
+// gClef bounds), which a system with every note inside the staff must still clear.
+const CLEF_ABOVE = 1.4
+const CLEF_BELOW = 1.65
 
 /**
  * The room one note or rest takes across the staff, an eighth a little less
@@ -160,8 +164,8 @@ const stemDirections = (measure: Measure): readonly boolean[] => {
 
 /**
  * How far a system reaches past the staff, so every measure in it lines up:
- * out to its furthest head, stem or beam and no further, with room for chord
- * names on top when there are any.
+ * out to its furthest head, stem or beam, or the clef if that reaches further,
+ * with room for chord names on top when there are any.
  */
 export type Reach = {
   readonly above: number
@@ -182,8 +186,8 @@ export const reach = (system: System): Reach => {
         : [{ top: high - 0.5, bottom: low + stem }]
     })
   })
-  const top = Math.min(0, ...extents.map((extent) => extent.top))
-  const bottom = Math.max(4, ...extents.map((extent) => extent.bottom))
+  const top = Math.min(-CLEF_ABOVE, ...extents.map((extent) => extent.top))
+  const bottom = Math.max(4 + CLEF_BELOW, ...extents.map((extent) => extent.bottom))
   const notes = system.measures
     .flat()
     .flatMap((event) => (event.kind === 'note' ? [event.chord] : []))
