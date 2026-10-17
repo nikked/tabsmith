@@ -12,6 +12,7 @@ const library: Library = {
     { id: 'gig', name: 'Friday', songs: ['a', 'b'], active: true, updatedAt: 3 },
     { id: 'old', name: 'Spring tour', songs: [], active: false, updatedAt: 4 },
   ],
+  todos: [],
 }
 
 describe('sync wire format', () => {

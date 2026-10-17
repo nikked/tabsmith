@@ -8,7 +8,7 @@ import {
   type Score,
   type Song,
 } from './core/model.ts'
-import { decode, encode, filenameFor, loadLibrary } from './storage.ts'
+import { decode, encode, filenameFor, loadLibrary, saveLibrary } from './storage.ts'
 
 const [STANDARD, , BASS] = TUNINGS
 
@@ -449,6 +449,43 @@ describe('filenameFor', () => {
 describe('loadLibrary', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  const storage = (stored: Map<string, string>) =>
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    })
+
+  it('keeps the band todos, cleared ones and all, with the shelf', () => {
+    storage(new Map())
+    const todos = [
+      { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
+      { id: 't2', text: 'Book the room', done: true, active: false, updatedAt: 6 },
+    ]
+    saveLibrary({
+      songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }],
+      open: 'a',
+      removed: [],
+      setlists: [],
+      todos,
+    })
+    expect(loadLibrary()?.todos).toEqual(todos)
+  })
+
+  it('reads a shelf saved before the band todos as one with none', () => {
+    storage(
+      new Map([
+        [
+          'tabsmith.library',
+          JSON.stringify({
+            version: 1,
+            library: { songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }], open: 'a' },
+          }),
+        ],
+      ]),
+    )
+    expect(loadLibrary()?.todos).toEqual([])
   })
 
   it('sets aside a shelf it cannot read before anything saves over it', () => {

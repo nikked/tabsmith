@@ -43,12 +43,28 @@ export type Setlist = {
   readonly updatedAt: number
 }
 
+/**
+ * Something the band has to sort out that is no one song's: strings to buy, a
+ * room to book. Each is stamped and synced on its own, so two people ticking
+ * different ones offline both keep their ticks. Clearing or removing one only
+ * marks it inactive, the way a deleted setlist is kept, so a device that has
+ * not heard yet cannot bring it back.
+ */
+export type BandTodo = {
+  readonly id: string
+  readonly text: string
+  readonly done: boolean
+  readonly active: boolean
+  readonly updatedAt: number
+}
+
 /** The whole shelf, in the order it is shown, and which of them is open. */
 export type Library = {
   readonly songs: Songs
   readonly open: string
   readonly removed: readonly Removed[]
   readonly setlists: readonly Setlist[]
+  readonly todos: readonly BandTodo[]
 }
 
 /** `open` can only dangle if something built a library without `repair`. */
@@ -183,6 +199,7 @@ export const repair = (
   open: string,
   removed: readonly Removed[],
   setlists: readonly Setlist[],
+  todos: readonly BandTodo[],
 ): Library | null => {
   const [first, ...rest] = songs
   if (first === undefined) return null
@@ -192,5 +209,6 @@ export const repair = (
     open: all.some((entry) => entry.id === open) ? open : first.id,
     removed,
     setlists,
+    todos,
   }
 }

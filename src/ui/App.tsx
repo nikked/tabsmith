@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
+import { addBandTodo } from '../core/bandTodos.ts'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
   activeSetlists,
@@ -544,6 +545,10 @@ export default function App() {
           onRemoveFromSetlist={(setlist, song) =>
             changeSetlists((current, at) => removeFromSetlist(current, setlist, song, at))
           }
+          onAddBandTodo={() =>
+            changeSetlists((current, at) => addBandTodo(current, newId(), at))
+          }
+          onBandTodos={changeSetlists}
           onPlace={(setlist, song, to) =>
             changeSetlists((current, at) =>
               placeInSetlist(current, setlist, song, to, at),
