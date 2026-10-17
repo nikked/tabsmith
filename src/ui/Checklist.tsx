@@ -45,14 +45,17 @@ export function Checklist({
   useEffect(() => {
     if (!focusLast.current) return
     focusLast.current = false
-    const fields = list.current?.querySelectorAll<HTMLInputElement>('input[type="text"]')
+    const fields = list.current?.querySelectorAll<HTMLTextAreaElement>(
+      '.checklist-text textarea',
+    )
     fields?.[fields.length - 1]?.focus()
   }, [items.length])
 
   const focusOpen = useEffectEvent(() => {
     const index = items.findIndex(isOpen)
-    const field =
-      list.current?.querySelectorAll<HTMLInputElement>('input[type="text"]')[index]
+    const field = list.current?.querySelectorAll<HTMLTextAreaElement>(
+      '.checklist-text textarea',
+    )[index]
     field?.focus()
     field?.scrollIntoView({ block: 'center' })
     onFocused?.()
@@ -80,18 +83,25 @@ export function Checklist({
                 checked={item.done}
                 onChange={() => onToggle(index)}
               />
-              <input
-                type="text"
-                aria-label={`${title} ${index + 1}`}
-                placeholder="To do"
-                value={item.text}
-                onChange={(event) => onText(index, event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter') return
-                  event.preventDefault()
-                  add()
-                }}
-              />
+              {/* A textarea so a long item wraps; the copy of its text the span
+                  carries sizes it, so it grows a line at a time with no script. */}
+              <span className="checklist-text" data-text={item.text}>
+                <textarea
+                  rows={1}
+                  aria-label={`${title} ${index + 1}`}
+                  placeholder="To do"
+                  value={item.text}
+                  // An item is one line of thought: a pasted break is a space.
+                  onChange={(event) =>
+                    onText(index, event.target.value.replace(/\n/g, ' '))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    add()
+                  }}
+                />
+              </span>
               <button type="button" title="Remove" onClick={() => onRemove(index)}>
                 ✕
               </button>
