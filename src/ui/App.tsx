@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { addBandTodo } from '../core/bandTodos.ts'
+import { notesTitle } from '../core/markdown.ts'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
   addSetlist,
@@ -102,6 +103,9 @@ type Asking =
   | { readonly kind: 'renameSetlist'; readonly id: string }
   | { readonly kind: 'deleteSetlist'; readonly id: string }
 
+/** The page's own title, from index.html, for when the notes give it none. */
+const PAGE_TITLE = document.title
+
 /** A cog, the usual mark for settings: a solid gear with a hole through it. */
 const CogIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
@@ -163,6 +167,13 @@ export default function App() {
   const paste = useRef<HTMLDialogElement>(null)
   const syncDialog = useRef<HTMLDialogElement>(null)
   const settingsDialog = useRef<HTMLDialogElement>(null)
+
+  // The browser tab is named after the band notes' first # heading, so a
+  // band's tab reads as theirs.
+  const title = notesTitle(library.band.ideas.text) ?? PAGE_TITLE
+  useEffect(() => {
+    document.title = title
+  }, [title])
 
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
