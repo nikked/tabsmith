@@ -31,7 +31,7 @@ const entry = (id: string, title = id): Entry => ({
 const shelf = (...ids: readonly string[]): Library => {
   const [first, ...rest] = ids.map((id) => entry(id))
   if (first === undefined) throw new Error('a library needs a song')
-  return { songs: [first, ...rest], open: first.id, removed: [], setlists: [] }
+  return { songs: [first, ...rest], open: first.id, removed: [], setlists: [], todos: [] }
 }
 
 describe('library', () => {
@@ -168,11 +168,11 @@ describe('library', () => {
   })
 
   it('repairs a document whose open song is not on the shelf', () => {
-    expect(repair([entry('a'), entry('b')], 'gone', [], [])?.open).toBe('a')
-    expect(repair([entry('a'), entry('b')], 'b', [], [])?.open).toBe('b')
+    expect(repair([entry('a'), entry('b')], 'gone', [], [], [])?.open).toBe('a')
+    expect(repair([entry('a'), entry('b')], 'b', [], [], [])?.open).toBe('b')
   })
 
   it('refuses a document with no songs at all', () => {
-    expect(repair([], 'a', [], [])).toBeNull()
+    expect(repair([], 'a', [], [], [])).toBeNull()
   })
 })

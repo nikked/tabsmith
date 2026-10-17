@@ -72,7 +72,15 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
       : [{ id: record.id, song: record.song, updatedAt: record.at }],
   )
   const removed = library.removed.filter((gone) => !won.has(gone.id))
-  return repair([...kept, ...arrived], library.open, removed, library.setlists) ?? library
+  return (
+    repair(
+      [...kept, ...arrived],
+      library.open,
+      removed,
+      library.setlists,
+      library.todos,
+    ) ?? library
+  )
 }
 
 /**

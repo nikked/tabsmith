@@ -14,8 +14,16 @@ import {
   type Entry,
   type Library,
 } from '../core/library.ts'
+import {
+  activeBandTodos,
+  clearDoneBandTodos,
+  removeBandTodo,
+  setBandTodoText,
+  toggleBandTodo,
+} from '../core/bandTodos.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
+import { Checklist } from './Checklist.tsx'
 import { Menu, MenuChecks, MenuItems } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
 
@@ -34,6 +42,9 @@ type Props = {
   readonly onDeleteSetlist: (setlist: string) => void
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
+  readonly onAddBandTodo: () => void
+  /** Any other change to the band's todos, stamped with when it was made. */
+  readonly onBandTodos: (edit: (library: Library, at: number) => Library) => void
 }
 
 /**
@@ -107,6 +118,15 @@ const edited = (entry: Entry): string =>
 export function SongsPage(props: Props) {
   const { library, onOpen, onPlace } = props
   const open = openEntry(library).id
+  const bandTodos = activeBandTodos(library)
+  // The checklist counts rows; the library knows items by id.
+  const onBandTodo = (
+    index: number,
+    edit: (library: Library, id: string, at: number) => Library,
+  ) => {
+    const todo = bandTodos[index]
+    if (todo !== undefined) props.onBandTodos((current, at) => edit(current, todo.id, at))
+  }
   const [query, setQuery] = useState('')
   const [order, setOrder] = useState<'name' | 'edited'>('name')
   const [drag, setDrag] = useState<Drag | null>(null)
@@ -173,6 +193,19 @@ export function SongsPage(props: Props) {
 
   return (
     <div className={`songs-page${drag === null ? '' : ' dragging'}`}>
+      <div className="band-todo">
+        <Checklist
+          title="Band TODO"
+          items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
+          onAdd={props.onAddBandTodo}
+          onText={(index, text) =>
+            onBandTodo(index, (current, id, at) => setBandTodoText(current, id, text, at))
+          }
+          onToggle={(index) => onBandTodo(index, toggleBandTodo)}
+          onRemove={(index) => onBandTodo(index, removeBandTodo)}
+          onClearDone={() => props.onBandTodos(clearDoneBandTodos)}
+        />
+      </div>
       <section className="setlists-panel">
         <div className="panel-head">
           <h2>Setlists</h2>

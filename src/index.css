@@ -2144,6 +2144,11 @@ kbd {
   }
 }
 
+.band-todo {
+  grid-column: 1 / -1;
+  max-width: 44rem;
+}
+
 .songs-page.dragging {
   cursor: grabbing;
   user-select: none;

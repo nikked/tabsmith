@@ -40,6 +40,7 @@ const shelf = (...setlists: readonly Setlist[]): Library => ({
   open: 'a',
   removed: [],
   setlists,
+  todos: [],
 })
 
 const songsIn = (library: Library, id: string) =>

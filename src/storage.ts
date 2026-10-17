@@ -257,6 +257,18 @@ const library = z.object({
     .default([]),
   // A shelf stored before setlists existed simply has none.
   setlists: z.array(setlist).default([]),
+  // Nor one stored before the band's todo list.
+  todos: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        text: z.string(),
+        done: z.boolean(),
+        active: z.boolean(),
+        updatedAt: z.number(),
+      }),
+    )
+    .default([]),
 })
 
 export const newId = (): string => crypto.randomUUID()
@@ -295,6 +307,7 @@ const readLibrary = (raw: string): Library | null => {
         result.data.open,
         result.data.removed,
         result.data.setlists,
+        result.data.todos,
       )
     : null
 }
@@ -310,7 +323,7 @@ const inherited = (): Library | null => {
   if (raw === null) return null
   const result = decode(raw)
   return result.ok
-    ? repair([{ id: newId(), song: result.song, updatedAt: 0 }], '', [], [])
+    ? repair([{ id: newId(), song: result.song, updatedAt: 0 }], '', [], [], [])
     : null
 }
 
@@ -334,6 +347,7 @@ export const startingLibrary = (first: Song = emptySong()): Library => {
     open: id,
     removed: [],
     setlists: [],
+    todos: [],
   }
 }
 
