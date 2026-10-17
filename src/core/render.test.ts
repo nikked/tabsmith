@@ -14,11 +14,13 @@ import {
 } from './model.ts'
 import type { Row } from './model.ts'
 import {
+  isChordLine,
   renderScore,
-  sectionHeading,
+  repeatText,
   songParts,
   splitNote,
   staffText,
+  tabPieces,
   trimScore,
 } from './render.ts'
 
@@ -530,18 +532,6 @@ describe('songParts', () => {
   })
 })
 
-describe('sectionHeading', () => {
-  it('marks a repeat next to the name, but not a section played once', () => {
-    expect(sectionHeading({ name: 'Chorus', repeat: 2, body: '' })).toBe('Chorus (x2)')
-    expect(sectionHeading({ name: 'Intro', repeat: 1, body: 'Am' })).toBe('Intro')
-    expect(sectionHeading({ name: 'Intro', body: 'Am' })).toBe('Intro')
-  })
-
-  it('gives an unnamed section no heading, repeat or not', () => {
-    expect(sectionHeading({ name: '', repeat: 2, body: 'Am' })).toBe('')
-  })
-})
-
 describe('staffText', () => {
   // Three dense bars of two columns, `---|` each after `e|`: 14 characters in all.
   const row: Row = {
@@ -596,5 +586,90 @@ describe('staffText', () => {
       'e|---|',
       'e|---| x2',
     ])
+  })
+})
+
+describe('isChordLine', () => {
+  it.each([
+    'Em            D             Em',
+    'Em7  Dmaj7  C  G',
+    'D/F#  Bm7b5  Csus4  Gadd9  E7#9  Bbmaj7',
+    '| Am | F | x2',
+    'Am  -  -  G  N.C.',
+  ])('reads %j as chords', (line) => {
+    expect(isChordLine(line)).toBe(true)
+  })
+
+  it.each([
+    'The slow machine is turning over',
+    'A day in the life',
+    'Am I the only one',
+    'Intro',
+    '| x2',
+    '',
+  ])('reads %j as words', (line) => {
+    expect(isChordLine(line)).toBe(false)
+  })
+})
+
+describe('tabPieces', () => {
+  const kinds = (line: string) =>
+    tabPieces(line).map(({ kind, text }) => `${kind}:${text}`)
+
+  it('sets apart the name, bar lines, dashes, frets and techniques', () => {
+    expect(kinds('D|--2h4--12p0-|')).toEqual([
+      'label:D',
+      'bar:|',
+      'rule:--',
+      'fret:2',
+      'technique:h',
+      'fret:4',
+      'rule:--',
+      'fret:12',
+      'technique:p',
+      'fret:0',
+      'rule:-',
+      'bar:|',
+    ])
+    expect(kinds('E|0~--x-7b9/5\\3-|')).toEqual([
+      'label:E',
+      'bar:|',
+      'fret:0',
+      'technique:~',
+      'rule:--',
+      'technique:x',
+      'rule:-',
+      'fret:7',
+      'technique:b',
+      'fret:9',
+      'technique:/',
+      'fret:5',
+      'technique:\\',
+      'fret:3',
+      'rule:-',
+      'bar:|',
+    ])
+  })
+
+  it('keeps every character, in order', () => {
+    const line = 'e |--0--|---|  '
+    expect(
+      tabPieces(line)
+        .map((piece) => piece.text)
+        .join(''),
+    ).toBe(line)
+    expect(tabPieces('')).toEqual([])
+  })
+
+  it('reads a line with no bar line as pieces with no name', () => {
+    expect(kinds('--3--')).toEqual(['rule:--', 'fret:3', 'rule:--'])
+  })
+})
+
+describe('repeatText', () => {
+  it('says how many times, only when more than once', () => {
+    expect(repeatText({ name: 'Intro', body: '', repeat: 2 })).toBe(' (x2)')
+    expect(repeatText({ name: 'Intro', body: '', repeat: 1 })).toBe('')
+    expect(repeatText({ name: 'Intro', body: '' })).toBe('')
   })
 })

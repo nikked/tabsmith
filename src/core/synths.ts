@@ -45,7 +45,8 @@ export const suggestionsFor = (
   }
 }
 
-export type Control = { readonly label: string; readonly value: string }
+/** One dial or knob that is set: its number on the instrument and what it does. */
+export type Control = { readonly number: number; readonly value: string }
 
 /**
  * A synth as Practice reads it: name and sound, kept apart so they can be set
@@ -62,15 +63,15 @@ export const synthSummary = (
   readonly dials: readonly Control[]
   readonly knobs: readonly Control[]
 } => {
-  const numbered = (kind: string, values: readonly string[]): readonly Control[] =>
+  const numbered = (values: readonly string[]): readonly Control[] =>
     values.flatMap((value, index) =>
-      value.trim() === '' ? [] : [{ label: `${kind} ${index + 1}`, value: value.trim() }],
+      value.trim() === '' ? [] : [{ number: index + 1, value: value.trim() }],
     )
   return {
     name: synth.name.trim(),
     sound: synth.sound.trim(),
-    dials: numbered('Dial', synth.dials),
-    knobs: numbered('Knob', synth.knobs),
+    dials: numbered(synth.dials),
+    knobs: numbered(synth.knobs),
   }
 }
 
