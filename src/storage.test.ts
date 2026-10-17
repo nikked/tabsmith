@@ -141,6 +141,24 @@ describe('encode / decode', () => {
     expect(readBack(song)).toEqual(song)
   })
 
+  it('round-trips todos and ideas', () => {
+    const song: Song = {
+      ...emptySong(),
+      todos: [
+        { text: 'Bridge chords', done: false },
+        { text: 'Try capo 2', done: true },
+      ],
+      ideas: 'sail away\n  on a line',
+    }
+    expect(readBack(song)).toEqual(song)
+  })
+
+  it('reads a song saved before todos and ideas as one with none', () => {
+    const { todos: _, ideas: __, ...before } = emptySong()
+    const result = decode(JSON.stringify({ version: 4, song: before }))
+    expect(result.ok && [result.song.todos, result.song.ideas]).toEqual([[], ''])
+  })
+
   it('reads a song saved before synths as one with none', () => {
     const { synths: _, ...before } = emptySong()
     const result = decode(JSON.stringify({ version: 4, song: before }))

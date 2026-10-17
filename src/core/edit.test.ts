@@ -1175,6 +1175,68 @@ describe('synths', () => {
   })
 })
 
+describe('todos and ideas', () => {
+  const todosOf = (state: EditorState) => state.song.todos
+  const three = (): EditorState =>
+    run(
+      initialState(),
+      { kind: 'addTodo' },
+      { kind: 'setTodoText', index: 0, text: 'Bridge chords' },
+      { kind: 'addTodo' },
+      { kind: 'setTodoText', index: 1, text: 'Try capo 2' },
+      { kind: 'addTodo' },
+      { kind: 'setTodoText', index: 2, text: 'Slower intro?' },
+    )
+
+  it('adds todos at the end and ticks one without touching the rest', () => {
+    expect(todosOf(apply(three(), { kind: 'toggleTodo', index: 1 }))).toEqual([
+      { text: 'Bridge chords', done: false },
+      { text: 'Try capo 2', done: true },
+      { text: 'Slower intro?', done: false },
+    ])
+  })
+
+  it('clears only the ticked ones, and removes one by its place', () => {
+    const ticked = run(
+      three(),
+      { kind: 'toggleTodo', index: 0 },
+      { kind: 'toggleTodo', index: 2 },
+    )
+    expect(todosOf(apply(ticked, { kind: 'clearDoneTodos' }))).toEqual([
+      { text: 'Try capo 2', done: false },
+    ])
+    expect(
+      todosOf(apply(three(), { kind: 'removeTodo', index: 0 })).map((todo) => todo.text),
+    ).toEqual(['Try capo 2', 'Slower intro?'])
+  })
+
+  it('leaves the song alone when there is nothing done to clear', () => {
+    const state = three()
+    expect(apply(state, { kind: 'clearDoneTodos' })).toBe(state)
+  })
+
+  it('keeps ideas as typed, and counts both as work', () => {
+    const state = apply(initialState(), {
+      kind: 'setIdeas',
+      ideas: 'sail away\n  on a line',
+    })
+    expect(state.song.ideas).toBe('sail away\n  on a line')
+    expect(songHasContent(state.song)).toBe(true)
+    expect(songHasContent(apply(initialState(), { kind: 'addTodo' }).song)).toBe(true)
+  })
+
+  it('undoes a run of typing into one todo as a single step, but a tick on its own', () => {
+    const added = step(initialTimeline(), { kind: 'addTodo' })
+    const typed = ['B', 'Br', 'Bri'].reduce(
+      (timeline, text) => step(timeline, { kind: 'setTodoText', index: 0, text }),
+      added,
+    )
+    expect(step(typed, { kind: 'undo' }).present.song).toBe(added.present.song)
+    const ticked = step(typed, { kind: 'toggleTodo', index: 0 })
+    expect(step(ticked, { kind: 'undo' }).present.song).toBe(typed.present.song)
+  })
+})
+
 describe('undo', () => {
   const walk = (timeline: Timeline, ...actions: readonly TimelineAction[]): Timeline =>
     actions.reduce(step, timeline)

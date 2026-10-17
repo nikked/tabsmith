@@ -137,6 +137,8 @@ const song = z.preprocess(
     tab: score,
     tabFirst: z.boolean().default(false),
     synths: z.array(synth).default([]),
+    todos: z.array(z.object({ text: z.string(), done: z.boolean() })).default([]),
+    ideas: z.string().default(''),
   }),
 )
 

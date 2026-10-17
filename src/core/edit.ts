@@ -19,6 +19,7 @@ import {
   type Section,
   type Song,
   type Synth,
+  type Todo,
   type Tuning,
 } from './model.ts'
 
@@ -68,6 +69,12 @@ export type Action =
   | { readonly kind: 'addSynth'; readonly name: string }
   | { readonly kind: 'removeSynth'; readonly index: number }
   | { readonly kind: 'setSynth'; readonly index: number; readonly synth: Synth }
+  | { readonly kind: 'addTodo' }
+  | { readonly kind: 'setTodoText'; readonly index: number; readonly text: string }
+  | { readonly kind: 'toggleTodo'; readonly index: number }
+  | { readonly kind: 'removeTodo'; readonly index: number }
+  | { readonly kind: 'clearDoneTodos' }
+  | { readonly kind: 'setIdeas'; readonly ideas: string }
   | { readonly kind: 'addSection'; readonly after: number }
   | { readonly kind: 'duplicateSection'; readonly index: number }
   | { readonly kind: 'splitSection'; readonly index: number; readonly at: number }
@@ -329,6 +336,8 @@ export const songHasContent = (song: Song): boolean =>
   song.key !== null ||
   song.note !== '' ||
   song.synths.length > 0 ||
+  song.todos.length > 0 ||
+  song.ideas !== '' ||
   !defaultChart(song.chart) ||
   scoreHasContent(song.tab)
 
@@ -343,6 +352,13 @@ const withSynths = (state: EditorState, synths: readonly Synth[]): EditorState =
   synths.every((synth, index) => synth === state.song.synths[index])
     ? state
     : { ...state, song: { ...state.song, synths } }
+
+// Refusing a change that changes nothing keeps it off the undo history.
+const withTodos = (state: EditorState, todos: readonly Todo[]): EditorState =>
+  todos.length === state.song.todos.length &&
+  todos.every((todo, index) => todo === state.song.todos[index])
+    ? state
+    : { ...state, song: { ...state.song, todos } }
 
 const withChart = (state: EditorState, chart: readonly Section[]): EditorState => ({
   ...state,
@@ -680,6 +696,40 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         ),
       )
 
+    case 'addTodo':
+      return withTodos(state, [...state.song.todos, { text: '', done: false }])
+
+    case 'setTodoText':
+      return withTodos(
+        state,
+        state.song.todos.map((todo, index) =>
+          index === action.index ? { ...todo, text: action.text } : todo,
+        ),
+      )
+
+    case 'toggleTodo':
+      return withTodos(
+        state,
+        state.song.todos.map((todo, index) =>
+          index === action.index ? { ...todo, done: !todo.done } : todo,
+        ),
+      )
+
+    case 'removeTodo':
+      return withTodos(
+        state,
+        state.song.todos.filter((_, index) => index !== action.index),
+      )
+
+    case 'clearDoneTodos':
+      return withTodos(
+        state,
+        state.song.todos.filter((todo) => !todo.done),
+      )
+
+    case 'setIdeas':
+      return { ...state, song: { ...state.song, ideas: action.ideas } }
+
     case 'setTabFirst':
       return { ...state, song: { ...state.song, tabFirst: action.tabFirst } }
 
@@ -802,6 +852,10 @@ const typingIn = (action: Action): string | null => {
       return `section:${action.index}`
     case 'setSynth':
       return `synth:${action.index}`
+    case 'setTodoText':
+      return `todo:${action.index}`
+    case 'setIdeas':
+      return 'ideas'
     default:
       return null
   }
