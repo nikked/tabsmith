@@ -1621,31 +1621,11 @@ button {
   margin-left: auto;
 }
 
-/* What has not reached the sheet yet, beside the menu that holds sync. It
-   takes the menu's place at the right edge, so the menu sits just after it. */
-.sync-pending {
-  margin-left: auto;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-  white-space: nowrap;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-
-.sync-pending:hover {
-  color: var(--fg);
-}
-
-.sync-pending + .sync-now {
-  margin-left: 0;
-}
-
 /* Beside the menu, in its shell, as square as the full-screen button: it says
    what it does with its arrows, which turn while a sync is on its way. */
 .sync-now {
   display: grid;
+  position: relative;
   place-items: center;
   box-sizing: border-box;
   flex: none;
@@ -1663,6 +1643,24 @@ button {
 
 .sync-now:hover {
   color: var(--fg);
+}
+
+/* How many changes the sheet has not got, in a ball on the button's corner. */
+.sync-count {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  box-sizing: border-box;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1rem;
+  color: var(--bg);
+  text-align: center;
+  background: var(--fg);
+  border-radius: 999px;
 }
 
 .sync-now + .settings {

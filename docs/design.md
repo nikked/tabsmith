@@ -814,8 +814,8 @@ songs were packed still reads. The title is a separate column only for whoever o
 Sync runs three seconds after the last change, when the tab becomes visible again, and from
 the sync button in the header, whose arrows turn while a sync runs. One that fails is tried again after 5 s, backing off to once a minute, and straight
 away when the connection comes back; one asked for while another runs follows it, since the one
-running may have set off before the latest edit. The header shows "N not synced" until the sheet
-holds everything here: songs edited since their last sync, deletions, and setlists, band todos
+running may have set off before the latest edit. The sync button carries a count in a ball on
+its corner until the sheet holds everything here: songs edited since their last sync, deletions, and setlists, band todos
 and band fields changed since the sheet was last seen holding them (`syncedAt`). A sync that brought nothing newer leaves the shelf untouched, which is what stops
 it from triggering itself. The answer is merged into the shelf and editor as they are when it
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
