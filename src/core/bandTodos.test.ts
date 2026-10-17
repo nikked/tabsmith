@@ -18,7 +18,10 @@ const shelf: Library = {
   removed: [],
   setlists: [],
   todos: [],
-  band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
+  band: {
+    name: { text: '', updatedAt: 0, syncedAt: null },
+    ideas: { text: '', updatedAt: 0, syncedAt: null },
+  },
 }
 
 const listed = (library: Library) =>
@@ -67,8 +70,8 @@ describe('the band', () => {
     const named = setBandField(shelf, 'name', 'Fättig', 8)
     const both = setBandField(named, 'ideas', 'A song about the van\n  slow', 9)
     expect(both.band).toEqual({
-      name: { text: 'Fättig', updatedAt: 8 },
-      ideas: { text: 'A song about the van\n  slow', updatedAt: 9 },
+      name: { text: 'Fättig', updatedAt: 8, syncedAt: null },
+      ideas: { text: 'A song about the van\n  slow', updatedAt: 9, syncedAt: null },
     })
   })
 })
@@ -78,17 +81,19 @@ describe('syncing the band', () => {
 
   it('takes each newer text whole, field by field', () => {
     const merged = mergeBand(here, {
-      name: { text: 'Theirs', updatedAt: 6 },
-      ideas: { text: 'Older', updatedAt: 4 },
+      name: { text: 'Theirs', updatedAt: 6, syncedAt: null },
+      ideas: { text: 'Older', updatedAt: 4, syncedAt: null },
     })
     expect(merged.band).toEqual({
-      name: { text: 'Theirs', updatedAt: 6 },
-      ideas: { text: 'Mine', updatedAt: 5 },
+      name: { text: 'Theirs', updatedAt: 6, syncedAt: null },
+      ideas: { text: 'Mine', updatedAt: 5, syncedAt: null },
     })
   })
 
   it('comes back as it was on a tie or when nothing came', () => {
-    expect(mergeBand(here, { name: { text: 'Theirs', updatedAt: 5 } })).toBe(here)
+    expect(
+      mergeBand(here, { name: { text: 'Theirs', updatedAt: 5, syncedAt: null } }),
+    ).toBe(here)
     expect(mergeBand(here, {})).toBe(here)
   })
 })
@@ -100,6 +105,7 @@ describe('syncing band todos', () => {
     done: false,
     active,
     updatedAt: at,
+    syncedAt: null,
   })
   const here: Library = {
     ...shelf,

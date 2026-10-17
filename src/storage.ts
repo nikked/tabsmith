@@ -242,11 +242,17 @@ const setlist = z.object({
   songs: z.array(z.string()),
   active: z.boolean(),
   updatedAt: z.number(),
+  // Kept before the sheet's copy was remembered: sent once to find out.
+  syncedAt: z.number().nullable().default(null),
 })
 
 const bandField = z
-  .object({ text: z.string(), updatedAt: z.number() })
-  .default({ text: '', updatedAt: 0 })
+  .object({
+    text: z.string(),
+    updatedAt: z.number(),
+    syncedAt: z.number().nullable().default(null),
+  })
+  .default({ text: '', updatedAt: 0, syncedAt: null })
 
 const library = z.object({
   songs: z.array(entry),
@@ -272,6 +278,7 @@ const library = z.object({
         done: z.boolean(),
         active: z.boolean(),
         updatedAt: z.number(),
+        syncedAt: z.number().nullable().default(null),
       }),
     )
     .default([]),

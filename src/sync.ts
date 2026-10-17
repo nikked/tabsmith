@@ -1,7 +1,8 @@
 import { z } from 'zod'
-import { records, type Synced } from './core/sync.ts'
+import { records, type Sheet, type Synced } from './core/sync.ts'
 import {
   BAND_FIELDS,
+  isUnsent,
   isUnsynced,
   type Band,
   type BandTodo,
@@ -92,14 +93,7 @@ const reply = z.discriminatedUnion('ok', [
 ])
 
 export type Pulled =
-  | {
-      readonly ok: true
-      readonly records: readonly Synced[]
-      readonly setlists: readonly Setlist[]
-      readonly todos: readonly BandTodo[]
-      readonly band: Partial<Band>
-    }
-  | { readonly ok: false; readonly error: string }
+  ({ readonly ok: true } & Sheet) | { readonly ok: false; readonly error: string }
 
 export const toWire = (library: Library) =>
   records(library)
@@ -111,6 +105,25 @@ export const toWire = (library: Library) =>
       song: record.song === null ? null : encode(record.song),
       active: record.active,
     }))
+
+/**
+ * How much here the sheet has not seen yet: songs edited since their last
+ * sync, deletions not yet sent, and setlists, band todos and the band's own
+ * fields changed since the sheet last held them. The demo never goes up, and
+ * nor does a new song with no title, which the sheet gives no row until it has
+ * one; neither is waiting on anything.
+ */
+export const pendingCount = (library: Library): number =>
+  library.songs.filter(
+    (entry) =>
+      isUnsynced(entry) &&
+      entry.song.title !== DEMO_TITLE &&
+      (entry.song.title !== '' || entry.lastSynced !== null),
+  ).length +
+  library.removed.filter((gone) => gone.song?.title !== DEMO_TITLE).length +
+  library.setlists.filter(isUnsent).length +
+  library.todos.filter(isUnsent).length +
+  BAND_FIELDS.filter((field) => isUnsent(library.band[field])).length
 
 /**
  * A sheet cell holds at most this many characters, and one longer value makes
@@ -215,20 +228,27 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
       const each = setlistRow.safeParse(value)
       if (!each.success) return []
       const { id, at, name, songs, active } = each.data
-      return [{ id, name, songs, active, updatedAt: at }]
+      return [{ id, name, songs, active, updatedAt: at, syncedAt: at }]
     }),
     todos: parsed.data.todos.flatMap((value): BandTodo[] => {
       const each = todoRow.safeParse(value)
       if (!each.success) return []
       const { id, at, text, done, active } = each.data
-      return [{ id, text, done, active, updatedAt: at }]
+      return [{ id, text, done, active, updatedAt: at, syncedAt: at }]
     }),
     // A field this build does not know is someone else's, and left to them.
     band: parsed.data.band.reduce<Partial<Band>>((band, value) => {
       const each = bandRow.safeParse(value)
       const field = each.success ? bandFieldOf(each.data.id) : undefined
       return each.success && field !== undefined
-        ? { ...band, [field]: { text: each.data.text, updatedAt: each.data.at } }
+        ? {
+            ...band,
+            [field]: {
+              text: each.data.text,
+              updatedAt: each.data.at,
+              syncedAt: each.data.at,
+            },
+          }
         : band
     }, {}),
   }

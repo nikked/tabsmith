@@ -460,8 +460,22 @@ describe('loadLibrary', () => {
   it('keeps the band todos, cleared ones and all, and its name and ideas with the shelf', () => {
     storage(new Map())
     const todos = [
-      { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
-      { id: 't2', text: 'Book the room', done: true, active: false, updatedAt: 6 },
+      {
+        id: 't1',
+        text: 'Buy strings',
+        done: true,
+        active: true,
+        updatedAt: 5,
+        syncedAt: 5,
+      },
+      {
+        id: 't2',
+        text: 'Book the room',
+        done: true,
+        active: false,
+        updatedAt: 6,
+        syncedAt: null,
+      },
     ]
     saveLibrary({
       songs: [{ id: 'a', song: emptySong(), updatedAt: 1, lastSynced: null }],
@@ -470,14 +484,14 @@ describe('loadLibrary', () => {
       setlists: [],
       todos,
       band: {
-        name: { text: 'Fättig', updatedAt: 8 },
-        ideas: { text: 'A song about the van', updatedAt: 7 },
+        name: { text: 'Fättig', updatedAt: 8, syncedAt: null },
+        ideas: { text: 'A song about the van', updatedAt: 7, syncedAt: null },
       },
     })
     expect(loadLibrary()?.todos).toEqual(todos)
     expect(loadLibrary()?.band).toEqual({
-      name: { text: 'Fättig', updatedAt: 8 },
-      ideas: { text: 'A song about the van', updatedAt: 7 },
+      name: { text: 'Fättig', updatedAt: 8, syncedAt: null },
+      ideas: { text: 'A song about the van', updatedAt: 7, syncedAt: null },
     })
   })
 
@@ -495,8 +509,8 @@ describe('loadLibrary', () => {
     )
     expect(loadLibrary()?.todos).toEqual([])
     expect(loadLibrary()?.band).toEqual({
-      name: { text: '', updatedAt: 0 },
-      ideas: { text: '', updatedAt: 0 },
+      name: { text: '', updatedAt: 0, syncedAt: null },
+      ideas: { text: '', updatedAt: 0, syncedAt: null },
     })
   })
 

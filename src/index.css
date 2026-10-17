@@ -1616,6 +1616,27 @@ button {
   margin-left: auto;
 }
 
+/* What has not reached the sheet yet, beside the menu that holds sync. It
+   takes the menu's place at the right edge, so the menu sits just after it. */
+.sync-pending {
+  margin-left: auto;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.sync-pending:hover {
+  color: var(--fg);
+}
+
+.sync-pending + .settings {
+  margin-left: 0;
+}
+
 /* The header's menus wear the toggle's shell, so the row reads as one set of
    controls. The padding adds the toggle's 3px inset, so the heights match. */
 header .menu-open {

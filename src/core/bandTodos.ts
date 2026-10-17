@@ -6,7 +6,10 @@ export const activeBandTodos = (library: Library): readonly BandTodo[] =>
 
 export const addBandTodo = (library: Library, id: string, at: number): Library => ({
   ...library,
-  todos: [...library.todos, { id, text: '', done: false, active: true, updatedAt: at }],
+  todos: [
+    ...library.todos,
+    { id, text: '', done: false, active: true, updatedAt: at, syncedAt: null },
+  ],
 })
 
 /** Every change to an item is stamped, which is all another device compares by. */
@@ -53,6 +56,10 @@ export const setBandField = (
   ...library,
   band: {
     ...library.band,
-    [field]: { text, updatedAt: stampAfter(library.band[field].updatedAt, at) },
+    [field]: {
+      ...library.band[field],
+      text,
+      updatedAt: stampAfter(library.band[field].updatedAt, at),
+    },
   },
 })

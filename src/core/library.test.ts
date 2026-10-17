@@ -40,7 +40,10 @@ const shelf = (...ids: readonly string[]): Library => {
     removed: [],
     setlists: [],
     todos: [],
-    band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
+    band: {
+      name: { text: '', updatedAt: 0, syncedAt: null },
+      ideas: { text: '', updatedAt: 0, syncedAt: null },
+    },
   }
 }
 

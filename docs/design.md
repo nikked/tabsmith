@@ -779,7 +779,11 @@ outgrow it. Packed, the demo goes from 11,152 characters to under 1,000. A row w
 songs were packed still reads. The title is a separate column only for whoever opens the sheet.
 
 Sync runs three seconds after the last change, when the tab becomes visible again, and from
-**Sync now**. A sync that brought nothing newer leaves the shelf untouched, which is what stops
+**Sync now**. One that fails is tried again after 5 s, backing off to once a minute, and straight
+away when the connection comes back; one asked for while another runs follows it, since the one
+running may have set off before the latest edit. The header shows "N not synced" until the sheet
+holds everything here: songs edited since their last sync, deletions, and setlists, band todos
+and band fields changed since the sheet was last seen holding them (`syncedAt`). A sync that brought nothing newer leaves the shelf untouched, which is what stops
 it from triggering itself. The answer is merged into the shelf and editor as they are when it
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
 one replaced or deleted.

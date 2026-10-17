@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { Library } from './core/library.ts'
+import { emptyBand, type Library, type Songs } from './core/library.ts'
 import { emptySong } from './core/model.ts'
 import { DEMO_TITLE } from './demo.ts'
 import {
   bandToWire,
+  pendingCount,
   fromWire,
   setlistsToWire,
   todosToWire,
@@ -23,16 +24,44 @@ const library: Library = {
   open: 'a',
   removed: [{ id: 'b', at: 2, song: { ...emptySong(), title: 'Old Riff' } }],
   setlists: [
-    { id: 'gig', name: 'Friday', songs: ['a', 'b'], active: true, updatedAt: 3 },
-    { id: 'old', name: 'Spring tour', songs: [], active: false, updatedAt: 4 },
+    {
+      id: 'gig',
+      name: 'Friday',
+      songs: ['a', 'b'],
+      active: true,
+      updatedAt: 3,
+      syncedAt: null,
+    },
+    {
+      id: 'old',
+      name: 'Spring tour',
+      songs: [],
+      active: false,
+      updatedAt: 4,
+      syncedAt: null,
+    },
   ],
   todos: [
-    { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
-    { id: 't2', text: 'Book the room', done: false, active: false, updatedAt: 6 },
+    {
+      id: 't1',
+      text: 'Buy strings',
+      done: true,
+      active: true,
+      updatedAt: 5,
+      syncedAt: null,
+    },
+    {
+      id: 't2',
+      text: 'Book the room',
+      done: false,
+      active: false,
+      updatedAt: 6,
+      syncedAt: null,
+    },
   ],
   band: {
-    name: { text: 'Fättig', updatedAt: 8 },
-    ideas: { text: 'Learn a cover for the encore', updatedAt: 7 },
+    name: { text: 'Fättig', updatedAt: 8, syncedAt: null },
+    ideas: { text: 'Learn a cover for the encore', updatedAt: 7, syncedAt: null },
   },
 }
 
@@ -57,9 +86,13 @@ describe('sync wire format', () => {
         { id: 'a', at: 1, active: true, song: library.songs[0].song },
         { id: 'b', at: 2, active: false, song: library.removed[0]?.song },
       ],
-      setlists: library.setlists,
-      todos: library.todos,
-      band: library.band,
+      // What came back from the sheet is what the sheet holds.
+      setlists: library.setlists.map((each) => ({ ...each, syncedAt: each.updatedAt })),
+      todos: library.todos.map((each) => ({ ...each, syncedAt: each.updatedAt })),
+      band: {
+        name: { ...library.band.name, syncedAt: library.band.name.updatedAt },
+        ideas: { ...library.band.ideas, syncedAt: library.band.ideas.updatedAt },
+      },
     })
   })
 
@@ -83,6 +116,40 @@ describe('sync wire format', () => {
       ['new', true],
       ['b', false],
     ])
+  })
+
+  it('counts what the sheet has not seen: edited songs and deletions, not the demo', () => {
+    const synced = { ...emptySong(), title: 'Synced' }
+    const songs: Songs = [
+      { id: 'same', song: synced, updatedAt: 3, lastSynced: { at: 3, song: synced } },
+      { id: 'edited', song: synced, updatedAt: 4, lastSynced: { at: 3, song: synced } },
+      { id: 'new', song: emptySong(), updatedAt: 5, lastSynced: null },
+      {
+        id: 'demo',
+        song: { ...emptySong(), title: DEMO_TITLE },
+        updatedAt: 6,
+        lastSynced: null,
+      },
+    ]
+    expect(
+      pendingCount({ ...library, songs, setlists: [], todos: [], band: emptyBand }),
+    ).toBe(2)
+  })
+
+  it('counts setlists, band todos and band fields the sheet does not hold as they are', () => {
+    const only = { ...library, removed: [] }
+    // Nothing here was ever held by the sheet: one song, two setlists, two todos, two fields.
+    expect(pendingCount(only)).toBe(7)
+    const held = {
+      ...only,
+      setlists: only.setlists.map((each) => ({ ...each, syncedAt: each.updatedAt })),
+      todos: only.todos.map((each) => ({ ...each, syncedAt: each.updatedAt })),
+      band: {
+        name: { ...only.band.name, syncedAt: only.band.name.updatedAt },
+        ideas: emptyBand.ideas,
+      },
+    }
+    expect(pendingCount(held)).toBe(1)
   })
 
   it('keeps the demo off the sheet, edited or deleted, until it is renamed', () => {
@@ -156,10 +223,24 @@ describe('sync wire format', () => {
         { id: 'f', at: 5, active: false, song: null },
       ],
       setlists: [
-        { id: 'ok', name: 'Rehearsal', songs: ['a'], active: true, updatedAt: 1 },
+        {
+          id: 'ok',
+          name: 'Rehearsal',
+          songs: ['a'],
+          active: true,
+          updatedAt: 1,
+          syncedAt: 1,
+        },
       ],
       todos: [
-        { id: 'room', text: 'Book the room', done: false, active: true, updatedAt: 2 },
+        {
+          id: 'room',
+          text: 'Book the room',
+          done: false,
+          active: true,
+          updatedAt: 2,
+          syncedAt: 2,
+        },
       ],
       band: {},
     })
