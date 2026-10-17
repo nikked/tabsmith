@@ -428,7 +428,8 @@ export function SongsPage(props: Props) {
                     </span>
                   )}
                   <span className="song-setlists">
-                    {inSetlists.map((setlist) => (
+                    {/* Only the setlist that matters most, so a row stays one line. */}
+                    {inSetlists.slice(0, 1).map((setlist) => (
                       <span key={setlist.id} className="chip">
                         {setlist.name}
                       </span>
