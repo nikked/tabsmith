@@ -663,7 +663,7 @@ and ideas at the top, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
-is lit while any is on and that stay on in this browser until turned off
+is lit while any is on, the heading then counting what is shown, e.g. Songs selected 5/13, and that stay on in this browser until turned off
 (`tabsmith.songFilters`), and sorted by name, last edit or bpm, each either way (`sortSongs`: a
 song with no bpm goes last both ways, and picking an order starts it A to Z, newest or slowest
 first), and each row shows the
