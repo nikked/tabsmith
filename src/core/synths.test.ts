@@ -56,17 +56,17 @@ describe('synthSummary', () => {
       name: 'Nektar',
       sound: 'Analog shapeshifter',
       dials: [
-        { label: 'Dial 1', value: 'Filter' },
-        { label: 'Dial 2', value: 'Dirt' },
+        { number: 1, value: 'Filter' },
+        { number: 2, value: 'Dirt' },
       ],
-      knobs: [{ label: 'Knob 1', value: 'Shifter' }],
+      knobs: [{ number: 1, value: 'Shifter' }],
     })
   })
 
   it('skips a blank slot without renumbering the ones after it', () => {
     expect(synthSummary(synth('iRig', '', [], ['Drive', ' ', 'Squash'])).knobs).toEqual([
-      { label: 'Knob 1', value: 'Drive' },
-      { label: 'Knob 3', value: 'Squash' },
+      { number: 1, value: 'Drive' },
+      { number: 3, value: 'Squash' },
     ])
   })
 

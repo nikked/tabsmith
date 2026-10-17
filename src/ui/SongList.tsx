@@ -54,7 +54,7 @@ export function SongTree({ library, onOpen }: Props) {
     })
 
   const group = (id: string, name: string, entries: readonly Entry[]) => (
-    <section key={id} className="setlist">
+    <section key={id} className={id === ALL ? 'setlist all' : 'setlist'}>
       <div className="setlist-head">
         <button
           type="button"
