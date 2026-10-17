@@ -2424,6 +2424,31 @@ kbd {
   display: flex;
 }
 
+/* Three orders share a phone's width with the funnel and the direction, so each
+   stays on one line and gives up some padding there instead. */
+.song-order .toggle button {
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .song-order .toggle button {
+    padding-inline: 0.45rem;
+  }
+}
+
+/* Shaped like the funnel beside it. */
+.song-direction {
+  display: grid;
+  place-items: center;
+  padding: 0 0.55rem;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.song-direction:hover {
+  color: var(--fg);
+}
+
 /* On or off, each on its own: a filter is a narrowing you add, not one of a
    set of choices, so it is a pressable chip rather than a toggle. */
 .song-filters .menu-open {
