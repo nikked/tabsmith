@@ -120,6 +120,13 @@ type Section = {
   readonly body: string                 // chords, and lyrics under them, exactly as typed
 }
 
+type Synth = {
+  readonly name: string                 // 'iRig'
+  readonly sound: string                // the patch or preset
+  readonly dials: readonly string[]     // numbered: what dial 1, 2, 3 is set to
+  readonly knobs: readonly string[]
+}
+
 type Song = {
   readonly title: string
   readonly bpm: number | null
@@ -128,6 +135,7 @@ type Song = {
   readonly chart: readonly Section[]
   readonly tab: Score
   readonly tabFirst: boolean            // tab before the chart, or after it
+  readonly synths: readonly Synth[]     // how each synth is set for this song
 }
 
 type Cursor = {
@@ -800,6 +808,7 @@ src/
     render.ts     renderScore, songParts and their helpers
     notation.ts   the tab as notes on a treble staff, for reading it as notation
     engrave.ts    where that notation goes: widths, line breaks, stems, ledger lines
+    synths.ts     the synth names, sounds and controls earlier songs used, offered again
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
