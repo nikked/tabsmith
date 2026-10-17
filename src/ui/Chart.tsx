@@ -10,6 +10,7 @@ import {
 } from '../core/model.ts'
 import { KEYS_BY_SEMITONE, suggestKey } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
+import { SongNotes } from './SongNotes.tsx'
 import { Suggest } from './Suggest.tsx'
 import { Synths } from './Synths.tsx'
 
@@ -160,6 +161,8 @@ export function Chart({ song, songs, dispatch }: Props) {
       </div>
 
       <Synths song={song} songs={songs} dispatch={dispatch} />
+
+      <SongNotes song={song} dispatch={dispatch} />
 
       {song.chart.map((section, index) => (
         <article
