@@ -287,7 +287,9 @@ own undo stack for what is typed there, and it is the finer of the two.
 renderScore(score) => string
 renderSystems(score) => readonly string[]
 songParts(song) => readonly Part[]
-sectionHeading(section) => string
+repeatText(section) => string
+tabPieces(line) => readonly TabPiece[]
+isChordLine(line) => boolean
 ```
 
 **A song** is `songParts`: its bpm and key, its note, each section, and each system of the tab, in reading order
@@ -647,19 +649,20 @@ why, in a dismissible line under the header — `localStorage` can discard a bad
 because nobody chose it, but a file is something you picked on purpose.
 
 Adding a song is one **+ New** menu beside the All songs heading on Home: Blank, Paste and
-Import. Copy as link and Export are on the `⋯` beside each song there. Back up all songs,
-Database sync and the theme are in the settings dialog behind the header's cog, being set for
+Import. Copy as link and Export are on the `⋯` beside each song there. Back up all songs and
+Database sync are in the settings dialog behind the header's cog, being set for
 the whole app rather than for a song. A backup is the rows the sheet holds, deleted songs
 included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
 once per device and then left alone, so it is a dialog of its own, opened from the settings or
 from the sync button before it is set up. On a phone the header is the scarcest space on the
 page, so it keeps to the toggle and two square buttons.
 
-**Copy song…** and **Delete song…** are at the foot of the editor, after the keys, and act on
-the open song. Copy asks for a name, then the copy joins the shelf and opens.
+Copying, deleting and putting a song in setlists are on its `⋯` on Home, not in the editor,
+which is for writing. Copy asks for a name, then the copy joins the shelf and opens.
 
-**Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's todo list
-and ideas at the top, then setlists on one side,
+**Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's notes and
+todo list at the top, side by side on a wide screen and the notes first above the list on a
+narrower one, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
@@ -700,9 +703,9 @@ All songs is in alphabetical order in the sidebar tree, since there it is for fi
 group there starts folded, so the sidebar is a short list of names to open rather than every
 song at once; opening or folding one is remembered per browser (`tabsmith.sidebarOpen`, open or
 not by id): it is how this person likes the sidebar, not something about the songs, so it does
-not sync. Which setlists the open song is in is **Setlists** at the foot of the page: a checkbox
-per setlist, ticked where the song is in it. Ticking adds and unticking takes out, and the menu
-stays open, since putting a song in three setlists should be three ticks. Deleting a setlist
+not sync. Which setlists a song is in is ticked in its `⋯` on Home: a checkbox per setlist, ticked
+where the song is in it. Ticking adds and unticking takes out, and the menu stays open, since
+putting a song in three setlists should be three ticks. Deleting a setlist
 asks for its name like deleting a song does, and only marks it inactive: it is kept, and synced,
 like a deleted song.
 
@@ -799,7 +802,15 @@ The band's todo list syncs the same way, each todo on its own in a `todos` tab, 
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
 on each device until it is redeployed. The band's name and ideas sync beside it in a `band`
-tab, each by field name, the newer text winning whole.
+tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
+is still kept and synced, so a device that has it does not lose it.
+
+The notes are Markdown: headings, lists, quotes, bold, italic, code, links and images (`core/markdown.ts`).
+A link goes only to the web or to mail and an image only to the web: the notes arrive from other
+devices through the sheet, and a `javascript:` link in them would run when it was clicked.
+Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
+the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
+the marks kept and weight drawn as a shadow, so no character moves from under the caret.
 
 A todo's text and the ideas are written as typed, list dashes and indents included. A cell that
 starts with `=`, `+`, `-` or `@` is read as a formula, so `Code.gs` stores them as JSON strings,
@@ -878,8 +889,8 @@ the body is monospace, and nudging a chord a space over is easy once you can see
 
 - Vite + React + TypeScript, `strict` on, no `any`.
 - Vitest for the core. No React Testing Library; the UI is verified by running it.
-- Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin for the palette:
-  Latte in the light, Macchiato in the dark.
+- Plain CSS, one stylesheet. No UI framework, no styling library. Catppuccin Macchiato for the palette,
+  dark only.
 - oxlint and prettier, driven by the Makefile so CI and a terminal run the same commands.
 - zod, for validating documents and sync replies at the edge (§5). The only runtime dependency
   besides React, and used nowhere else.
@@ -902,6 +913,7 @@ src/
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     bandTodos.ts  the band's own todo list, ideas and name
+    markdown.ts   the band's notes as Markdown: lines in pieces to style, and blocks to read
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
     mergeSong.ts  a song changed on two devices, put together part by part
@@ -910,6 +922,8 @@ src/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
+    MarkdownLines.tsx Markdown styled in place, under the field it is typed in
+    MarkdownView.tsx Markdown set out to read: headings, lists, quotes and emphasis
     Synths.tsx    a song's synths in edit, and in a panel at the top of Perform
     Suggest.tsx   a field with its suggestions in a list drawn by the app
     SongNotes.tsx a song's todos and ideas in edit
@@ -922,13 +936,13 @@ src/
     Toggle.tsx    a choice of two or three, with a thumb that slides to the one in force
     Paste.tsx     the Paste… dialog
     Sync.tsx      the Database sync dialog
-    Settings.tsx  the settings dialog: backup, sync and theme
+    Settings.tsx  the settings dialog: backup and sync
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
-  screen.ts       which page is up, kept so a reload comes back to it, and the theme
+  screen.ts       which page is up, kept so a reload comes back to it
   viewing.ts      how songs are shown on this device: each one's size and dense, tab or notation,
                   and whether synth settings show
   share.ts        a song in a link, and back
