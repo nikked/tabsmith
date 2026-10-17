@@ -1633,8 +1633,52 @@ button {
   color: var(--fg);
 }
 
-.sync-pending + .settings {
+.sync-pending + .sync-now {
   margin-left: 0;
+}
+
+/* Beside the menu, in its shell, as square as the full-screen button: it says
+   what it does with its arrows, which turn while a sync is on its way. */
+.sync-now {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex: none;
+  /* The menu button's height: its 0.9rem line, its padding and its border. */
+  width: calc(0.9rem * 1.4 + 0.5rem + 8px);
+  height: calc(0.9rem * 1.4 + 0.5rem + 8px);
+  margin-left: auto;
+  padding: 0;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: color 220ms;
+}
+
+.sync-now:hover {
+  color: var(--fg);
+}
+
+.sync-now + .settings {
+  margin-left: 0;
+}
+
+.sync-now.busy svg {
+  animation: turn 0.9s linear infinite;
+}
+
+/* Anticlockwise, the way the arrows point. */
+@keyframes turn {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-now.busy svg {
+    animation: none;
+  }
 }
 
 /* The header's menus wear the toggle's shell, so the row reads as one set of

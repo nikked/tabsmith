@@ -779,7 +779,7 @@ outgrow it. Packed, the demo goes from 11,152 characters to under 1,000. A row w
 songs were packed still reads. The title is a separate column only for whoever opens the sheet.
 
 Sync runs three seconds after the last change, when the tab becomes visible again, and from
-**Sync now**. One that fails is tried again after 5 s, backing off to once a minute, and straight
+the sync button in the header, whose arrows turn while a sync runs. One that fails is tried again after 5 s, backing off to once a minute, and straight
 away when the connection comes back; one asked for while another runs follows it, since the one
 running may have set off before the latest edit. The header shows "N not synced" until the sheet
 holds everything here: songs edited since their last sync, deletions, and setlists, band todos
