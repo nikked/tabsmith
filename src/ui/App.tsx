@@ -22,7 +22,14 @@ import {
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
-import { forgetSent, merge, mergeBand, mergeSetlists, mergeTodos } from '../core/sync.ts'
+import {
+  acknowledge,
+  forgetSent,
+  merge,
+  mergeBand,
+  mergeSetlists,
+  mergeTodos,
+} from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -159,10 +166,12 @@ export default function App() {
     }
     const { library: here, song } = latest.current
     const at = Date.now()
-    const songs = merge(forgetSent(withOpenSong(here, song, at), sent), pulled.records, {
-      at,
-      newId,
-    })
+    const agreed = acknowledge(
+      forgetSent(withOpenSong(here, song, at), sent),
+      sent,
+      pulled.records,
+    )
+    const songs = merge(agreed, pulled.records, { at, newId })
     const merged = mergeBand(
       mergeTodos(mergeSetlists(songs.library, pulled.setlists), pulled.todos),
       pulled.band,

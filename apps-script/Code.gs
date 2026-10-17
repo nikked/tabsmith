@@ -1,13 +1,14 @@
 /**
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
- * POST takes { token, records: [{ id, at, title, song, active }], setlists:
+ * POST takes { token, records: [{ id, at, title, song, active, baseAt? }], setlists:
  * [{ id, at, name, songs, active }], todos: [{ id, at, text, done, active }],
  * band: [{ id, at, text }] }, where song is the document a tabsmith file holds,
  * packed by the app, songs is a setlist's song ids in order, todos are the
  * band's list, band holds the band's own fields by name (ideas), and active is
  * false for a deleted or cleared one. Each kind lives in its own tab. The sheet
- * keeps the newest of each id and answers { ok: true, records, setlists, todos,
+ * checks baseAt before replacing an active song, keeps the newest of each id,
+ * and answers { ok: true, records, setlists, todos,
  * band } with all of them, so one round trip both pushes and pulls.
  *
  * Nothing is ever deleted here. A deleted song stays in its row, marked
@@ -50,10 +51,20 @@ function newestOf(stored, incoming, keep) {
  * not, since the row is what other devices go by.
  */
 function mergeSongs(stored, incoming) {
-  const known = new Set(stored.map((record) => record.id))
-  const worthARow = incoming.filter(
-    (record) => record.title !== '' || known.has(record.id),
-  )
+  const known = new Map(stored.map((record) => [record.id, record]))
+  const worthARow = incoming.filter((record) => {
+    const before = known.get(record.id)
+    if (record.title === '' && !before) return false
+    // Preserve unseen edits for the client's three-way merge. Deletions
+    // retain their timestamp-based behavior, as do legacy clients.
+    return !(
+      record.active &&
+      before &&
+      before.active &&
+      Number.isFinite(record.baseAt) &&
+      record.baseAt !== before.at
+    )
+  })
   return newestOf(stored, worthARow, (record, before) => ({
     id: record.id,
     at: record.at,
@@ -280,6 +291,7 @@ function parseBody(text) {
       id: record.id,
       at: record.at,
       title: plain(record.title),
+      ...(Number.isFinite(record.baseAt) ? { baseAt: record.baseAt } : {}),
       song: record.song,
       active: record.active === undefined ? record.song !== null : record.active,
     }))

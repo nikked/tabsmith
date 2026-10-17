@@ -134,6 +134,7 @@ export const toSheet = async (library: Library) => {
       .filter((row) => !row.active || changed.has(row.id))
       .map(async (row) => ({
         ...row,
+        baseAt: library.songs.find((entry) => entry.id === row.id)?.lastSynced?.at,
         song: row.song === null ? null : await pack(row.song),
       })),
   )
