@@ -420,6 +420,16 @@ export default function App() {
     if (mode === 'songs') setMode('practice')
   }
 
+  // Set by a todo count on Home and cleared once the todo has focus, so only
+  // that one arrival in the editor moves the focus.
+  const [focusTodo, setFocusTodo] = useState(false)
+  const editFrom = (song: string) => {
+    switchTo(song)
+    setActiveSetlist(null)
+    setMode('edit')
+    setFocusTodo(true)
+  }
+
   /** A song as it is now: the open one as the editor holds it, the rest as shelved. */
   const songOf = (id: string): Song | undefined =>
     id === library.open
@@ -662,6 +672,7 @@ export default function App() {
         <SongsPage
           library={library}
           onOpen={openFrom}
+          onEdit={editFrom}
           onRename={(song) => setAsking({ kind: 'rename', song })}
           onCopy={(song) => setAsking({ kind: 'copy', song })}
           onCopyLink={(id) => {
@@ -721,11 +732,14 @@ export default function App() {
                 song={state.song}
                 songs={library.songs.map((entry) => entry.song)}
                 dispatch={dispatch}
+                focusTodo={focusTodo}
+                onTodoFocused={() => setFocusTodo(false)}
               />
               <TabGrid
                 state={state}
                 dispatch={dispatch}
                 onShowKeys={() => show(guide.current)}
+                focusOnOpen={!focusTodo}
               />
               <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
               <div className="song-actions">

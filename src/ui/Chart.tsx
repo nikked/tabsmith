@@ -19,6 +19,9 @@ type Props = {
   /** Every song on the shelf, for the synth settings earlier songs used. */
   readonly songs: readonly Song[]
   readonly dispatch: (action: Action) => void
+  /** Opened from a todo count on Home, so the first todo left takes focus. */
+  readonly focusTodo: boolean
+  readonly onTodoFocused: () => void
 }
 
 /** Digits only, and nothing typed or a zero is no tempo at all. */
@@ -68,7 +71,7 @@ const parseRepeat = (raw: string): number | undefined => {
   return raw === '' || !Number.isInteger(value) || value < 1 ? undefined : value
 }
 
-export function Chart({ song, songs, dispatch }: Props) {
+export function Chart({ song, songs, dispatch, focusTodo, onTodoFocused }: Props) {
   const setSection = (index: number, section: Section) =>
     dispatch({ kind: 'setSection', index, section })
   const articles = useRef<Record<number, HTMLElement | null>>({})
@@ -162,7 +165,12 @@ export function Chart({ song, songs, dispatch }: Props) {
 
       <Synths song={song} songs={songs} dispatch={dispatch} />
 
-      <SongNotes song={song} dispatch={dispatch} />
+      <SongNotes
+        song={song}
+        dispatch={dispatch}
+        focusTodo={focusTodo}
+        onTodoFocused={onTodoFocused}
+      />
 
       {song.chart.map((section, index) => (
         <article
