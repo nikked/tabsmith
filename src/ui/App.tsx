@@ -579,26 +579,37 @@ export default function App() {
             value={mode}
             onChange={setMode}
           />
-          {syncWith !== null && pending > 0 && (
-            <button
-              type="button"
-              className="sync-pending"
-              title={`${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`}
-              onClick={() => show(syncDialog.current)}
-            >
-              {pending} not synced
-            </button>
-          )}
           <button
             type="button"
             className={busy ? 'sync-now busy' : 'sync-now'}
-            aria-label={syncWith === null ? 'Set up sync' : 'Sync now'}
-            title={syncWith === null ? 'Set up sync' : busy ? 'Syncing…' : 'Sync now'}
+            aria-label={
+              syncWith === null
+                ? 'Set up sync'
+                : pending > 0
+                  ? `Sync now, ${pending} not synced`
+                  : 'Sync now'
+            }
+            title={
+              syncWith === null
+                ? 'Set up sync'
+                : busy
+                  ? 'Syncing…'
+                  : pending > 0
+                    ? `${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`
+                    : 'Sync now'
+            }
             onClick={() =>
               syncWith === null ? show(syncDialog.current) : void sync(syncWith)
             }
           >
             <SyncIcon />
+            {/* On the button rather than beside it, so a phone's header keeps
+                to one line however many there are. */}
+            {syncWith !== null && pending > 0 && (
+              <span className="sync-count" aria-hidden="true">
+                {pending}
+              </span>
+            )}
           </button>
           <div className="settings">
             <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
