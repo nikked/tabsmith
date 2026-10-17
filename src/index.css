@@ -2317,6 +2317,13 @@ kbd {
   white-space: nowrap;
 }
 
+/* Work left on a song reads before where it is played, and a little louder. */
+.chip.song-todo {
+  flex: none;
+  color: var(--fg);
+  border-color: var(--muted);
+}
+
 .song-facts,
 .song-edited {
   font-size: 0.8rem;
