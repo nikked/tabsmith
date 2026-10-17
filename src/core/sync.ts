@@ -85,6 +85,7 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
       removed,
       library.setlists,
       library.todos,
+      library.ideas,
     ) ?? library
   )
 }

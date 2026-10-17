@@ -556,7 +556,7 @@ export default function App() {
           onAddBandTodo={() =>
             changeSetlists((current, at) => addBandTodo(current, newId(), at))
           }
-          onBandTodos={changeSetlists}
+          onBandEdit={changeSetlists}
           onPlace={(setlist, song, to) =>
             changeSetlists((current, at) =>
               placeInSetlist(current, setlist, song, to, at),

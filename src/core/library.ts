@@ -58,6 +58,12 @@ export type BandTodo = {
   readonly updatedAt: number
 }
 
+/**
+ * The band's own free text, beside its todo list: ideas no song has yet. One
+ * block of text stamped as a whole, so the newer of two offline edits wins.
+ */
+export type BandIdeas = { readonly text: string; readonly updatedAt: number }
+
 /** The whole shelf, in the order it is shown, and which of them is open. */
 export type Library = {
   readonly songs: Songs
@@ -65,6 +71,7 @@ export type Library = {
   readonly removed: readonly Removed[]
   readonly setlists: readonly Setlist[]
   readonly todos: readonly BandTodo[]
+  readonly ideas: BandIdeas
 }
 
 /** `open` can only dangle if something built a library without `repair`. */
@@ -200,6 +207,7 @@ export const repair = (
   removed: readonly Removed[],
   setlists: readonly Setlist[],
   todos: readonly BandTodo[],
+  ideas: BandIdeas,
 ): Library | null => {
   const [first, ...rest] = songs
   if (first === undefined) return null
@@ -210,5 +218,6 @@ export const repair = (
     removed,
     setlists,
     todos,
+    ideas,
   }
 }

@@ -38,3 +38,9 @@ export const clearDoneBandTodos = (library: Library, at: number): Library => ({
     todo.active && todo.done ? { ...todo, active: false, updatedAt: at } : todo,
   ),
 })
+
+/** Stamped as a whole on every change, the way a song is. */
+export const setBandIdeas = (library: Library, text: string, at: number): Library => ({
+  ...library,
+  ideas: { text, updatedAt: at },
+})

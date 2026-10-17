@@ -16,6 +16,7 @@ const library: Library = {
     { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
     { id: 't2', text: 'Book the room', done: false, active: false, updatedAt: 6 },
   ],
+  ideas: { text: '', updatedAt: 0 },
 }
 
 describe('sync wire format', () => {

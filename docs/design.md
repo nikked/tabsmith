@@ -822,7 +822,7 @@ src/
     fields.ts     which field an arrow key moves to in a form of rows and columns
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
-    bandTodos.ts  the band's own todo list
+    bandTodos.ts  the band's own todo list and ideas
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, mergeSetlists — newest wins per song and setlist (§5)
   ui/
