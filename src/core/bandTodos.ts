@@ -1,4 +1,4 @@
-import type { Band, BandTodo, Library } from './library.ts'
+import { stampAfter, type Band, type BandTodo, type Library } from './library.ts'
 
 /** The list as it is shown: what is left once cleared and removed ones go. */
 export const activeBandTodos = (library: Library): readonly BandTodo[] =>
@@ -18,7 +18,9 @@ const change = (
 ): Library => ({
   ...library,
   todos: library.todos.map((todo) =>
-    todo.id === id ? { ...todo, ...edit(todo), updatedAt: at } : todo,
+    todo.id === id
+      ? { ...todo, ...edit(todo), updatedAt: stampAfter(todo.updatedAt, at) }
+      : todo,
   ),
 })
 
@@ -35,7 +37,9 @@ export const removeBandTodo = (library: Library, id: string, at: number) =>
 export const clearDoneBandTodos = (library: Library, at: number): Library => ({
   ...library,
   todos: library.todos.map((todo) =>
-    todo.active && todo.done ? { ...todo, active: false, updatedAt: at } : todo,
+    todo.active && todo.done
+      ? { ...todo, active: false, updatedAt: stampAfter(todo.updatedAt, at) }
+      : todo,
   ),
 })
 
@@ -47,5 +51,8 @@ export const setBandField = (
   at: number,
 ): Library => ({
   ...library,
-  band: { ...library.band, [field]: { text, updatedAt: at } },
+  band: {
+    ...library.band,
+    [field]: { text, updatedAt: stampAfter(library.band[field].updatedAt, at) },
+  },
 })

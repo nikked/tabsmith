@@ -719,8 +719,9 @@ an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` on
 has carried it to the sheet. From then the sheet's inactive row is what keeps a device that
 still has the old copy from bringing it back, and a deletion the app pulls only takes a song off
 the shelf, so no device holds tombstones the sheet already has. An edit made after a delete elsewhere does bring a
-song back — the newer intent wins either way. Clocks are trusted, which is fine for one person's
-devices.
+song back — the newer intent wins either way. An edit is always stamped after what it changed
+(`stampAfter`), so a device whose clock runs behind, or a stamp from one running ahead, cannot
+make a fresh edit look older than the copy it was made to.
 
 Setlists sync the same way, newest wins per setlist, in a `setlists` tab of their own. A
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no

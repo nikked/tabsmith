@@ -9,6 +9,7 @@ import {
   hasTodo,
   matching,
   retitle,
+  stampAfter,
   openEntry,
   openSong,
   openTodos,
@@ -41,6 +42,26 @@ const shelf = (...ids: readonly string[]): Library => {
     band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
   }
 }
+
+describe('stampAfter', () => {
+  it('takes the clock when it is ahead, and one past the last stamp when it is not', () => {
+    expect(stampAfter(100, 250)).toBe(250)
+    expect(stampAfter(300, 250)).toBe(301)
+    expect(stampAfter(250, 250)).toBe(251)
+  })
+
+  it('keeps an edit newer than a copy from a device whose clock runs fast', () => {
+    // Pulled from a phone an hour ahead, then edited here a minute later.
+    const pulled: Library = {
+      ...shelf('a'),
+      songs: [{ ...entry('a'), updatedAt: 3_600_000 }],
+    }
+    const edited = withOpenSong(pulled, named('changed here'), 60_000)
+    expect(edited.songs[0].updatedAt).toBe(3_600_001)
+    expect(retitle(pulled, 'a', 'renamed', 60_000).songs[0].updatedAt).toBe(3_600_001)
+    expect(removeEntry(shelf('a', 'b'), 'a', 0).removed[0]?.at).toBe(1)
+  })
+})
 
 describe('library', () => {
   it('sorts by the name shown, ignoring case and accents', () => {
