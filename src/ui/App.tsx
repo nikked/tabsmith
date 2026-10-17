@@ -490,7 +490,7 @@ export default function App() {
           <Toggle
             label="View"
             options={[
-              { value: 'songs', label: 'Songs' },
+              { value: 'songs', label: 'Home' },
               { value: 'practice', label: 'Practice' },
               { value: 'edit', label: 'Edit' },
             ]}

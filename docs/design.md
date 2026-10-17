@@ -8,10 +8,10 @@ so renumbering a section means fixing those references too.
 
 ## 1. Shape of the thing
 
-Three views. **Songs** (§5) keeps the shelf and the setlists in order, the editor is the page,
+Three views. **Home** (§5) keeps the shelf and the setlists in order, the editor is the page,
 and **Practice** (§4b) is how the finished song is read.
 
-- **Songs** — setlists on one side and every song on the other, searched, sorted and dragged
+- **Home** — setlists on one side and every song on the other, searched, sorted and dragged
   into the order a gig needs.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
@@ -26,7 +26,7 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, **+ New**, the **Songs | Practice | Edit** toggle (§4b, §5) and, at
+The header carries the logo, **+ New**, the **Home | Practice | Edit** toggle (§4b, §5) and, at
 the right, a `⋯` settings menu (§5). Nothing in it is loud: none of it is reached for while
 writing.
 
@@ -621,7 +621,8 @@ each is one button there.
 **Copy song…** and **Delete song…** are at the foot of the editor, after the keys, and act on
 the open song. Copy asks for a name, then the copy joins the shelf and opens.
 
-**Songs** is the page for arranging rather than writing (`SongsPage.tsx`): setlists on one side,
+**Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's todo list
+and ideas at the top, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be searched — case and accents do not
 matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Practice
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
@@ -635,7 +636,7 @@ it; any other is renamed on the shelf (`retitle`).
 
 On a screen wide enough to spare the room, the setlists and every song also sit beside the
 editor and Practice as a tree, since switching songs is then one click. That tree only switches:
-arranging is the Songs page's job, and keeping the grips and deletes out of it keeps them out of
+arranging is Home's job, and keeping the grips and deletes out of it keeps them out of
 the way while writing.
 
 ### Setlists
@@ -646,7 +647,7 @@ setlists — the same song is in most gigs — and an edit shows up in all of th
 been deleted, or has not reached this device yet, is left out of a setlist rather than shown as
 a gap.
 
-On the Songs page a song is dragged by its grip — from All songs into a setlist, within a
+On Home a song is dragged by its grip — from All songs into a setlist, within a
 setlist to reorder it, or from one setlist into another, which adds it there too — and lands
 where it is dropped (`placeInSetlist`). It is the same pointer-event drag a tab row uses, read
 from the page rather than one list, since a song crosses from one list to another. × takes a
