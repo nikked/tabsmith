@@ -509,7 +509,7 @@ export function Practice({
                 },
                 {
                   id: 'sound',
-                  label: 'Sound level',
+                  label: 'Sound level, dB',
                   checked: meter.on,
                   onToggle: toggleListening,
                 },
@@ -563,7 +563,8 @@ export function Practice({
                 <MenuItems
                   items={[
                     {
-                      label: meter.offset === null ? 'Calibrate…' : 'Calibrate again…',
+                      label:
+                        meter.offset === null ? 'Calibrate mic' : 'Calibrate mic again',
                       onSelect: () => setCalibrating(true),
                     },
                   ]}
@@ -709,7 +710,7 @@ export function Practice({
       </div>
       {calibrating && (
         <Prompt
-          heading="Calibrate the sound level"
+          heading="Calibrate mic"
           label="Reference dB(A)"
           initial=""
           confirm="Calibrate"
