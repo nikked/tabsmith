@@ -85,6 +85,13 @@ describe('engraving', () => {
     expect(pieces.flatMap((piece) => piece.measure)).toEqual(wide)
   })
 
+  it('clears the clef when every note sits inside the staff', () => {
+    // A B on the middle line: its head and stem stay within the five lines.
+    const plain = reach({ title: '', note: '', measures: [[note([4])]] })
+    expect(plain.above).toBeGreaterThanOrEqual(1.9)
+    expect(plain.below).toBeGreaterThanOrEqual(2.1)
+  })
+
   it('makes room above for chord names and an 8va, and below for an 8vb', () => {
     const plain = reach({ title: '', note: '', measures: [[note([4])]] })
     const named = reach({ title: '', note: '', measures: [[note([4], 0, null, 'Em')]] })
