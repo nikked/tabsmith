@@ -11,7 +11,7 @@ import {
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { FIFTHS, notation } from '../core/notation.ts'
-import { synthIsBlank, synthSummary } from '../core/synths.ts'
+import { synthSummary } from '../core/synths.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -262,7 +262,6 @@ export function Practice({
   const asNotation = reading === 'notation'
   const spacing: Spacing = dense ? 'dense' : 'sparse'
   const hasTab = scoreHasContent(song.tab)
-  const hasSynths = song.synths.some((synth) => !synthIsBlank(synth))
   const [showSynths, setShowSynths] = useState(loadSynthsShown)
   const [fit, setFit] = useState<{ readonly step: number; readonly settled: boolean }>({
     step: FITS.largest,
@@ -386,10 +385,11 @@ export function Practice({
         {/* The song's heading lives here rather than above the song, so it is
             always in sight and the song starts right under the bar. */}
         <h2 className="bar-title">{song.title}</h2>
-        {/* On a phone every control below folds into this one menu, so the bar
-            is the song's title and nothing else that takes a line. A tablet
-            folds only the toggles, so its menu hides the rest. */}
-        <div className={hasTab || hasSynths ? 'bar-more' : 'bar-more phone-only'}>
+        {/* The settings that are set once and left live in this menu on every
+            screen. On a phone the size and setlist controls fold into it as
+            well, so the bar is the song's title and nothing else that takes a
+            line; anywhere wider the menu leaves those to the bar. */}
+        <div className="bar-more">
           <Menu label="⋯" title="Practice options">
             <div className="menu-row phone-only" role="group" aria-label="Text size">
               <button
@@ -424,52 +424,43 @@ export function Practice({
             )}
             <MenuChecks
               items={[
-                ...(hasSynths
-                  ? [
-                      {
-                        id: 'synths',
-                        label: 'Synths',
-                        checked: showSynths,
-                        onToggle: toggleSynths,
-                      },
-                    ]
-                  : []),
-                ...(hasTab
-                  ? [
-                      {
-                        id: 'notation',
-                        label: 'Notation',
-                        checked: asNotation,
-                        onToggle: toggleNotation,
-                      },
-                    ]
-                  : []),
-                ...(hasTab && !asNotation
-                  ? [
-                      {
-                        id: 'dense',
-                        label: 'Dense',
-                        checked: dense,
-                        onToggle: toggleDense,
-                      },
-                    ]
-                  : []),
+                {
+                  id: 'synths',
+                  label: 'Show synth controls',
+                  checked: showSynths,
+                  onToggle: toggleSynths,
+                },
               ]}
             />
+            {/* The bar has its own Tab or Notation toggle until a tablet folds it in. */}
+            {hasTab && (
+              <div className="compact-only">
+                <MenuChecks
+                  items={[
+                    {
+                      id: 'notation',
+                      label: 'Notation',
+                      checked: asNotation,
+                      onToggle: toggleNotation,
+                    },
+                  ]}
+                />
+              </div>
+            )}
+            {hasTab && !asNotation && (
+              <MenuChecks
+                items={[
+                  {
+                    id: 'dense',
+                    label: 'Dense tab',
+                    checked: dense,
+                    onToggle: toggleDense,
+                  },
+                ]}
+              />
+            )}
           </Menu>
         </div>
-        {/* On or off on its own, like a filter, rather than one of a pair. */}
-        {hasSynths && (
-          <button
-            type="button"
-            className="synth-toggle"
-            aria-pressed={showSynths}
-            title={showSynths ? 'Hide the synth settings' : 'Show the synth settings'}
-            onClick={toggleSynths}
-          >
-            Synths
-          </button>
-        )}
         {/* The same notes read either way; a song with no tab has neither. */}
         {hasTab && (
           <Toggle
@@ -482,23 +473,6 @@ export function Practice({
             value={asNotation ? 'notation' : 'tab'}
             onChange={(next) => {
               if ((next === 'notation') !== asNotation) toggleNotation()
-            }}
-          />
-        )}
-        {/* Spacing is only about tab, so a song with none, or read as notation,
-            has nothing to set. On a phone it moves into the menu above, sparse
-            being the default. */}
-        {hasTab && !asNotation && (
-          <Toggle
-            small
-            label="Spacing between notes"
-            options={[
-              { value: 'dense', label: 'Dense', title: '2-2' },
-              { value: 'sparse', label: 'Sparse', title: '2--2' },
-            ]}
-            value={spacing}
-            onChange={(next) => {
-              if (next !== spacing) toggleDense()
             }}
           />
         )}
