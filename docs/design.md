@@ -552,6 +552,39 @@ with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`
 rather than with the song: a phone and an iPad want different sizes for the same song, so they
 stay off the sheet. A song with no size chosen is fitted to the screen.
 
+**Sound level** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
+band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
+on, it is on again whenever Practice opens, so it carries on through a rehearsal; the
+microphone closes while Practice is left or the page is hidden and opens again on coming back,
+the average started afresh, and stepping through a setlist keeps it running. A microphone the
+browser refuses turns it off, so the question is not asked again each time. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
+A-weighted average since it was turned on (LAeq) and the time left to a full day's dose by
+NIOSH's rule, 85 dB(A) for 8 hours with each 3 dB more halving it, rounded down so it never
+promises time there is not: `94 · 1h`. It turns yellow from 80 dB(A), where protection should
+be on offer, and red from 85, where it should be worn. **Voice** shows the loudest Fast level of
+the last 3 seconds against a target set with − and + in the menu, 70 by default: `72 ▴70`. A
+target only means something at a set distance — a voice reads about 6 dB less each time the
+distance doubles — so the device stays in one place on the stand. Tapping the chip starts the
+average again. The palette has no green and nothing in the app is loud, so a fine level is
+muted or plain and only too much takes colour.
+
+The browser gives samples relative to the microphone's full scale, not sound pressure, so the
+level is A-weighted by three IIR sections (`aWeighting` in `core/level.ts`, by the bilinear
+transform of IEC 61672-1's poles), averaged as energy, and moved into dB(A) by an offset kept per
+device. **Calibrate…** asks what a sound level meter beside the device reads now, such as the
+NIOSH SLM app, and keeps the difference. Asking for the microphone without echo cancellation is
+what turns Safari's automatic gain off: WebKit ignores `autoGainControl`, and with the gain on a
+loud band and a quiet room would read close to each other. Before building this a prototype was
+checked against NIOSH SLM on an iPhone 13 Pro Max with pink noise through a guitar amp, in 5 dB
+steps from 77 to 106 dB(A). An iPhone 13 Pro Max, an iPhone 18 Pro Max and an iPad in Safari, and
+a MacBook Pro in Firefox, all read within ±0.6 dB of a constant offset over the whole range, and
+none clipped. The three iOS devices' offsets were 127–130 and the Mac's about 100, so a phone or
+tablet never calibrated starts at 128, anything else at 100, and the reading is marked `~`.
+106 dB(A) is the loudest level checked, where the reference app itself overloaded, so above it
+the chip claims no more than `106+` and the time to a full dose only an upper bound. Whether it is
+on, the offset, the mode and the target are kept on the device (`tabsmith.meter`, `viewing.ts`), since the
+offset belongs to this microphone; the average is not kept at all.
+
 On a stand the browser's bars are lost room, so the page can be added to a home screen and
 opened as an app of its own: a manifest (`public/manifest.webmanifest`, `display: standalone`),
 a square icon for the home screen (`apple-touch-icon.png`, the favicon without its rounded
@@ -565,7 +598,7 @@ its own storage, apart from the browser's: sync (§5) is how its songs arrive.
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
 knows the format; `share.ts` reuses its `encode` and `decode` for links. The other side effects
 are the clipboard write for Copy song as link in `App.tsx`, the save dialog,
-Practice's screen wake lock, and the sync request in `sync.ts`, which also keeps its own
+Practice's screen wake lock and microphone (`SoundLevel.tsx`), and the sync request in `sync.ts`, which also keeps its own
 settings under `tabsmith.sync`.
 
 Two documents live there, under two keys and two version counters:
@@ -858,6 +891,7 @@ src/
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
     mergeSong.ts  a song changed on two devices, put together part by part
+    level.ts      a sound level from microphone samples: A-weighting, averages, dose
   ui/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections
@@ -876,6 +910,7 @@ src/
     Sync.tsx      the Database sync dialog
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
+    SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
   screen.ts       which page is up, kept so a reload comes back to it, and the theme
