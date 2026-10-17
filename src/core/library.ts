@@ -154,21 +154,6 @@ export const byTitle = (entries: readonly Entry[]): readonly Entry[] =>
 export const byEdited = (entries: readonly Entry[]): readonly Entry[] =>
   [...entries].sort((a, b) => b.updatedAt - a.updatedAt)
 
-/** Case and accents folded away, so `smor` finds Smör. */
-const folded = (text: string): string =>
-  text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-
-/** Songs whose shown name contains the query; a blank query is every song. */
-export const matching = (entries: readonly Entry[], query: string): readonly Entry[] => {
-  const wanted = folded(query.trim())
-  return wanted === ''
-    ? entries
-    : entries.filter((entry) => folded(titleOf(entry)).includes(wanted))
-}
-
 /** A tab something has been written into, rather than the empty staff every song starts with. */
 export const hasTab = (entry: Entry): boolean => scoreHasContent(entry.song.tab)
 

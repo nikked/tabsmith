@@ -11,7 +11,7 @@ so renumbering a section means fixing those references too.
 Three views. **Home** (§5) keeps the shelf and the setlists in order, the editor is the page,
 and **Perform** (§4b) is how the finished song is read.
 
-- **Home** — setlists on one side and every song on the other, searched, sorted and dragged
+- **Home** — setlists on one side and every song on the other, filtered, sorted and dragged
   into the order a gig needs.
 
 - **Edit** — a grid of cells, one row per string × N columns, grouped into bars, and bars
@@ -658,8 +658,7 @@ the open song. Copy asks for a name, then the copy joins the shelf and opens.
 
 **Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's todo list
 and ideas at the top, then setlists on one side,
-every song on the other, stacked on a phone. All songs can be searched — case and accents do not
-matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
+every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
 is lit while any is on and that stay on in this browser until turned off

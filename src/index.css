@@ -2405,18 +2405,6 @@ kbd {
   border-radius: 6px;
 }
 
-.song-search {
-  min-width: 0;
-  flex: 1 1 12rem;
-  max-width: 20rem;
-  padding: 0.35rem 0.6rem;
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
 /* The funnel stretches to the order toggle's height, so the two read as a pair. */
 .song-order {
   display: flex;
