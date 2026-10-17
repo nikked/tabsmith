@@ -2,11 +2,13 @@
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
  * POST takes { token, records: [{ id, at, title, song, active }], setlists:
- * [{ id, at, name, songs, active }] }, where song is the document a tabsmith
- * file holds, packed by the app, songs is a setlist's song ids in order, and
- * active is false for a deleted one. Songs and setlists each live in their own tab. The sheet keeps
- * the newest of each id and answers { ok: true, records, setlists } with all of
- * them, so one round trip both pushes and pulls.
+ * [{ id, at, name, songs, active }], todos: [{ id, at, text, done, active }] },
+ * where song is the document a tabsmith file holds, packed by the app, songs is
+ * a setlist's song ids in order, todos are the band's list, and active is false
+ * for a deleted or cleared one. Songs, setlists and todos each live in their
+ * own tab. The sheet keeps the newest of each id and answers { ok: true,
+ * records, setlists, todos } with all of them, so one round trip both pushes
+ * and pulls.
  *
  * Nothing is ever deleted here. A deleted song stays in its row, marked
  * inactive, and a record that arrives without a song (from an app older than
@@ -19,6 +21,7 @@
  */
 const HEADER = ['id', 'at', 'title', 'song', 'active']
 const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active']
+const TODO_HEADER = ['id', 'at', 'text', 'done', 'active']
 
 function tab(name, header) {
   const book = SpreadsheetApp.getActiveSpreadsheet()
@@ -84,6 +87,11 @@ function doPost(e) {
     const setlists = newestOf(readSetlists(lists), body.setlists, (setlist) => setlist)
     writeSetlists(lists, setlists)
 
+    // An app from before the band's todos sends none, which changes nothing here.
+    const todoTab = tab('todos', TODO_HEADER)
+    const todos = newestOf(readTodos(todoTab), body.todos, (todo) => todo)
+    writeTodos(todoTab, todos)
+
     return json({
       ok: true,
       records: all.map((record) => ({
@@ -93,6 +101,7 @@ function doPost(e) {
         active: record.active,
       })),
       setlists,
+      todos,
     })
   } finally {
     lock.releaseLock()
@@ -121,24 +130,25 @@ function readRecords(sheet) {
     .filter((record) => record.id !== '' && Number.isFinite(record.at))
 }
 
+// A rejected write must leave the stored rows intact, so trim only after it succeeds.
+function writeRows(sheet, width, rows) {
+  if (rows.length > 0) sheet.getRange(2, 1, rows.length, width).setValues(rows)
+  const stale = sheet.getLastRow() - rows.length - 1
+  if (stale > 0) sheet.getRange(rows.length + 2, 1, stale, width).clearContent()
+}
+
 function writeRecords(sheet, records) {
-  // A rejected write must leave the stored songs intact, so trim only after it succeeds.
-  if (records.length > 0) {
-    sheet
-      .getRange(2, 1, records.length, HEADER.length)
-      .setValues(
-        records.map((record) => [
-          record.id,
-          record.at,
-          record.title,
-          record.song ?? '',
-          record.active,
-        ]),
-      )
-  }
-  const stale = sheet.getLastRow() - records.length - 1
-  if (stale > 0)
-    sheet.getRange(records.length + 2, 1, stale, HEADER.length).clearContent()
+  writeRows(
+    sheet,
+    HEADER.length,
+    records.map((record) => [
+      record.id,
+      record.at,
+      record.title,
+      record.song ?? '',
+      record.active,
+    ]),
+  )
 }
 
 function readSetlists(sheet) {
@@ -166,28 +176,62 @@ function readSetlists(sheet) {
 }
 
 function writeSetlists(sheet, setlists) {
-  if (setlists.length > 0) {
-    sheet
-      .getRange(2, 1, setlists.length, SETLIST_HEADER.length)
-      .setValues(
-        setlists.map((setlist) => [
-          setlist.id,
-          setlist.at,
-          setlist.name,
-          JSON.stringify(setlist.songs),
-          setlist.active,
-        ]),
-      )
-  }
-  const stale = sheet.getLastRow() - setlists.length - 1
-  if (stale > 0) {
-    sheet.getRange(setlists.length + 2, 1, stale, SETLIST_HEADER.length).clearContent()
-  }
+  writeRows(
+    sheet,
+    SETLIST_HEADER.length,
+    setlists.map((setlist) => [
+      setlist.id,
+      setlist.at,
+      setlist.name,
+      JSON.stringify(setlist.songs),
+      setlist.active,
+    ]),
+  )
+}
+
+function readTodos(sheet) {
+  return sheet
+    .getDataRange()
+    .getValues()
+    .slice(1)
+    .map((row) => ({
+      id: String(row[0]),
+      at: Number(row[1]),
+      text: textOf(row[2]),
+      done: row[3] === true,
+      active: row[4] === true,
+    }))
+    .filter((todo) => todo.id !== '' && Number.isFinite(todo.at))
+}
+
+function writeTodos(sheet, todos) {
+  writeRows(
+    sheet,
+    TODO_HEADER.length,
+    todos.map((todo) => [todo.id, todo.at, textCell(todo.text), todo.done, todo.active]),
+  )
 }
 
 // A cell starting with = + - or @ is read as a formula, and a name is free text.
 function plain(text) {
   return String(text || '').replace(/^[\s=+\-@]+/, '')
+}
+
+// Text written as typed goes in as a JSON string instead: it starts with a
+// quote, so it is never read as a formula, and a leading dash or indent the
+// writer meant survives. A cell written before this holds the text itself.
+function textCell(text) {
+  return JSON.stringify(String(text))
+}
+
+function textOf(cell) {
+  const value = String(cell)
+  if (!value.startsWith('"')) return value
+  try {
+    return String(JSON.parse(value))
+  } catch (error) {
+    return value
+  }
 }
 
 function parseBody(text) {
@@ -234,5 +278,23 @@ function parseBody(text) {
       songs: setlist.songs,
       active: setlist.active,
     }))
-  return { token: String(body.token || ''), records, setlists }
+  const todos = (Array.isArray(body.todos) ? body.todos : [])
+    .filter(
+      (todo) =>
+        todo &&
+        typeof todo.id === 'string' &&
+        todo.id !== '' &&
+        Number.isFinite(todo.at) &&
+        typeof todo.text === 'string' &&
+        typeof todo.done === 'boolean' &&
+        typeof todo.active === 'boolean',
+    )
+    .map((todo) => ({
+      id: todo.id,
+      at: todo.at,
+      text: todo.text,
+      done: todo.done,
+      active: todo.active,
+    }))
+  return { token: String(body.token || ''), records, setlists, todos }
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { records, type Synced } from './core/sync.ts'
-import type { Library, Setlist } from './core/library.ts'
+import type { BandTodo, Library, Setlist } from './core/library.ts'
 import { DEMO_TITLE } from './demo.ts'
 import { pack, unpack } from './share.ts'
 import { decode, encode, type Loaded } from './storage.ts'
@@ -57,12 +57,22 @@ const setlistRow = z.object({
   active: z.boolean(),
 })
 
+const todoRow = z.object({
+  id: z.string().min(1),
+  at: z.number(),
+  text: z.string(),
+  done: z.boolean(),
+  active: z.boolean(),
+})
+
 const reply = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
     records: z.array(z.unknown()),
     // A script deployed before setlists existed answers without them.
     setlists: z.array(z.unknown()).default([]),
+    // Nor, until it is redeployed, the band's todos.
+    todos: z.array(z.unknown()).default([]),
   }),
   z.object({ ok: z.literal(false), error: z.string() }),
 ])
@@ -72,6 +82,7 @@ export type Pulled =
       readonly ok: true
       readonly records: readonly Synced[]
       readonly setlists: readonly Setlist[]
+      readonly todos: readonly BandTodo[]
     }
   | { readonly ok: false; readonly error: string }
 
@@ -134,6 +145,15 @@ export const setlistsToWire = (library: Library) =>
     active: setlist.active,
   }))
 
+export const todosToWire = (library: Library) =>
+  library.todos.map((todo) => ({
+    id: todo.id,
+    at: todo.updatedAt,
+    text: todo.text,
+    done: todo.done,
+    active: todo.active,
+  }))
+
 /**
  * Rows come from a sheet that can be edited by hand, so one that is not a song
  * any more is dropped rather than failing the whole sync.
@@ -167,6 +187,12 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
       const { id, at, name, songs, active } = each.data
       return [{ id, name, songs, active, updatedAt: at }]
     }),
+    todos: parsed.data.todos.flatMap((value): BandTodo[] => {
+      const each = todoRow.safeParse(value)
+      if (!each.success) return []
+      const { id, at, text, done, active } = each.data
+      return [{ id, text, done, active, updatedAt: at }]
+    }),
   }
 }
 
@@ -188,6 +214,7 @@ export const syncLibrary = async (
         token: to.token,
         records,
         setlists: setlistsToWire(library),
+        todos: todosToWire(library),
       }),
     })
     if (!response.ok)

@@ -1,4 +1,10 @@
-import { repair, type Entry, type Library, type Setlist } from './library.ts'
+import {
+  repair,
+  type BandTodo,
+  type Entry,
+  type Library,
+  type Setlist,
+} from './library.ts'
 import type { Song } from './model.ts'
 
 /**
@@ -83,9 +89,20 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
   )
 }
 
+const withoutSentDeletions = <T extends Listed>(
+  here: readonly T[],
+  sent: readonly T[],
+): readonly T[] =>
+  here.filter(
+    (item) =>
+      item.active ||
+      !sent.some((each) => each.id === item.id && each.updatedAt === item.updatedAt),
+  )
+
 /**
  * Once a sync has carried a deletion to the sheet, the sheet remembers it and
- * this device can forget it: a deleted song, or a setlist marked inactive.
+ * this device can forget it: a deleted song, or a setlist or band todo marked
+ * inactive.
  * Only what was sent is forgotten: one deleted while the sync was on its way
  * still has to go up with the next one.
  */
@@ -93,45 +110,60 @@ export const forgetSent = (library: Library, sent: Library): Library => {
   const removed = library.removed.filter(
     (gone) => !sent.removed.some((each) => each.id === gone.id && each.at === gone.at),
   )
-  const setlists = library.setlists.filter(
-    (setlist) =>
-      setlist.active ||
-      !sent.setlists.some(
-        (each) => each.id === setlist.id && each.updatedAt === setlist.updatedAt,
-      ),
-  )
+  const setlists = withoutSentDeletions(library.setlists, sent.setlists)
+  const todos = withoutSentDeletions(library.todos, sent.todos)
   return removed.length === library.removed.length &&
-    setlists.length === library.setlists.length
+    setlists.length === library.setlists.length &&
+    todos.length === library.todos.length
     ? library
-    : { ...library, removed, setlists }
+    : { ...library, removed, setlists, todos }
+}
+
+type Listed = {
+  readonly id: string
+  readonly active: boolean
+  readonly updatedAt: number
 }
 
 /**
- * Setlists merge the same way songs do: newest wins, one at a time, a tie keeps
- * what is here, and new ones join at the end. A setlist deleted elsewhere is
- * taken off this device; the sheet is what keeps it, marked inactive, so one
- * this device does not have changes nothing.
+ * Newest wins, one at a time, a tie keeps what is here, and new ones join at
+ * the end. One deleted elsewhere is taken off this device; the sheet is what
+ * keeps it, marked inactive, so one this device does not have changes nothing.
+ * The same list comes back when nothing remote is newer.
  */
-export const mergeSetlists = (library: Library, remote: readonly Setlist[]): Library => {
-  const known = new Map(
-    library.setlists.map((setlist) => [setlist.id, setlist.updatedAt]),
-  )
+const newestOf = <T extends Listed>(
+  here: readonly T[],
+  remote: readonly T[],
+): readonly T[] => {
+  const known = new Map(here.map((item) => [item.id, item.updatedAt]))
   const newer = remote.filter(
-    (setlist) =>
-      (setlist.active || known.has(setlist.id)) &&
-      setlist.updatedAt > (known.get(setlist.id) ?? Number.NEGATIVE_INFINITY),
+    (item) =>
+      (item.active || known.has(item.id)) &&
+      item.updatedAt > (known.get(item.id) ?? Number.NEGATIVE_INFINITY),
   )
-  if (newer.length === 0) return library
-  const won = new Map(newer.map((setlist) => [setlist.id, setlist]))
-  return {
-    ...library,
-    setlists: [
-      ...library.setlists.flatMap((setlist): Setlist[] => {
-        const theirs = won.get(setlist.id)
-        if (theirs === undefined) return [setlist]
-        return theirs.active ? [theirs] : []
-      }),
-      ...newer.filter((setlist) => !known.has(setlist.id)),
-    ],
-  }
+  if (newer.length === 0) return here
+  const won = new Map(newer.map((item) => [item.id, item]))
+  return [
+    ...here.flatMap((item): T[] => {
+      const theirs = won.get(item.id)
+      if (theirs === undefined) return [item]
+      return theirs.active ? [theirs] : []
+    }),
+    ...newer.filter((item) => !known.has(item.id)),
+  ]
+}
+
+/** Setlists merge one at a time, the newest of each winning. */
+export const mergeSetlists = (library: Library, remote: readonly Setlist[]): Library => {
+  const setlists = newestOf(library.setlists, remote)
+  return setlists === library.setlists ? library : { ...library, setlists }
+}
+
+/**
+ * Band todos merge the way setlists do, so two people ticking different ones
+ * both keep their ticks.
+ */
+export const mergeTodos = (library: Library, remote: readonly BandTodo[]): Library => {
+  const todos = newestOf(library.todos, remote)
+  return todos === library.todos ? library : { ...library, todos }
 }
