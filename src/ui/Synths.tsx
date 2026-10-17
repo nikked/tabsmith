@@ -104,7 +104,9 @@ function SynthEditor({
     <div
       className="synth"
       style={{
-        gridTemplateColumns: `7rem repeat(${slots}, minmax(5rem, 9.5rem)) auto auto`,
+        // Narrowed to fit a phone rather than run off its side; anywhere wider
+        // every column has room to reach its full width.
+        gridTemplateColumns: `minmax(4rem, 7rem) repeat(${slots}, minmax(3.5rem, 9.5rem)) auto auto`,
       }}
     >
       <Suggest
