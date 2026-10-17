@@ -9,8 +9,10 @@ import {
   type Entry,
   type Library,
   type Setlist,
+  type Songs,
 } from './library.ts'
 import type { Song } from './model.ts'
+import { mergeSong } from './mergeSong.ts'
 import { same } from './same.ts'
 
 /**
@@ -75,13 +77,71 @@ const taken = (record: Extract<Synced, { active: true }>): Entry => ({
 })
 
 /**
+ * One song settled against the sheet's record of it: what stays on the shelf,
+ * this device's version kept aside when the two collided, and whether anything
+ * changed at all.
+ */
+type Settled = {
+  readonly entry: Entry | null
+  readonly conflict: { readonly copy: Entry; readonly title: string } | null
+  readonly changed: boolean
+}
+
+const becomes = (entry: Entry | null): Settled => ({
+  entry,
+  conflict: null,
+  changed: true,
+})
+
+const settle = (entry: Entry, record: Synced | undefined, now: Now): Settled => {
+  const unchanged: Settled = { entry, conflict: null, changed: false }
+  if (record === undefined) return unchanged
+  if (record.active && record.at === entry.updatedAt && same(record.song, entry.song)) {
+    if (entry.lastSynced?.at === entry.updatedAt) return unchanged
+    return becomes({ ...entry, lastSynced: { at: entry.updatedAt, song: entry.song } })
+  }
+  const base = entry.lastSynced
+  if (base === null) {
+    // No record of agreeing: newest stamp wins, as before syncs remembered.
+    if (record.at <= entry.updatedAt) return unchanged
+    return becomes(record.active ? taken(record) : null)
+  }
+  if (record.at <= base.at) return unchanged
+  const editedHere = isUnsynced(entry)
+  if (!record.active) {
+    return becomes(
+      editedHere ? { ...entry, updatedAt: stampAfter(record.at, now.at) } : null,
+    )
+  }
+  if (!editedHere || same(entry.song, record.song)) return becomes(taken(record))
+  const together = mergeSong(base.song, entry.song, record.song)
+  const merged: Entry = same(together.value, record.song)
+    ? taken(record)
+    : // Both sides' edits, which neither device has yet: it goes up next.
+      {
+        id: entry.id,
+        song: together.value,
+        updatedAt: stampAfter(Math.max(entry.updatedAt, record.at), now.at),
+        lastSynced: { at: record.at, song: record.song },
+      }
+  return {
+    entry: merged,
+    conflict: together.clean
+      ? null
+      : { copy: conflictCopy(entry, now), title: entry.song.title || 'Untitled' },
+    changed: true,
+  }
+}
+
+/**
  * What the sheet brought, set against what is here, one song at a time.
  *
  * A song the sheet holds this device's version of is now synced. One the sheet
  * has a newer copy of is taken, unless it was also edited here since the two
- * last agreed: then the sheet's copy takes its place and this version is kept
- * beside it as a conflict copy, named for when, so the two can be put together
- * by hand. A deletion from elsewhere takes a song off the shelf, unless it was
+ * last agreed: then the two are put together part by part. Where both changed
+ * the same part differently the sheet's side of that part stands in, and this
+ * version is kept beside it whole as a conflict copy, named for when, to be put
+ * together by hand. A deletion from elsewhere takes a song off the shelf, unless it was
  * edited here since, in which case it comes back. A song this device has no
  * record of agreeing on yet — kept before syncs remembered — goes by newest
  * stamp, as every song once did, since there is nothing to tell an edit by.
@@ -98,41 +158,14 @@ export const merge = (
   now: Now,
 ): { readonly library: Library; readonly conflicts: readonly string[] } => {
   const theirs = new Map(remote.map((record) => [record.id, record]))
-  const copies: Entry[] = []
-  const conflicts: string[] = []
-  let changed = false
-
-  const settle = (entry: Entry): Entry | null => {
-    const record = theirs.get(entry.id)
-    if (record === undefined) return entry
-    if (record.active && record.at === entry.updatedAt) {
-      if (entry.lastSynced?.at === entry.updatedAt) return entry
-      changed = true
-      return { ...entry, lastSynced: { at: entry.updatedAt, song: entry.song } }
-    }
-    const base = entry.lastSynced
-    if (base === null) {
-      // No record of agreeing: newest stamp wins, as before syncs remembered.
-      if (record.at <= entry.updatedAt) return entry
-      changed = true
-      return record.active ? taken(record) : null
-    }
-    if (record.at <= base.at) return entry
-    changed = true
-    const editedHere = isUnsynced(entry)
-    if (!record.active) {
-      return editedHere ? { ...entry, updatedAt: stampAfter(record.at, now.at) } : null
-    }
-    if (!editedHere || same(entry.song, record.song)) return taken(record)
-    copies.push(conflictCopy(entry, now))
-    conflicts.push(entry.song.title || 'Untitled')
-    return taken(record)
-  }
-
-  const kept = library.songs.flatMap((entry): Entry[] => {
-    const settled = settle(entry)
-    return settled === null ? [] : [settled]
-  })
+  const settled = library.songs.map((entry) => settle(entry, theirs.get(entry.id), now))
+  const kept = settled.flatMap((each) => (each.entry === null ? [] : [each.entry]))
+  const collided = settled.flatMap((each) =>
+    each.conflict === null ? [] : [each.conflict],
+  )
+  const copies = collided.map((each) => each.copy)
+  const conflicts = collided.map((each) => each.title)
+  const changed = settled.some((each) => each.changed)
   const here = new Set(library.songs.map((entry) => entry.id))
   const gone = new Map(library.removed.map((each) => [each.id, each.at]))
   const arrived = remote.flatMap((record): Entry[] =>
@@ -182,6 +215,37 @@ export const forgetSent = (library: Library, sent: Library): Library => {
     todos.length === library.todos.length
     ? library
     : { ...library, removed, setlists, todos }
+}
+
+/**
+ * A song the sheet now holds exactly as this sync sent it is agreed on at that
+ * version, even when it has been edited here again while the sync was on its
+ * way. Without this the sheet's answer would look like someone else's edit to
+ * the same parts, and the edit made meanwhile would turn into a conflict copy
+ * of itself. What changed since stays unsynced and goes up next.
+ */
+export const acknowledge = (
+  library: Library,
+  sent: Library,
+  remote: readonly Synced[],
+): Library => {
+  const theirs = new Map(remote.map((record) => [record.id, record]))
+  const agreed = (entry: Entry): Entry => {
+    const record = theirs.get(entry.id)
+    const mine = sent.songs.find((each) => each.id === entry.id)
+    return record?.active === true &&
+      mine !== undefined &&
+      mine.updatedAt === record.at &&
+      entry.lastSynced?.at !== record.at &&
+      same(mine.song, record.song)
+      ? { ...entry, lastSynced: { at: record.at, song: record.song } }
+      : entry
+  }
+  const [first, ...rest] = library.songs
+  const songs: Songs = [agreed(first), ...rest.map(agreed)]
+  return songs.every((entry, index) => entry === library.songs[index])
+    ? library
+    : { ...library, songs }
 }
 
 type Listed = {

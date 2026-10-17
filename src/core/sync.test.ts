@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Entry, Library } from './library.ts'
 import { emptySong, type Song } from './model.ts'
-import { forgetSent, merge, records, type Synced } from './sync.ts'
+import { acknowledge, forgetSent, merge, records, type Synced } from './sync.ts'
 import { isUnsynced } from './library.ts'
 
 const named = (title: string): Song => ({ ...emptySong(), title })
@@ -148,6 +148,56 @@ describe('sync', () => {
     expect(result.conflicts).toEqual(['mine'])
   })
 
+  it('puts together edits to different parts, and sends the result back up', () => {
+    const chorus = { name: 'Chorus', body: 'C' }
+    const agreedSong: Song = {
+      ...named('agreed'),
+      chart: [{ name: 'Verse', body: 'Em' }, chorus],
+    }
+    const library = shelf({
+      id: 'a',
+      song: { ...agreedSong, chart: [{ name: 'Verse', body: 'Em D' }, chorus] },
+      updatedAt: 11,
+      lastSynced: { at: 10, song: agreedSong },
+    })
+    const theirs: Synced = {
+      id: 'a',
+      at: 12,
+      active: true,
+      song: { ...agreedSong, bpm: 90 },
+    }
+    const result = merge(library, [theirs], NOW)
+    const [song] = result.library.songs
+    expect(result.conflicts).toEqual([])
+    expect(song?.song.bpm).toBe(90)
+    expect(song?.song.chart[0]?.body).toBe('Em D')
+    expect(song?.lastSynced?.at).toBe(12)
+    expect(song !== undefined && isUnsynced(song)).toBe(true)
+    expect(song?.updatedAt).toBe(1_000)
+  })
+
+  it('keeps the parts that came together when another part collided', () => {
+    const agreedSong: Song = { ...named('agreed'), bpm: 100 }
+    const library = shelf({
+      id: 'a',
+      song: { ...agreedSong, bpm: 120, note: 'mine' },
+      updatedAt: 11,
+      lastSynced: { at: 10, song: agreedSong },
+    })
+    const theirs: Synced = {
+      id: 'a',
+      at: 12,
+      active: true,
+      song: { ...agreedSong, bpm: 90 },
+    }
+    const result = merge(library, [theirs], NOW)
+    const [song, copy] = result.library.songs
+    expect(result.conflicts).toEqual(['agreed'])
+    expect(song?.song).toMatchObject({ bpm: 90, note: 'mine' })
+    expect(song !== undefined && isUnsynced(song)).toBe(true)
+    expect(copy?.song).toMatchObject({ bpm: 120, note: 'mine' })
+  })
+
   it('keeps no copy when both sides made the same change', () => {
     const library = shelf(agreed('a', 'same', 11))
     const result = merge(library, [live('a', 12, 'same')], NOW)
@@ -235,5 +285,82 @@ describe('sync', () => {
       removed: [{ id: 'b', at: 2, song: named('b') }],
     }
     expect(forgetSent(library, shelf(entry('a', 1)))).toBe(library)
+  })
+})
+
+describe('equal timestamp edits', () => {
+  it('merges distinct fields instead of acknowledging different content', () => {
+    const base = named('Song')
+    const local = shelf({
+      id: 'a',
+      song: { ...base, bpm: 120 },
+      updatedAt: 101,
+      lastSynced: { at: 100, song: base },
+    })
+    const result = merge(
+      local,
+      [{ id: 'a', at: 101, active: true, song: { ...base, note: 'Remote note' } }],
+      NOW,
+    )
+    expect(result.conflicts).toEqual([])
+    expect(result.library.songs[0].song).toMatchObject({ bpm: 120, note: 'Remote note' })
+    expect(isUnsynced(result.library.songs[0])).toBe(true)
+    expect(result.library.songs[0].updatedAt).toBeGreaterThan(101)
+  })
+
+  it('keeps a conflict copy when matching timestamps hide conflicting edits', () => {
+    const base = named('Song')
+    const local = shelf({
+      id: 'a',
+      song: { ...base, bpm: 120 },
+      updatedAt: 101,
+      lastSynced: { at: 100, song: base },
+    })
+    const result = merge(
+      local,
+      [{ id: 'a', at: 101, active: true, song: { ...base, bpm: 90 } }],
+      NOW,
+    )
+    expect(result.conflicts).toEqual(['Song'])
+    expect(result.library.songs.map((entry) => entry.song.bpm)).toEqual([90, 120])
+    expect(result.library.songs[1]?.lastSynced).toBe(null)
+  })
+})
+
+describe('a sync answered while the song was edited again', () => {
+  const agreedSong = named('Song')
+  const sentSong: Song = { ...agreedSong, chart: [{ name: 'Verse', body: 'Em' }] }
+  const typedSince: Song = { ...agreedSong, chart: [{ name: 'Verse', body: 'Em D' }] }
+  const sent = shelf({
+    id: 'a',
+    song: sentSong,
+    updatedAt: 11,
+    lastSynced: { at: 10, song: agreedSong },
+  })
+  const here = shelf({
+    id: 'a',
+    song: typedSince,
+    updatedAt: 12,
+    lastSynced: { at: 10, song: agreedSong },
+  })
+  const echo: Synced = { id: 'a', at: 11, active: true, song: sentSong }
+
+  it('agrees on what was sent and keeps the edit made since as unsynced', () => {
+    const agreed = acknowledge(here, sent, [echo])
+    expect(agreed.songs[0].lastSynced).toEqual({ at: 11, song: sentSong })
+    expect(agreed.songs[0].song).toBe(typedSince)
+    expect(isUnsynced(agreed.songs[0])).toBe(true)
+    const result = merge(agreed, [echo], NOW)
+    expect(result.conflicts).toEqual([])
+    expect(result.library.songs.map((each) => each.song)).toEqual([typedSince])
+  })
+
+  it('does not agree on a version the sheet holds differently', () => {
+    const other: Synced = { ...echo, song: named('theirs') }
+    expect(acknowledge(here, sent, [other])).toBe(here)
+  })
+
+  it('comes back untouched when nothing sent came back', () => {
+    expect(acknowledge(here, sent, [])).toBe(here)
   })
 })

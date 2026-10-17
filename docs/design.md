@@ -715,9 +715,21 @@ shelf lives in `localStorage` as above.
 One round trip does both directions. The app POSTs every song edited since its last sync and
 every deletion it knows of, so a sync on a weak connection stays small; the sheet keeps the newest record of each id and answers with all of them; the app merges them
 on its side (`core/sync.ts`). A song the sheet changed since `lastSynced` and this device did not
-is taken. One changed on both keeps the sheet's version, with this device's kept beside it as a
-conflict copy, "Title (conflict HH:MM)", so neither side's work is lost. A song with no
-`lastSynced` goes by newest stamp, as every song once did. Each song carries `updatedAt`, stamped when
+is taken. One changed on both is put together part by part (`mergeSong`): the title and each
+fact, the ideas, and every section, tab row, synth and todo, lists lined up the way diff3 lines
+up text, so a section deleted on one device and another edited on the other both happen. Only a
+part changed both ways differently collides: the sheet's side of it stands in, the parts that
+came together stay, and this device's whole version is kept beside it as a conflict copy,
+"Title (conflict HH:MM)", so neither side's work is lost. A song with no `lastSynced` goes by
+newest stamp, as every song once did.
+
+Each song goes up with the stamp of its `lastSynced` as `baseAt`, and the sheet, under its lock,
+will not replace an active song that has changed since then: it answers with its own version, the
+app merges the two and the result goes up with the next sync. Without that check a device
+syncing second would overwrite the first one's edit before ever seeing it. A song the sheet sends
+back exactly as this sync sent it is agreed on at that version (`acknowledge`), even when it
+was edited again while the sync was on its way, so typing during a sync never collides with
+itself. Each song carries `updatedAt`, stamped when
 an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` only until a sync
 has carried it to the sheet. From then the sheet's inactive row is what keeps a device that
 still has the old copy from bringing it back, and a deletion the app pulls only takes a song off
@@ -840,7 +852,8 @@ src/
     setlists.ts   adding, renaming, ordering and deleting setlists
     bandTodos.ts  the band's own todo list, ideas and name
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
-    sync.ts       records, merge, mergeSetlists — newest wins per song and setlist (§5)
+    sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
+    mergeSong.ts  a song changed on two devices, put together part by part
   ui/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections

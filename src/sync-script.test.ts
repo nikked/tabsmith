@@ -3,6 +3,10 @@
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
+import { emptySong } from './core/model.ts'
+import { emptyBand, isUnsynced, type Library } from './core/library.ts'
+import { merge } from './core/sync.ts'
+import { fromWire, toSheet } from './sync.ts'
 
 const script = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8')
 
@@ -308,4 +312,65 @@ describe('a sync round trip through the script', () => {
     post({ token: 't', records: [], band: [{ id: 'ideas', at: 1, text }] })
     expect(post({ token: 't', records: [] }).band).toEqual([{ id: 'ideas', at: 1, text }])
   })
+})
+
+describe('concurrent song round trips', () => {
+  it.each([200, 400])(
+    'preserves both edits when the sheet timestamp is %i',
+    async (remoteAt) => {
+      const base = { ...emptySong(), title: 'Song' }
+      const library: Library = {
+        songs: [
+          {
+            id: 's',
+            song: { ...base, bpm: 120 },
+            updatedAt: 300,
+            lastSynced: { at: 100, song: base },
+          },
+        ],
+        open: 's',
+        removed: [],
+        setlists: [],
+        todos: [],
+        band: emptyBand,
+      }
+      const remote: Library = {
+        ...library,
+        songs: [
+          {
+            ...library.songs[0],
+            song: { ...base, note: 'Remote note' },
+            updatedAt: remoteAt,
+          },
+        ],
+      }
+      const stored = (await toSheet(remote)).records
+      const roundTrip = async (local: Library, rows: typeof stored) => {
+        const body = JSON.stringify({ records: (await toSheet(local)).records })
+        const records = runInNewContext(
+          `${script}\nmergeSongs(stored, parseBody(body).records)`,
+          { stored: rows, body },
+        )
+        const pulled = await fromWire({ ok: true, records })
+        if (!pulled.ok) throw new Error(pulled.error)
+        return {
+          records,
+          result: merge(local, pulled.records, { at: 500, newId: () => 'copy' }),
+        }
+      }
+      const first = await roundTrip(library, stored)
+      expect(first.result.conflicts).toEqual([])
+      expect(first.result.library.songs[0].song).toMatchObject({
+        bpm: 120,
+        note: 'Remote note',
+      })
+      expect(isUnsynced(first.result.library.songs[0])).toBe(true)
+      const second = await roundTrip(first.result.library, first.records)
+      expect(second.result.library.songs[0].song).toMatchObject({
+        bpm: 120,
+        note: 'Remote note',
+      })
+      expect(isUnsynced(second.result.library.songs[0])).toBe(false)
+    },
+  )
 })
