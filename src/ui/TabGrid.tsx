@@ -17,6 +17,7 @@ import {
 } from '../core/edit.ts'
 import { keyToAction } from '../core/keymap.ts'
 import { TUNINGS, type EditorState } from '../core/model.ts'
+import { openPitches, recognizedChord } from '../core/notation.ts'
 import { cellText } from '../core/render.ts'
 import { Toggle } from './Toggle.tsx'
 
@@ -29,6 +30,7 @@ type Props = {
 export function TabGrid({ state, dispatch, onShowKeys }: Props) {
   const { cursor } = state
   const score = state.song.tab
+  const open = openPitches(score.tuning)
   const staff = useRef<HTMLDivElement>(null)
   const current = useRef<HTMLDivElement>(null)
   const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
@@ -364,6 +366,8 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                       bar: barIndex,
                       column: columnIndex,
                     }
+                    const recognized = recognizedChord(column, open)
+                    const shown = column.chord || recognized || ''
                     return (
                       <input
                         key={columnIndex}
@@ -374,6 +378,9 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                         className="chord"
                         size={1}
                         value={column.chord ?? ''}
+                        placeholder={recognized ?? undefined}
+                        // The column widens to the whole name, typed or recognized.
+                        style={{ minWidth: `max(2.5em, ${shown.length + 1}ch)` }}
                         aria-label={`Chord for row ${rowIndex + 1}, bar ${
                           barIndex + 1
                         }, column ${columnIndex + 1}`}

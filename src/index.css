@@ -295,8 +295,11 @@ h1 img {
   border-bottom: 1px solid var(--fg);
 }
 
+/* A touch smaller than the frets above, so a long name like Emaj7/B widens its
+   column less. */
 .chord {
   font: inherit;
+  font-size: 0.9em;
   width: 100%;
   min-width: 2.5em;
   box-sizing: border-box;
@@ -307,6 +310,12 @@ h1 img {
   background: transparent;
   border: none;
   border-bottom: 1px dashed var(--line);
+}
+
+/* A name the notes make, not one typed: shown dim, so it reads as a suggestion. */
+.chord::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
 }
 
 .chord:focus {

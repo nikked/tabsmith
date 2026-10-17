@@ -169,7 +169,9 @@ Notes on the model:
   chord stays aligned even when one of its notes carries a technique.
 - **A chord name belongs to a column**, not to a bar or a beat: it is the annotation of the
   moment the column is. Absent and empty are the same thing, so an emptied field leaves no
-  `chord` key behind and never reaches the ASCII.
+  `chord` key behind and never reaches the ASCII. A column left unnamed shows the name its notes
+  make, read the way the staff reads them (`recognizedChords`): dim in its field in edit, as if
+  typed in Perform. It is worked out each time and never stored, so a typed name always wins.
 - **Bars own their columns.** Default 8, add/remove per bar freely. Bars may have different
   widths; nothing forces them equal.
 - **A row can be titled**, because a tab is usually several named parts rather than one long

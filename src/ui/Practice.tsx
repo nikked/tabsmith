@@ -27,7 +27,7 @@ import {
   slowDb,
   type Level,
 } from '../core/level.ts'
-import { FIFTHS, notation } from '../core/notation.ts'
+import { FIFTHS, notation, recognizedChords } from '../core/notation.ts'
 import { synthSummary } from '../core/synths.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
@@ -420,7 +420,7 @@ export function Practice({
   }
 
   // Notation reads durations from columns, including trailing space and rest bars.
-  const tab = asNotation ? song.tab : trimScore(song.tab)
+  const tab = asNotation ? song.tab : recognizedChords(trimScore(song.tab))
 
   const step = chosen ?? fit.step
   const scale = STEPS[step] ?? 1
