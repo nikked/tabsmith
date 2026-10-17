@@ -375,7 +375,11 @@ export function SongsPage(props: Props) {
 
       <section className="all-songs">
         <div className="panel-head">
-          <h2>All songs</h2>
+          <h2>
+            {filtering
+              ? `Songs selected ${shown.length}/${library.songs.length}`
+              : 'All songs'}
+          </h2>
           <div className="new-song">
             <Menu label="+ New" title="New song">
               <MenuItems items={props.adding} />
