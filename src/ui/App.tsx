@@ -590,7 +590,7 @@ export default function App() {
             label="View"
             options={[
               { value: 'songs', label: 'Home' },
-              { value: 'practice', label: 'Practice' },
+              { value: 'practice', label: 'Perform' },
               { value: 'edit', label: 'Edit' },
             ]}
             value={mode}

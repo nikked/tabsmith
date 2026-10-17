@@ -87,7 +87,7 @@ const METER_KEY = 'tabsmith.meter'
  * until calibrated against a real meter.
  */
 export type Meter = {
-  /** Whether it is listening, so it is on again wherever Practice is next opened. */
+  /** Whether it is listening, so it is on again wherever Perform is next opened. */
   readonly on: boolean
   readonly offset: number | null
   readonly mode: Mode

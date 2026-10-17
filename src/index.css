@@ -1395,7 +1395,7 @@ button {
 
 .sync-dialog,
 .settings-dialog,
-/* The body's font, set again for a prompt opened inside Practice, which would
+/* The body's font, set again for a prompt opened inside Perform, which would
    otherwise take the song's face and size: a field under 16px makes iOS zoom. */
 .prompt {
   font:
