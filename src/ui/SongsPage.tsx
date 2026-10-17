@@ -7,7 +7,6 @@ import {
   hasStructure,
   hasTab,
   hasTodo,
-  matching,
   openEntry,
   openTodos,
   titleOf,
@@ -146,13 +145,12 @@ export function SongsPage(props: Props) {
     const todo = bandTodos[index]
     if (todo !== undefined) props.onBandEdit((current, at) => edit(current, todo.id, at))
   }
-  const [query, setQuery] = useState('')
   const [order, setOrder] = useState<'name' | 'edited'>('name')
   const [drag, setDrag] = useState<Drag | null>(null)
 
   const sorted = order === 'name' ? byTitle(library.songs) : byEdited(library.songs)
   const [only, setOnly] = useState(rememberedFilters)
-  const shown = matching(sorted, query).filter(
+  const shown = sorted.filter(
     (entry) =>
       (!only.tab || hasTab(entry)) &&
       (!only.structure || hasStructure(entry)) &&
@@ -338,14 +336,6 @@ export function SongsPage(props: Props) {
               <MenuItems items={props.adding} />
             </Menu>
           </div>
-          <input
-            type="search"
-            className="song-search"
-            placeholder="Find a song"
-            aria-label="Find a song"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
           <div className="song-order">
             {/* Set now and then, so folded behind one button; lit while any is on,
                 since a list missing songs should say why. */}
@@ -391,11 +381,7 @@ export function SongsPage(props: Props) {
           </div>
         </div>
         {shown.length === 0 ? (
-          <p className="panel-empty">
-            {query.trim() === ''
-              ? 'No song has everything those filters ask for.'
-              : `No song matches “${query.trim()}”${filtering ? ' with those filters' : ''}.`}
-          </p>
+          <p className="panel-empty">No song has everything those filters ask for.</p>
         ) : (
           <ul className="song-rows">
             {shown.map((entry) => {

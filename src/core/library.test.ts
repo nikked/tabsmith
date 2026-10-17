@@ -7,7 +7,6 @@ import {
   hasStructure,
   hasTab,
   hasTodo,
-  matching,
   retitle,
   stampAfter,
   openEntry,
@@ -131,14 +130,6 @@ describe('library', () => {
       { ...entry('c'), updatedAt: 2 },
     ]
     expect(byEdited(songs).map((each) => each.id)).toEqual(['b', 'c', 'a'])
-  })
-
-  it('finds songs by any part of the shown name, ignoring case and accents', () => {
-    const songs = [entry('a', 'Smör'), entry('b', 'Whirled'), entry('c', '')]
-    expect(matching(songs, 'SMOR').map((each) => each.id)).toEqual(['a'])
-    expect(matching(songs, 'irl').map((each) => each.id)).toEqual(['b'])
-    expect(matching(songs, 'untit').map((each) => each.id)).toEqual(['c'])
-    expect(matching(songs, '  ')).toBe(songs)
   })
 
   it('renames one song and stamps only that one', () => {
