@@ -5,10 +5,12 @@ import {
   byTitle,
   hasStructure,
   hasTab,
+  hasTodo,
   matching,
   retitle,
   openEntry,
   openSong,
+  openTodos,
   removeEntry,
   repair,
   titleOf,
@@ -69,6 +71,24 @@ describe('library', () => {
     expect(hasStructure(withChart('Am', '  '))).toBe(false)
     expect(hasStructure(withChart('Am'))).toBe(false)
     expect(hasStructure(entry('a'))).toBe(false)
+  })
+
+  it('counts only the todos still to do, not blank or ticked ones', () => {
+    const withTodos: Entry = {
+      ...entry('a'),
+      song: {
+        ...named('a'),
+        todos: [
+          { text: 'Bridge chords', done: false },
+          { text: 'Try capo 2', done: true },
+          { text: '  ', done: false },
+          { text: 'Slower intro?', done: false },
+        ],
+      },
+    }
+    expect(openTodos(withTodos)).toBe(2)
+    expect(hasTodo(withTodos)).toBe(true)
+    expect(hasTodo(entry('b'))).toBe(false)
   })
 
   it('puts the most recently edited song first', () => {

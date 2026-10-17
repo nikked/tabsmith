@@ -6,8 +6,10 @@ import {
   clockOf,
   hasStructure,
   hasTab,
+  hasTodo,
   matching,
   openEntry,
+  openTodos,
   titleOf,
   type Entry,
   type Library,
@@ -73,16 +75,21 @@ const dropAt = (x: number, y: number, song: string) => {
  */
 const FILTERS = 'tabsmith.songFilters'
 
-const filters = z.object({ tab: z.boolean(), structure: z.boolean() })
+const filters = z.object({
+  tab: z.boolean(),
+  structure: z.boolean(),
+  // Added later, so filters saved before it read as off.
+  todo: z.boolean().default(false),
+})
 
 type Filters = z.infer<typeof filters>
 
 const rememberedFilters = (): Filters => {
   try {
     const result = filters.safeParse(JSON.parse(localStorage.getItem(FILTERS) ?? 'null'))
-    return result.success ? result.data : { tab: false, structure: false }
+    return result.success ? result.data : { tab: false, structure: false, todo: false }
   } catch {
-    return { tab: false, structure: false }
+    return { tab: false, structure: false, todo: false }
   }
 }
 
@@ -107,7 +114,10 @@ export function SongsPage(props: Props) {
   const sorted = order === 'name' ? byTitle(library.songs) : byEdited(library.songs)
   const [only, setOnly] = useState(rememberedFilters)
   const shown = matching(sorted, query).filter(
-    (entry) => (!only.tab || hasTab(entry)) && (!only.structure || hasStructure(entry)),
+    (entry) =>
+      (!only.tab || hasTab(entry)) &&
+      (!only.structure || hasStructure(entry)) &&
+      (!only.todo || hasTodo(entry)),
   )
 
   // Built on the latest filters, like the sidebar's folds, so two in a row both land.
@@ -273,6 +283,15 @@ export function SongsPage(props: Props) {
           >
             Has structure
           </button>
+          <button
+            type="button"
+            className="filter"
+            aria-pressed={only.todo}
+            title="Only songs with something left to do"
+            onClick={() => flip('todo')}
+          >
+            Has TODO
+          </button>
           <Toggle
             small
             label="Order"
@@ -288,7 +307,7 @@ export function SongsPage(props: Props) {
           <p className="panel-empty">
             {query.trim() === ''
               ? 'No song has everything those filters ask for.'
-              : `No song matches “${query.trim()}”${only.tab || only.structure ? ' with those filters' : ''}.`}
+              : `No song matches “${query.trim()}”${only.tab || only.structure || only.todo ? ' with those filters' : ''}.`}
           </p>
         ) : (
           <ul className="song-rows">
@@ -312,6 +331,11 @@ export function SongsPage(props: Props) {
                       </span>
                     )}
                   </button>
+                  {openTodos(entry) > 0 && (
+                    <span className="chip song-todo" title="Todos still to do">
+                      {openTodos(entry)} todo
+                    </span>
+                  )}
                   <span className="song-setlists">
                     {inSetlists.map((setlist) => (
                       <span key={setlist.id} className="chip">

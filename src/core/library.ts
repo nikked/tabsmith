@@ -1,5 +1,5 @@
 import { scoreHasContent } from './edit.ts'
-import type { Song } from './model.ts'
+import { isOpen, type Song } from './model.ts'
 
 /**
  * A song and the name the library knows it by. The id is what survives a
@@ -106,6 +106,11 @@ export const hasTab = (entry: Entry): boolean => scoreHasContent(entry.song.tab)
  */
 export const hasStructure = (entry: Entry): boolean =>
   entry.song.chart.filter((section) => section.body.trim() !== '').length >= 2
+
+/** Todos still to do: a blank one or a ticked one is not waiting on anyone. */
+export const openTodos = (entry: Entry): number => entry.song.todos.filter(isOpen).length
+
+export const hasTodo = (entry: Entry): boolean => openTodos(entry) > 0
 
 /**
  * Renaming a song that is not open. The open one is renamed through the editor
