@@ -1401,6 +1401,9 @@ button {
   font:
     16px/1.4 system-ui,
     sans-serif;
+  /* The width with the padding in it, or a phone's 92vw plus padding is
+     wider than the screen. */
+  box-sizing: border-box;
   width: min(26rem, 92vw);
   max-height: 80vh;
   padding: 1.5rem;
