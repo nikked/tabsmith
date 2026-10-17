@@ -1,29 +1,13 @@
-import { useId } from 'react'
 import type { Action } from '../core/edit.ts'
 import type { Song, Synth } from '../core/model.ts'
 import { suggestionsFor, synthNames } from '../core/synths.ts'
+import { Suggest } from './Suggest.tsx'
 
 type Props = {
   readonly song: Song
   /** Every song on the shelf, for what earlier songs set these synths to. */
   readonly songs: readonly Song[]
   readonly dispatch: (action: Action) => void
-}
-
-function Options({
-  id,
-  values,
-}: {
-  readonly id: string
-  readonly values: readonly string[]
-}) {
-  return (
-    <datalist id={id}>
-      {values.map((value) => (
-        <option key={value} value={value} />
-      ))}
-    </datalist>
-  )
 }
 
 /**
@@ -48,7 +32,6 @@ function Controls({
   readonly suggestions: readonly string[]
   readonly onChange: (values: readonly string[]) => void
 }) {
-  const list = useId()
   return (
     <>
       <span className="synth-kind" style={{ gridRow: row, gridColumn: 1 }}>
@@ -61,13 +44,13 @@ function Controls({
           style={{ gridRow: row, gridColumn: index + 2 }}
         >
           <span>{index + 1}</span>
-          <input
-            aria-label={`${kind} ${index + 1}`}
-            list={list}
+          <Suggest
+            label={`${kind} ${index + 1}`}
             placeholder="—"
             value={value}
-            onChange={(event) =>
-              onChange(values.map((each, i) => (i === index ? event.target.value : each)))
+            suggestions={suggestions}
+            onChange={(typed) =>
+              onChange(values.map((each, i) => (i === index ? typed : each)))
             }
           />
         </label>
@@ -90,7 +73,6 @@ function Controls({
           −
         </button>
       )}
-      <Options id={list} values={suggestions} />
     </>
   )
 }
@@ -106,11 +88,10 @@ function SynthEditor({
   readonly synth: Synth
   readonly index: number
   readonly songs: readonly Song[]
-  readonly names: string
+  readonly names: readonly string[]
   readonly slots: number
   readonly dispatch: (action: Action) => void
 }) {
-  const sounds = useId()
   const set = (next: Synth) => dispatch({ kind: 'setSynth', index, synth: next })
   const used = suggestionsFor(songs, synth.name)
   return (
@@ -120,25 +101,24 @@ function SynthEditor({
         gridTemplateColumns: `7rem repeat(${slots}, minmax(5rem, 9.5rem)) auto auto`,
       }}
     >
-      <input
+      <Suggest
         className="synth-name"
-        aria-label={`Synth ${index + 1} name`}
-        list={names}
+        label={`Synth ${index + 1} name`}
         placeholder="Synth"
         style={{ gridRow: 1, gridColumn: 1 }}
         value={synth.name}
-        onChange={(event) => set({ ...synth, name: event.target.value })}
+        suggestions={names}
+        onChange={(name) => set({ ...synth, name })}
       />
-      <input
+      <Suggest
         className="synth-sound"
-        aria-label={`Synth ${index + 1} sound`}
-        list={sounds}
+        label={`Synth ${index + 1} sound`}
         placeholder="Sound"
         style={{ gridRow: 1, gridColumn: `2 / span ${slots}` }}
         value={synth.sound}
-        onChange={(event) => set({ ...synth, sound: event.target.value })}
+        suggestions={used.sounds}
+        onChange={(sound) => set({ ...synth, sound })}
       />
-      <Options id={sounds} values={used.sounds} />
       <button
         type="button"
         title="Remove this synth"
@@ -173,7 +153,6 @@ function SynthEditor({
  * typed is suggested from what that same synth was set to before.
  */
 export function Synths({ song, songs, dispatch }: Props) {
-  const names = useId()
   const known = synthNames(songs)
   const missing = known.filter(
     (name) =>
@@ -195,7 +174,7 @@ export function Synths({ song, songs, dispatch }: Props) {
           synth={synth}
           index={index}
           songs={songs}
-          names={names}
+          names={known}
           slots={slots}
           dispatch={dispatch}
         />
@@ -219,7 +198,6 @@ export function Synths({ song, songs, dispatch }: Props) {
           + Synth
         </button>
       </div>
-      <Options id={names} values={known} />
     </section>
   )
 }
