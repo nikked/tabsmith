@@ -161,3 +161,23 @@ export const markdownBlocks = (text: string): readonly MarkdownBlock[] =>
       }
     }, [])
     .filter((block) => block.kind !== 'paragraph' || block.lines.length > 0)
+
+/**
+ * What the notes call themselves: the words of their first # heading, wherever
+ * it is, its marks dropped. Null when they have none.
+ */
+export const notesTitle = (text: string): string | null => {
+  const title = text
+    .split('\n')
+    .map((line) => HEADING.exec(line))
+    .find(
+      (heading) =>
+        heading !== null && heading[1] === '#' && (heading[3] ?? '').trim() !== '',
+    )
+  return title == null
+    ? null
+    : words(title[3] ?? '')
+        .map((piece) => piece.text)
+        .join('')
+        .trim()
+}

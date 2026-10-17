@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markdownBlocks, markdownLine, type Words } from './markdown.ts'
+import { markdownBlocks, markdownLine, notesTitle, type Words } from './markdown.ts'
 
 const read = (line: string) =>
   markdownLine(line).map(({ kind, text }) => `${kind}:${text}`)
@@ -159,5 +159,22 @@ describe('markdownBlocks', () => {
   it('reads nothing but blank lines as nothing', () => {
     expect(markdownBlocks('\n\n')).toEqual([])
     expect(markdownBlocks('')).toEqual([])
+  })
+})
+
+describe('notesTitle', () => {
+  it('reads the first # heading wherever it is, its marks dropped', () => {
+    expect(notesTitle('# FÄTTIG\n## 21.10 Roba')).toBe('FÄTTIG')
+    expect(notesTitle('![pug](https://example.com/a.jpg)\n\n# **FÄTTIG** _2026_')).toBe(
+      'FÄTTIG 2026',
+    )
+    expect(notesTitle('## Treenit\n# Later\n# Last')).toBe('Later')
+  })
+
+  it('reads nothing when there is no # heading with words', () => {
+    expect(notesTitle('## Treenit\n### Keikat')).toBeNull()
+    expect(notesTitle('#hashtag')).toBeNull()
+    expect(notesTitle('# \nplain')).toBeNull()
+    expect(notesTitle('')).toBeNull()
   })
 })
