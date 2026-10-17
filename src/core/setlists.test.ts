@@ -294,12 +294,12 @@ describe('setlist order', () => {
     expect(nextPosition(shelf())).toBe(0)
   })
 
-  it('swaps a setlist with its neighbour, stamping only the two that moved', () => {
+  it('swaps a setlist with its neighbour, stamping every active position for sync', () => {
     const moved = moveSetlist(library, 'c', -1, 9)
     expect(order(moved)).toEqual(['a', 'c', 'b'])
     expect(moved.setlists.map((setlist) => [setlist.id, setlist.updatedAt])).toEqual([
       ['c', 9],
-      ['a', 1],
+      ['a', 9],
       ['gone', 1],
       ['b', 9],
     ])
