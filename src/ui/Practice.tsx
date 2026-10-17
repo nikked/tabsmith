@@ -11,14 +11,16 @@ import {
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { FIFTHS, notation } from '../core/notation.ts'
-import { synthSummary } from '../core/synths.ts'
+import { synthIsBlank, synthSummary } from '../core/synths.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
 import { Toggle } from './Toggle.tsx'
 import {
   loadReading,
+  loadSynthsShown,
   loadViews,
   saveReading,
+  saveSynthsShown,
   saveViews,
   withView,
   type Reading,
@@ -260,6 +262,8 @@ export function Practice({
   const asNotation = reading === 'notation'
   const spacing: Spacing = dense ? 'dense' : 'sparse'
   const hasTab = scoreHasContent(song.tab)
+  const hasSynths = song.synths.some((synth) => !synthIsBlank(synth))
+  const [showSynths, setShowSynths] = useState(loadSynthsShown)
   const [fit, setFit] = useState<{ readonly step: number; readonly settled: boolean }>({
     step: FITS.largest,
     settled: false,
@@ -348,6 +352,13 @@ export function Practice({
     setFit({ step: FITS.largest, settled: false })
   }
 
+  // The settings take lines at the top, so the size is fitted again for them.
+  const toggleSynths = () => {
+    saveSynthsShown(!showSynths)
+    setShowSynths(!showSynths)
+    setFit({ step: FITS.largest, settled: false })
+  }
+
   // A new song is fitted afresh. Done here rather than by remounting, so the
   // menu stays open while stepping through songs.
   const [fittedFor, setFittedFor] = useState(songId)
@@ -378,7 +389,7 @@ export function Practice({
         {/* On a phone every control below folds into this one menu, so the bar
             is the song's title and nothing else that takes a line. A tablet
             folds only the toggles, so its menu hides the rest. */}
-        <div className={hasTab ? 'bar-more' : 'bar-more phone-only'}>
+        <div className={hasTab || hasSynths ? 'bar-more' : 'bar-more phone-only'}>
           <Menu label="⋯" title="Practice options">
             <div className="menu-row phone-only" role="group" aria-label="Text size">
               <button
@@ -411,30 +422,54 @@ export function Practice({
                 />
               </div>
             )}
-            {hasTab && (
-              <MenuChecks
-                items={[
-                  {
-                    id: 'notation',
-                    label: 'Notation',
-                    checked: asNotation,
-                    onToggle: toggleNotation,
-                  },
-                  ...(asNotation
-                    ? []
-                    : [
-                        {
-                          id: 'dense',
-                          label: 'Dense',
-                          checked: dense,
-                          onToggle: toggleDense,
-                        },
-                      ]),
-                ]}
-              />
-            )}
+            <MenuChecks
+              items={[
+                ...(hasSynths
+                  ? [
+                      {
+                        id: 'synths',
+                        label: 'Synths',
+                        checked: showSynths,
+                        onToggle: toggleSynths,
+                      },
+                    ]
+                  : []),
+                ...(hasTab
+                  ? [
+                      {
+                        id: 'notation',
+                        label: 'Notation',
+                        checked: asNotation,
+                        onToggle: toggleNotation,
+                      },
+                    ]
+                  : []),
+                ...(hasTab && !asNotation
+                  ? [
+                      {
+                        id: 'dense',
+                        label: 'Dense',
+                        checked: dense,
+                        onToggle: toggleDense,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </Menu>
         </div>
+        {/* On or off on its own, like a filter, rather than one of a pair. */}
+        {hasSynths && (
+          <button
+            type="button"
+            className="synth-toggle"
+            aria-pressed={showSynths}
+            title={showSynths ? 'Hide the synth settings' : 'Show the synth settings'}
+            onClick={toggleSynths}
+          >
+            Synths
+          </button>
+        )}
         {/* The same notes read either way; a song with no tab has neither. */}
         {hasTab && (
           <Toggle
@@ -548,6 +583,7 @@ export function Practice({
           .filter((part) =>
             asNotation ? part.kind !== 'system' : part.kind !== 'notation',
           )
+          .filter((part) => showSynths || part.kind !== 'synths')
           .map(partView(tab, song.key, spacing, columns, widthEm))}
       </div>
     </section>
