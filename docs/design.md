@@ -825,6 +825,8 @@ src/
     NotedLines.tsx chart lines with the note after `//` set apart
     Synths.tsx    a song's synths in edit, and in a panel at the top of Practice
     Suggest.tsx   a field with its suggestions in a list drawn by the app
+    SongNotes.tsx a song's todos and ideas in edit
+    Checklist.tsx a list of todos to tick
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
     SongList.tsx  the setlist tree beside the editor, for switching songs
