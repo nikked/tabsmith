@@ -1748,19 +1748,39 @@ button {
   margin-left: 0;
 }
 
-.sync-now.busy svg {
-  animation: turn 0.9s linear infinite;
+/* While syncing the arrows keep still and a soft blue glow breathes behind
+   them: under way, without anything spinning for attention. */
+.sync-now.busy {
+  color: var(--blue);
 }
 
-/* Anticlockwise, the way the arrows point. */
-@keyframes turn {
+.sync-now.busy::before {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blue), transparent 70%);
+  opacity: 0.35;
+  animation: breathe 1.6s ease-in-out infinite alternate;
+}
+
+.sync-now svg {
+  position: relative;
+}
+
+@keyframes breathe {
+  from {
+    opacity: 0.15;
+    transform: scale(0.85);
+  }
   to {
-    transform: rotate(-360deg);
+    opacity: 0.45;
+    transform: scale(1.1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sync-now.busy svg {
+  .sync-now.busy::before {
     animation: none;
   }
 }
