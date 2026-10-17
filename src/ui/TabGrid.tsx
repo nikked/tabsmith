@@ -25,11 +25,9 @@ type Props = {
   readonly state: EditorState
   readonly dispatch: Dispatch<Action>
   readonly onShowKeys: () => void
-  /** False when Edit was opened for something else to take the focus, a todo. */
-  readonly focusOnOpen: boolean
 }
 
-export function TabGrid({ state, dispatch, onShowKeys, focusOnOpen }: Props) {
+export function TabGrid({ state, dispatch, onShowKeys }: Props) {
   const { cursor } = state
   const score = state.song.tab
   const open = openPitches(score.tuning)
@@ -64,17 +62,12 @@ export function TabGrid({ state, dispatch, onShowKeys, focusOnOpen }: Props) {
     return drag.to > drag.from ? ' drop-below' : ' drop-above'
   }
 
-  // Opened for a todo, the staff neither takes the focus nor pulls the view to
-  // its cursor until that cursor moves. Read only as it opens.
-  const openedForTodo = useRef(focusOnOpen ? null : cursor)
-  useEffect(() => {
-    if (openedForTodo.current === null) staff.current?.focus()
-  }, [])
-
   // A row wider than the window scrolls (§1), so the cell being edited has to
   // drag the view along with it or you type into something you cannot see.
+  // Only while the staff is being typed in: a song loading moves the cursor
+  // too, and must not pull the page down to the tab.
   useEffect(() => {
-    if (cursor === openedForTodo.current) return
+    if (!staff.current?.contains(document.activeElement)) return
     current.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [cursor])
 

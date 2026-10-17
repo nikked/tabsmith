@@ -716,6 +716,7 @@ export default function App() {
           ) : (
             <div className="editing">
               <Chart
+                songId={library.open}
                 song={state.song}
                 songs={library.songs.map((entry) => entry.song)}
                 dispatch={dispatch}
@@ -726,7 +727,6 @@ export default function App() {
                 state={state}
                 dispatch={dispatch}
                 onShowKeys={() => show(guide.current)}
-                focusOnOpen={!focusTodo}
               />
               <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
             </div>
