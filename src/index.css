@@ -413,32 +413,54 @@ header {
 
 .checklist li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 
 .checklist input[type='checkbox'] {
-  margin: 0;
+  /* Level with the first line of the text, however many lines it runs to. */
+  margin: calc(0.15rem + 0.2em) 0 0;
   accent-color: var(--muted);
 }
 
-.checklist input[type='text'] {
+/* The text and an invisible copy of it share one grid cell: the copy wraps and
+   sets the height, and the textarea over it fills that, a line per line. */
+.checklist-text {
+  display: grid;
   flex: 1;
   min-width: 0;
+}
+
+.checklist-text::after {
+  content: attr(data-text) ' ';
+  visibility: hidden;
+  white-space: pre-wrap;
+}
+
+.checklist-text::after,
+.checklist-text textarea {
+  grid-area: 1 / 1;
   padding: 0.15rem 0;
   font: inherit;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.checklist-text textarea {
+  overflow: hidden;
   color: inherit;
   background: transparent;
   border: none;
   border-radius: 0;
+  resize: none;
 }
 
-.checklist input[type='text']:focus {
+.checklist-text textarea:focus {
   outline: none;
   box-shadow: inset 0 -1px 0 var(--fg);
 }
 
-.checklist li.done input[type='text'] {
+.checklist li.done .checklist-text textarea {
   color: var(--muted);
   text-decoration: line-through;
 }
