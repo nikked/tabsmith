@@ -8,7 +8,7 @@ import {
   type Section,
   type Song,
 } from '../core/model.ts'
-import { suggestKey } from '../core/notation.ts'
+import { KEYS_BY_SEMITONE, suggestKey } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Synths } from './Synths.tsx'
 
@@ -126,7 +126,7 @@ export function Chart({ song, songs, dispatch }: Props) {
               }
             >
               <option value="">No key</option>
-              {KEYS.map((key) => (
+              {KEYS_BY_SEMITONE.map((key) => (
                 <option key={key} value={key}>
                   {key}
                 </option>
