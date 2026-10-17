@@ -26,6 +26,8 @@ import { isOpen } from '../core/model.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Checklist } from './Checklist.tsx'
+import { MarkdownLines } from './MarkdownLines.tsx'
+import { MarkdownView } from './MarkdownView.tsx'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
 
@@ -183,6 +185,7 @@ export function SongsPage(props: Props) {
     const todo = bandTodos[index]
     if (todo !== undefined) props.onBandEdit((current, at) => edit(current, todo.id, at))
   }
+  const [writingNotes, setWritingNotes] = useState(false)
   const [order, setOrder] = useState<SongOrder>('name')
   const [direction, setDirection] = useState<Direction>(DEFAULT_DIRECTION.name)
   const orderBy = (next: SongOrder) => {
@@ -254,42 +257,69 @@ export function SongsPage(props: Props) {
 
   return (
     <div className={`songs-page${drag === null ? '' : ' dragging'}`}>
-      <input
-        className="band-name"
-        aria-label="Band name"
-        placeholder="Band name"
-        value={library.band.name.text}
-        onChange={(event) => {
-          const text = event.target.value
-          props.onBandEdit((current, at) => setBandField(current, 'name', text, at))
-        }}
-      />
-      <section className="band-todo" aria-label="Band">
-        <Checklist
-          title="TODO"
-          items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
-          onAdd={props.onAddBandTodo}
-          onText={(index, text) =>
-            onBandTodo(index, (current, id, at) => setBandTodoText(current, id, text, at))
-          }
-          onToggle={(index) => onBandTodo(index, toggleBandTodo)}
-          onRemove={(index) => onBandTodo(index, removeBandTodo)}
-          onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
-        />
-        <label className="ideas">
-          <span className="checklist-title">Ideas</span>
-          <textarea
-            aria-label="Ideas"
-            placeholder="Covers to learn, a set idea, anything not a song yet"
-            rows={Math.max(1, library.band.ideas.text.split('\n').length)}
-            value={library.band.ideas.text}
-            onChange={(event) => {
-              const text = event.target.value
-              props.onBandEdit((current, at) => setBandField(current, 'ideas', text, at))
-            }}
+      {/* The notes first: on a narrow screen they are what is read before the list. */}
+      <div className="band-boxes">
+        <section className="band-box band-notes" aria-label="Band notes">
+          {writingNotes || library.band.ideas.text.trim() === '' ? (
+            // A textarea cannot style part of its text, so the notes are drawn again
+            // underneath with their Markdown styled, and sized by that copy so the
+            // two always wrap alike; the field on top shows only its caret.
+            <label className="ideas markdown-field">
+              <span className="markdown-mirror" aria-hidden="true">
+                <MarkdownLines text={library.band.ideas.text} />
+              </span>
+              <textarea
+                aria-label="Ideas"
+                placeholder="Jot something down…"
+                value={library.band.ideas.text}
+                autoFocus={writingNotes}
+                onFocus={(event) => {
+                  const end = event.currentTarget.value.length
+                  event.currentTarget.setSelectionRange(end, end)
+                }}
+                onBlur={() => setWritingNotes(false)}
+                onChange={(event) => {
+                  const text = event.target.value
+                  props.onBandEdit((current, at) =>
+                    setBandField(current, 'ideas', text, at),
+                  )
+                }}
+              />
+            </label>
+          ) : (
+            // Read the way a README is; clicked or tabbed into, it is written in
+            // again. A link takes its own click rather than opening the notes.
+            <div
+              className="markdown-view"
+              tabIndex={0}
+              aria-label="Ideas, select to edit"
+              onClick={(event) => {
+                if (!(event.target instanceof HTMLAnchorElement)) setWritingNotes(true)
+              }}
+              onFocus={(event) => {
+                if (event.target === event.currentTarget) setWritingNotes(true)
+              }}
+            >
+              <MarkdownView text={library.band.ideas.text} />
+            </div>
+          )}
+        </section>
+        <section className="band-box band-todo" aria-label="Band todos">
+          <Checklist
+            title="TODO"
+            items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
+            onAdd={props.onAddBandTodo}
+            onText={(index, text) =>
+              onBandTodo(index, (current, id, at) =>
+                setBandTodoText(current, id, text, at),
+              )
+            }
+            onToggle={(index) => onBandTodo(index, toggleBandTodo)}
+            onRemove={(index) => onBandTodo(index, removeBandTodo)}
+            onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
           />
-        </label>
-      </section>
+        </section>
+      </div>
       <section className="setlists-panel">
         <div className="panel-head">
           <h2>Setlists</h2>
