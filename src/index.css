@@ -2142,15 +2142,29 @@ kbd {
   .songs-page {
     grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
   }
+
+  /* Side by side, the two headings below sit on one line close under the box,
+     so the band's part of the page needs a little more air before them. */
+  .band-todo {
+    margin-bottom: 1rem;
+  }
 }
 
+/* The band's own list and notes, boxed the way the synth settings are, so they
+   read as the band's rather than as one of the songs below. */
 .band-todo {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
   grid-column: 1 / -1;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 44rem;
+  padding: 0.7rem 0.9rem;
   font-size: 0.9rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 /* The same free text as a song's ideas, outside the chart's fields. The box

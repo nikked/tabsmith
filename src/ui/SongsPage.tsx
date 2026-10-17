@@ -194,9 +194,9 @@ export function SongsPage(props: Props) {
 
   return (
     <div className={`songs-page${drag === null ? '' : ' dragging'}`}>
-      <div className="band-todo">
+      <section className="band-todo" aria-label="Band">
         <Checklist
-          title="Band TODO"
+          title="TODO"
           items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
           onAdd={props.onAddBandTodo}
           onText={(index, text) =>
@@ -207,9 +207,9 @@ export function SongsPage(props: Props) {
           onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
         />
         <label className="ideas">
-          <span className="checklist-title">Band ideas</span>
+          <span className="checklist-title">Ideas</span>
           <textarea
-            aria-label="Band ideas"
+            aria-label="Ideas"
             placeholder="Covers to learn, a set idea, anything not a song yet"
             rows={Math.max(1, library.ideas.text.split('\n').length)}
             value={library.ideas.text}
@@ -219,7 +219,7 @@ export function SongsPage(props: Props) {
             }}
           />
         </label>
-      </div>
+      </section>
       <section className="setlists-panel">
         <div className="panel-head">
           <h2>Setlists</h2>
