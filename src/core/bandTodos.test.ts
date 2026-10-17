@@ -4,6 +4,7 @@ import {
   addBandTodo,
   clearDoneBandTodos,
   removeBandTodo,
+  setBandIdeas,
   setBandTodoText,
   toggleBandTodo,
 } from './bandTodos.ts'
@@ -17,6 +18,7 @@ const shelf: Library = {
   removed: [],
   setlists: [],
   todos: [],
+  ideas: { text: '', updatedAt: 0 },
 }
 
 const listed = (library: Library) =>
@@ -57,6 +59,15 @@ describe('band todos', () => {
     const removed = removeBandTodo(room, 'b', 7)
     expect(listed(removed)).toEqual([['Buy strings', false]])
     expect(removed.todos).toHaveLength(2)
+  })
+})
+
+describe('band ideas', () => {
+  it('keeps the text as typed and stamps it', () => {
+    expect(setBandIdeas(shelf, 'A song about the van\n  slow', 9).ideas).toEqual({
+      text: 'A song about the van\n  slow',
+      updatedAt: 9,
+    })
   })
 })
 

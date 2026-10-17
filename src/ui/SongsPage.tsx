@@ -18,6 +18,7 @@ import {
   activeBandTodos,
   clearDoneBandTodos,
   removeBandTodo,
+  setBandIdeas,
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
@@ -43,8 +44,8 @@ type Props = {
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
   readonly onAddBandTodo: () => void
-  /** Any other change to the band's todos, stamped with when it was made. */
-  readonly onBandTodos: (edit: (library: Library, at: number) => Library) => void
+  /** Any other change to the band's todos or ideas, stamped with when it was made. */
+  readonly onBandEdit: (edit: (library: Library, at: number) => Library) => void
 }
 
 /**
@@ -125,7 +126,7 @@ export function SongsPage(props: Props) {
     edit: (library: Library, id: string, at: number) => Library,
   ) => {
     const todo = bandTodos[index]
-    if (todo !== undefined) props.onBandTodos((current, at) => edit(current, todo.id, at))
+    if (todo !== undefined) props.onBandEdit((current, at) => edit(current, todo.id, at))
   }
   const [query, setQuery] = useState('')
   const [order, setOrder] = useState<'name' | 'edited'>('name')
@@ -203,8 +204,21 @@ export function SongsPage(props: Props) {
           }
           onToggle={(index) => onBandTodo(index, toggleBandTodo)}
           onRemove={(index) => onBandTodo(index, removeBandTodo)}
-          onClearDone={() => props.onBandTodos(clearDoneBandTodos)}
+          onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
         />
+        <label className="ideas">
+          <span className="checklist-title">Band ideas</span>
+          <textarea
+            aria-label="Band ideas"
+            placeholder="Covers to learn, a set idea, anything not a song yet"
+            rows={Math.max(1, library.ideas.text.split('\n').length)}
+            value={library.ideas.text}
+            onChange={(event) => {
+              const text = event.target.value
+              props.onBandEdit((current, at) => setBandIdeas(current, text, at))
+            }}
+          />
+        </label>
       </div>
       <section className="setlists-panel">
         <div className="panel-head">

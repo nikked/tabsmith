@@ -2145,8 +2145,29 @@ kbd {
 }
 
 .band-todo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
   grid-column: 1 / -1;
   max-width: 44rem;
+  font-size: 0.9rem;
+}
+
+/* The same free text as a song's ideas, outside the chart's fields. The box
+   around it already says where it is, so it draws no rule of its own. */
+.band-todo .ideas textarea {
+  padding: 0.15rem 0;
+  font: inherit;
+  color: inherit;
+  white-space: pre-wrap;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  resize: none;
+}
+
+.band-todo .ideas textarea:focus {
+  outline: none;
 }
 
 .songs-page.dragging {

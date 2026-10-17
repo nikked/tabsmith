@@ -457,7 +457,7 @@ describe('loadLibrary', () => {
       setItem: (key: string, value: string) => stored.set(key, value),
     })
 
-  it('keeps the band todos, cleared ones and all, with the shelf', () => {
+  it('keeps the band todos, cleared ones and all, and the band ideas with the shelf', () => {
     storage(new Map())
     const todos = [
       { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
@@ -469,11 +469,13 @@ describe('loadLibrary', () => {
       removed: [],
       setlists: [],
       todos,
+      ideas: { text: 'A song about the van', updatedAt: 7 },
     })
     expect(loadLibrary()?.todos).toEqual(todos)
+    expect(loadLibrary()?.ideas).toEqual({ text: 'A song about the van', updatedAt: 7 })
   })
 
-  it('reads a shelf saved before the band todos as one with none', () => {
+  it('reads a shelf saved before the band todos and ideas as one with none', () => {
     storage(
       new Map([
         [
@@ -486,6 +488,7 @@ describe('loadLibrary', () => {
       ]),
     )
     expect(loadLibrary()?.todos).toEqual([])
+    expect(loadLibrary()?.ideas).toEqual({ text: '', updatedAt: 0 })
   })
 
   it('sets aside a shelf it cannot read before anything saves over it', () => {
