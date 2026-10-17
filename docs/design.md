@@ -820,7 +820,7 @@ src/
     Practice.tsx  the reading view (§4b), also how a shared link opens
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
-  screen.ts       which page is up, kept so a reload comes back to it
+  screen.ts       which page is up, kept so a reload comes back to it, and the theme
   viewing.ts      how songs are shown on this device: each one's size and dense, and tab or notation
   share.ts        a song in a link, and back
   sync.ts         the request to the sheet, its wire format and settings
