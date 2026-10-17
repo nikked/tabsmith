@@ -2017,7 +2017,8 @@ header .menu-open:has(+ .menu:popover-open) {
 
 .menu-check input {
   margin: 0;
-  accent-color: var(--fg);
+  /* Ticked like any choice in force, in the mauve the app uses for those. */
+  accent-color: var(--mauve);
 }
 
 /* The editor and, where there is room for both, the songs beside it. Below that
@@ -2779,12 +2780,14 @@ kbd {
   fill: currentColor;
 }
 
-/* The order in force, lit like the view you are in. */
-.song-order .toggle.small::before {
+/* The order in force, and a choice in a menu, lit like the view you are in. */
+.song-order .toggle.small::before,
+.menu .toggle.small::before {
   background: linear-gradient(90deg, var(--mauve), var(--lavender));
 }
 
-.song-order .toggle button[aria-pressed='true'] {
+.song-order .toggle button[aria-pressed='true'],
+.menu .toggle button[aria-pressed='true'] {
   color: var(--on-accent);
 }
 
@@ -2932,6 +2935,53 @@ kbd {
   margin: 0.4rem 0.7rem 0.1rem;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* The Perform menu in groups: the setlist at the top, then the view and the
+   sound level each a panel of its own. */
+.menu-section.menu-panel {
+  margin: 0.35rem 0 0;
+  padding: 0.15rem 0 0.4rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.menu-heading {
+  margin: 0.45rem 0.7rem 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.setlist-heading {
+  color: var(--setlist-colour);
+}
+
+.menu-count {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.menu .menu-value {
+  color: var(--peach);
+}
+
+/* An action in a menu sits as a button of its own across the menu's width. */
+.menu .menu-action {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 1.4rem);
+  margin: 0.35rem 0.7rem 0;
+  padding: 0.35rem 0.7rem;
+  text-align: center;
+}
+
+.menu .menu-action.tint-blue {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.menu .menu-action.tint-blue:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--raised));
 }
 
 /* Follows the pointer while a song is dragged, so it is clear what is moving
