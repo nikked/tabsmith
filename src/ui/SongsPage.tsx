@@ -250,8 +250,13 @@ export function SongsPage(props: Props) {
       <section className="setlists-panel">
         <div className="panel-head">
           <h2>Setlists</h2>
-          <button type="button" onClick={props.onNewSetlist}>
-            + New setlist
+          <button
+            type="button"
+            aria-label="New setlist"
+            title="New setlist"
+            onClick={props.onNewSetlist}
+          >
+            + New
           </button>
         </div>
         {activeSetlists(library).length === 0 && (
