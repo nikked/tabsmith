@@ -1808,15 +1808,6 @@ header .menu-open:has(+ .menu:popover-open) {
   }
 }
 
-/* At the foot of the page, after the keys: acting on the whole song is the
-   last thing you do with it, not something to reach for while writing. */
-.song-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-
 .danger {
   color: var(--alert);
 }
@@ -1825,7 +1816,6 @@ header .menu-open:has(+ .menu:popover-open) {
   border-color: var(--alert);
 }
 
-.song-actions button:disabled,
 .prompt button:disabled {
   opacity: 0.4;
   cursor: default;

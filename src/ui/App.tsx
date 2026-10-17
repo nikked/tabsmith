@@ -2,7 +2,6 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import { addBandTodo } from '../core/bandTodos.ts'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
-  activeSetlists,
   addSetlist,
   addToSetlist,
   deleteSetlist,
@@ -55,7 +54,7 @@ import {
   type Settings,
 } from '../sync.ts'
 import { Chart } from './Chart.tsx'
-import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import type { MenuItem } from './Menu.tsx'
 import { Paste } from './Paste.tsx'
 import { Prompt } from './Prompt.tsx'
 import { Practice } from './Practice.tsx'
@@ -727,47 +726,6 @@ export default function App() {
                 focusOnOpen={!focusTodo}
               />
               <Shortcuts guide={guide} onShowKeys={() => show(guide.current)} />
-              <div className="song-actions">
-                <Menu label="Setlists ▾" title="Setlists this song is in">
-                  <MenuChecks
-                    items={activeSetlists(library).map((setlist) => ({
-                      id: setlist.id,
-                      label: setlist.name,
-                      checked: setlist.songs.includes(library.open),
-                      onToggle: () => toggleSetlist(setlist.id, library.open),
-                    }))}
-                  />
-                  <MenuItems
-                    items={[
-                      {
-                        label: 'New setlist…',
-                        onSelect: () =>
-                          setAsking({ kind: 'newSetlist', adding: library.open }),
-                        quiet: true,
-                      },
-                    ]}
-                  />
-                </Menu>
-                <button
-                  type="button"
-                  onClick={() => setAsking({ kind: 'copy', song: library.open })}
-                >
-                  Copy song…
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={library.songs.length <= 1}
-                  title={
-                    library.songs.length <= 1
-                      ? 'Your only song cannot be deleted'
-                      : undefined
-                  }
-                  onClick={() => askToDelete(library.open)}
-                >
-                  Delete song…
-                </button>
-              </div>
             </div>
           )}
         </div>
