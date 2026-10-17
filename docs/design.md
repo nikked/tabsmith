@@ -723,6 +723,10 @@ song back — the newer intent wins either way. An edit is always stamped after 
 (`stampAfter`), so a device whose clock runs behind, or a stamp from one running ahead, cannot
 make a fresh edit look older than the copy it was made to.
 
+Each song also remembers `lastSynced`: the version the sheet last held, as far as this device
+knows — what a sync last sent up or brought down. An edit since then is one the sheet has not
+seen, and it is what tells this device's edits apart from another's.
+
 Setlists sync the same way, newest wins per setlist, in a `setlists` tab of their own. A
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
 tombstone. Like a deleted song, it stays on the device only until a sync has carried it to the

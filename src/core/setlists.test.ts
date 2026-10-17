@@ -20,6 +20,7 @@ const entry = (id: string): Entry => ({
   id,
   song: { ...emptySong(), title: id },
   updatedAt: 0,
+  lastSynced: null,
 })
 
 const set = (

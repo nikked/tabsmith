@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Entry, Library } from './library.ts'
 import { emptySong, type Song } from './model.ts'
 import { forgetSent, merge, records, type Synced } from './sync.ts'
+import { isUnsynced } from './library.ts'
 
 const named = (title: string): Song => ({ ...emptySong(), title })
 
@@ -9,6 +10,7 @@ const entry = (id: string, updatedAt: number, title = id): Entry => ({
   id,
   song: named(title),
   updatedAt,
+  lastSynced: null,
 })
 
 const shelf = (...songs: readonly Entry[]): Library => {
@@ -56,9 +58,29 @@ describe('sync', () => {
 
   it('comes back untouched when nothing remote is newer', () => {
     const library = shelf(entry('a', 5))
-    expect(merge(library, [live('a', 5, 'theirs')])).toBe(library)
     expect(merge(library, [live('a', 4, 'theirs')])).toBe(library)
     expect(merge(library, [])).toBe(library)
+  })
+
+  it('remembers a song as synced once the sheet holds this version of it', () => {
+    const library = shelf(entry('a', 5))
+    const confirmed = merge(library, [live('a', 5, 'a')])
+    expect(confirmed.songs[0].lastSynced).toEqual({ at: 5, song: named('a') })
+    expect(isUnsynced(confirmed.songs[0])).toBe(false)
+    // Already known to be synced, the same answer again changes nothing.
+    expect(merge(confirmed, [live('a', 5, 'a')])).toBe(confirmed)
+  })
+
+  it('remembers what it took from the sheet, and what arrived from it', () => {
+    const merged = merge(shelf(entry('a', 1)), [
+      live('a', 2, 'newer a'),
+      live('b', 3, 'b'),
+    ])
+    expect(merged.songs.map((each) => [each.id, each.lastSynced?.at])).toEqual([
+      ['a', 2],
+      ['b', 3],
+    ])
+    expect(merged.songs.some(isUnsynced)).toBe(false)
   })
 
   it('takes a newer copy of a song in the place it already has', () => {

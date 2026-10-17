@@ -12,7 +12,14 @@ import {
 } from './sync.ts'
 
 const library: Library = {
-  songs: [{ id: 'a', song: { ...emptySong(), title: 'Slow Machine' }, updatedAt: 1 }],
+  songs: [
+    {
+      id: 'a',
+      song: { ...emptySong(), title: 'Slow Machine' },
+      updatedAt: 1,
+      lastSynced: null,
+    },
+  ],
   open: 'a',
   removed: [{ id: 'b', at: 2, song: { ...emptySong(), title: 'Old Riff' } }],
   setlists: [
@@ -61,8 +68,13 @@ describe('sync wire format', () => {
     const sent = toWire({
       ...library,
       songs: [
-        { id: 'demo', song: demo, updatedAt: 5 },
-        { id: 'mine', song: { ...demo, title: 'Slow Machine' }, updatedAt: 6 },
+        { id: 'demo', song: demo, updatedAt: 5, lastSynced: null },
+        {
+          id: 'mine',
+          song: { ...demo, title: 'Slow Machine' },
+          updatedAt: 6,
+          lastSynced: null,
+        },
       ],
       open: 'demo',
       removed: [{ id: 'gone', at: 7, song: demo }],
@@ -152,7 +164,10 @@ describe('sync wire format', () => {
     }
     const { records: sent, tooLong } = await toSheet({
       ...library,
-      songs: [...library.songs, { id: 'epic', song: long, updatedAt: 5 }],
+      songs: [
+        ...library.songs,
+        { id: 'epic', song: long, updatedAt: 5, lastSynced: null },
+      ],
       removed: [{ id: 'gone', at: 6, song: { ...long, title: 'Gone' } }],
     })
     expect(tooLong).toEqual(['Epic'])
