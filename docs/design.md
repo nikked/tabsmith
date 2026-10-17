@@ -26,9 +26,9 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, **+ New**, the **Home | Practice | Edit** toggle (§4b, §5) and, at
-the right, a `⋯` settings menu (§5). Nothing in it is loud: none of it is reached for while
-writing.
+The header carries the logo, the **Home | Practice | Edit** toggle (§4b, §5) and, at the right,
+the sync button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is
+reached for while writing.
 
 A first visit's shelf starts with a demo song already written, because an empty editor and
 nothing saved to restore says nothing about what any of this is for, and the fastest way to say
@@ -644,12 +644,14 @@ without reading which song it was. A file that will not decode leaves the shelf 
 why, in a dismissible line under the header — `localStorage` can discard a bad blob silently
 because nobody chose it, but a file is something you picked on purpose.
 
-Adding a song is one **+ New** menu, first in the header: Blank, Paste and Import. Copy song as
-link, Export, Back up all songs and Database sync are the `⋯` menu at the right. A backup
-is the rows the sheet holds, deleted songs included, written to one file: a copy of the sheet
-that does not need the sheet. Sync is set up once per device and then left alone, so it is a
-dialog of its own behind that menu. On a phone the header is the scarcest space on the page, so
-each is one button there.
+Adding a song is one **+ New** menu beside the All songs heading on Home: Blank, Paste and
+Import. Copy as link and Export are on the `⋯` beside each song there. Back up all songs,
+Database sync and the theme are in the settings dialog behind the header's cog, being set for
+the whole app rather than for a song. A backup is the rows the sheet holds, deleted songs
+included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
+once per device and then left alone, so it is a dialog of its own, opened from the settings or
+from the sync button before it is set up. On a phone the header is the scarcest space on the
+page, so it keeps to the toggle and two square buttons.
 
 **Copy song…** and **Delete song…** are at the foot of the editor, after the keys, and act on
 the open song. Copy asks for a name, then the copy joins the shelf and opens.
@@ -821,7 +823,7 @@ it from triggering itself. The answer is merged into the shelf and editor as the
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
 one replaced or deleted.
 
-The URL and a token are typed into the sync dialog (`⋯` > Database sync…) on each device
+The URL and a token are typed into the sync dialog (the sync button, or the cog > Database sync) on each device
 and kept in `localStorage` under `tabsmith.sync`. They are not built into the site: it is
 public, and a URL in its bundle would let anyone read and overwrite every song. The script
 refuses any request without the token. The app calls it a database and never names Google
@@ -835,7 +837,7 @@ Setting it up:
    (`openssl rand -hex 32`).
 3. Deploy > New deployment > Web app, executing as you, with access for Anyone. Copy the `/exec`
    URL.
-4. On each device: `⋯` > Database sync…, paste the URL and the token, Connect.
+4. On each device: the sync button, paste the URL and the token, Connect.
 
 After changing `Code.gs`, update the existing deployment (Deploy > Manage deployments > Edit >
 New version); saving alone does not change what the URL runs. The script creates the `songs`,
@@ -908,6 +910,7 @@ src/
     Toggle.tsx    a choice of two or three, with a thumb that slides to the one in force
     Paste.tsx     the Paste… dialog
     Sync.tsx      the Database sync dialog
+    Settings.tsx  the settings dialog: backup, sync and theme
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar

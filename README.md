@@ -8,8 +8,8 @@ finished song large enough to read from a music stand.
 song already written.
 
 Songs live in the browser and are saved as you type. **Songs** is the shelf they sit on: start
-one, or paste one in from a chord sheet. The `⋯` menu at the right exports the open
-song as a file. **Copy link** puts a whole song in
+one, or paste one in from a chord sheet. The `⋯` beside a song exports it as a file.
+**Copy as link** puts a whole song in
 a URL, so sending someone a chart needs no account and no server.
 To keep the shelf the same on your phone and laptop, it can sync through a Google Sheet you own —
 see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).
