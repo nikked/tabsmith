@@ -9,7 +9,7 @@ so renumbering a section means fixing those references too.
 ## 1. Shape of the thing
 
 Three views. **Home** (§5) keeps the shelf and the setlists in order, the editor is the page,
-and **Practice** (§4b) is how the finished song is read.
+and **Perform** (§4b) is how the finished song is read.
 
 - **Home** — setlists on one side and every song on the other, searched, sorted and dragged
   into the order a gig needs.
@@ -19,14 +19,14 @@ and **Practice** (§4b) is how the finished song is read.
   grid of boxes, so alignment is free. Under it runs a quiet legend of the four §4 bindings you
   could not guess, because a keyboard-driven editor has to be discoverable without this
   document; the rest are a keypress away in a dialog rather than taking up permanent room.
-- **Practice** — the rendered song, read-only, at a size readable from a music stand.
+- **Perform** — the rendered song, read-only, at a size readable from a music stand.
 
 Edit mode always shows the chart first and the tab below it, whatever the placement control
 says. Where the tab goes is a question about the finished page, not about editing, and moving
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, the **Home | Practice | Edit** toggle (§4b, §5) and, at the right,
+The header carries the logo, the **Home | Perform | Edit** toggle (§4b, §5) and, at the right,
 the sync button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is
 reached for while writing.
 
@@ -68,7 +68,7 @@ when the window changes size, which is the point — a row you arranged stays ar
 
 The cost is that a row with more bars than the window is wide scrolls sideways. That is the
 honest failure: the row really is that wide, and wrapping it would hide the one thing you need
-to see while arranging it. Practice is the exception, because it is read at arm's length on a
+to see while arranging it. Perform is the exception, because it is read at arm's length on a
 tablet or a phone rather than arranged: there a row wider than the screen breaks at its bar
 lines, never inside a bar (§4b).
 
@@ -289,9 +289,9 @@ sectionHeading(section) => string
 ```
 
 **A song** is `songParts`: its bpm and key, its note, each section, and each system of the tab, in reading order
-— the tab first or last per `tabFirst` — each tagged with what it is, so Practice can set the
+— the tab first or last per `tabFirst` — each tagged with what it is, so Perform can set the
 section names and each tab row's title and note in the UI's face, apart from the monospace text
-under them. The song's title is not a part: Practice keeps it in its bar. A blank bpm and key, a blank note, a
+under them. The song's title is not a part: Perform keeps it in its bar. A blank bpm and key, a blank note, a
 section with neither a name nor a body, or a tab with nothing written into it
 (`scoreHasContent`, §4) — a staff of dashes every new song has — is left out. Everything but the
 tab is passed on as typed; the chart is never reflowed, re-spaced or trimmed (§2).
@@ -300,7 +300,7 @@ Tab is shown **dense** or **sparse**: dense pads each column by one dash, `2-2`,
 two, `2--2`, empty columns included, so the gaps still carry the same timing. Only the text
 changes; the grid is the same either way. It is how a song is read rather than what it is, so it
 is not part of the song and never goes to the sheet: `renderScore` and `staffText` take it as an
-argument, and Practice keeps it per song on each device (§4b). Practice shows sparse unless a
+argument, and Perform keeps it per song on each device (§4b). Perform shows sparse unless a
 song is set dense, because it is the easier of the two to read at a glance. Plain text is dense
 unless asked otherwise — it is what Paste (§3b) reads back, which is what makes this app's own
 output round-trip; sparse text pasted back reads its extra dashes as rests. A song saved while
@@ -513,9 +513,9 @@ keyToAction(e: KeyboardEvent): Action | null   // pure
 apply(state: EditorState, action: Action): EditorState   // pure
 ```
 
-## 4b. Practice mode
+## 4b. Perform mode
 
-**Practice** replaces the editor under the same header and beside the same song list, so
+**Perform** replaces the editor under the same header and beside the same song list, so
 switching songs or going back to Edit is where it always is. Below the header it is the song at
 a size readable from a music stand and nothing else: no keys, no chrome. A song that arrived by
 link (§5) opens the same view without the header, since nothing in it acts on a song that is not
@@ -540,7 +540,7 @@ setlist's name and its place in it beside the title, e.g. 2/7, with ‹ and › 
 either side (`placeOf`); one opened from All songs shows none. A full-screen button, an icon at
 the end of the bar, hides the header and the sidebar so the song has the whole window, and takes
 the browser's full screen too where there is one; Escape or the button brings them back, and
-only a second Escape leaves Practice. On a phone the bar is a single line — the title, small
+only a second Escape leaves Perform. On a phone the bar is a single line — the title, small
 arrows through the setlist, full screen — and the rest folds into a `⋯` menu: the size buttons,
 the setlist's place and its steps again, and Dense. Stepping and Dense leave the menu open, so
 songs can be stepped through quickly. What it adds is a size control, a Dense | Sparse toggle
@@ -554,8 +554,8 @@ stay off the sheet. A song with no size chosen is fitted to the screen.
 
 **Sound level** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
 band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
-on, it is on again whenever Practice opens, so it carries on through a rehearsal; the
-microphone closes while Practice is left or the page is hidden and opens again on coming back,
+on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
+microphone closes while Perform is left or the page is hidden and opens again on coming back,
 the average started afresh, and stepping through a setlist keeps it running. A microphone the
 browser refuses turns it off, so the question is not asked again each time. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
 A-weighted average since it was turned on (LAeq) and the time left to a full day's dose by
@@ -598,7 +598,7 @@ its own storage, apart from the browser's: sync (§5) is how its songs arrive.
 `localStorage`, autosaved on change and loaded on mount. `storage.ts` is the only module that
 knows the format; `share.ts` reuses its `encode` and `decode` for links. The other side effects
 are the clipboard write for Copy song as link in `App.tsx`, the save dialog,
-Practice's screen wake lock and microphone (`SoundLevel.tsx`), and the sync request in `sync.ts`, which also keeps its own
+Perform's screen wake lock and microphone (`SoundLevel.tsx`), and the sync request in `sync.ts`, which also keeps its own
 settings under `tabsmith.sync`.
 
 Two documents live there, under two keys and two version counters:
@@ -659,18 +659,18 @@ the open song. Copy asks for a name, then the copy joins the shelf and opens.
 **Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's todo list
 and ideas at the top, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be searched — case and accents do not
-matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Practice
+matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters that stay on in this browser until
 turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
 song's bpm and key, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
-setlists it is in. Picking a song here opens it in Practice, since a song is mostly picked to be
-played; picked in the sidebar, it opens in the editor or Practice, whichever is up. Renaming the open song goes through the editor, which is what holds
+setlists it is in. Picking a song here opens it in Perform, since a song is mostly picked to be
+played; picked in the sidebar, it opens in the editor or Perform, whichever is up. Renaming the open song goes through the editor, which is what holds
 it; any other is renamed on the shelf (`retitle`).
 
 On a screen wide enough to spare the room, the setlists and every song also sit beside the
-editor and Practice as a tree, since switching songs is then one click. That tree only switches:
+editor and Perform as a tree, since switching songs is then one click. That tree only switches:
 arranging is Home's job, and keeping the grips and deletes out of it keeps them out of
 the way while writing.
 
@@ -855,7 +855,7 @@ sync between devices that are both open
 One song is open at a time. The shelf holds the rest (§5); a file or a link is how a song
 leaves.
 
-Printing and copying the song as text. Practice is how a song is read, and a link or a file is
+Printing and copying the song as text. Perform is how a song is read, and a link or a file is
 how it leaves; a plain-text view alongside them was a third rendering nobody used.
 
 Lyrics are supported the only way they need to be — typed into a section body under their
@@ -898,7 +898,7 @@ src/
     App.tsx
     Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
-    Synths.tsx    a song's synths in edit, and in a panel at the top of Practice
+    Synths.tsx    a song's synths in edit, and in a panel at the top of Perform
     Suggest.tsx   a field with its suggestions in a list drawn by the app
     SongNotes.tsx a song's todos and ideas in edit
     Checklist.tsx a list of todos to tick

@@ -320,7 +320,7 @@ export function Practice({
     setMicTrouble(null)
     changeMeter({ on: !meter.on })
   }
-  // Off for good, so a blocked microphone is not asked for each time Practice opens.
+  // Off for good, so a blocked microphone is not asked for each time Perform opens.
   const stopListening = (trouble: MicTrouble) => {
     changeMeter({ on: false })
     setMicTrouble(trouble)
@@ -443,7 +443,7 @@ export function Practice({
             well, so the bar is the song's title and nothing else that takes a
             line; anywhere wider the menu leaves those to the bar. */}
         <div className="bar-more">
-          <Menu label="⋯" title="Practice options">
+          <Menu label="⋯" title="Perform options">
             <div className="menu-row phone-only" role="group" aria-label="Text size">
               <button
                 type="button"

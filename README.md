@@ -1,7 +1,7 @@
 # tabsmith
 
 A keyboard-driven web editor for songs: a chord chart you can take to band practice, and a
-guitar or bass tab beside it for the parts you need written out. **Practice** shows the
+guitar or bass tab beside it for the parts you need written out. **Perform** shows the
 finished song large enough to read from a music stand.
 
 **[nikked.github.io/tabsmith](https://nikked.github.io/tabsmith/)** — a first visit opens on a
@@ -14,7 +14,7 @@ a URL, so sending someone a chart needs no account and no server.
 To keep the shelf the same on your phone and laptop, it can sync through a Google Sheet you own —
 see [Syncing to a Google Sheet](docs/design.md#syncing-to-a-google-sheet).
 
-**Practice** is the reading view — the whole window, type you can read from a music stand, and
+**Perform** is the reading view — the whole window, type you can read from a music stand, and
 the screen held awake, sized to fit the whole song on the screen. A song opened from a setlist
 steps to the next one from the bar.
 
