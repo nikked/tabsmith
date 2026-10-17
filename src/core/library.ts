@@ -10,7 +10,18 @@ export type Entry = {
   readonly song: Song
   /** Epoch ms of the last edit, which is all another device has to compare by. */
   readonly updatedAt: number
+  /**
+   * The version the sheet last held, as far as this device knows: what a sync
+   * last sent up or brought down. An edit since then is one the sheet has not
+   * seen, and it is what two devices' edits are told apart by. Null for a song
+   * that has never been through a sync.
+   */
+  readonly lastSynced: { readonly at: number; readonly song: Song } | null
 }
+
+/** Edited here since the sheet last saw it, or never seen by the sheet at all. */
+export const isUnsynced = (entry: Entry): boolean =>
+  entry.lastSynced?.at !== entry.updatedAt
 
 /**
  * A deleted song, remembered only until a sync has told the sheet, which then

@@ -28,6 +28,7 @@ const entry = (id: string, title = id): Entry => ({
   id,
   song: named(title),
   updatedAt: 0,
+  lastSynced: null,
 })
 
 const shelf = (...ids: readonly string[]): Library => {
@@ -144,7 +145,9 @@ describe('library', () => {
   })
 
   it('names an untitled song rather than showing a blank row', () => {
-    expect(titleOf({ id: 'a', song: emptySong(), updatedAt: 0 })).toBe('Untitled')
+    expect(titleOf({ id: 'a', song: emptySong(), updatedAt: 0, lastSynced: null })).toBe(
+      'Untitled',
+    )
     expect(titleOf(entry('a', 'Slow Machine'))).toBe('Slow Machine')
   })
 

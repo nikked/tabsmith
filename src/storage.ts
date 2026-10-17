@@ -232,6 +232,8 @@ const entry = z.object({
   // A song shelved before sync existed has never been edited as far as another
   // device can tell, so any copy that has wins over it.
   updatedAt: z.number().default(0),
+  // Kept before a sync remembered anything: never through one, so sent once.
+  lastSynced: z.object({ at: z.number(), song }).nullable().default(null),
 })
 
 const setlist = z.object({
@@ -324,7 +326,7 @@ const inherited = (): Library | null => {
   const result = decode(raw)
   return result.ok
     ? repair({
-        songs: [{ id: newId(), song: result.song, updatedAt: 0 }],
+        songs: [{ id: newId(), song: result.song, updatedAt: 0, lastSynced: null }],
         open: '',
         removed: [],
         setlists: [],
@@ -350,7 +352,7 @@ export const loadLibrary = (): Library | null => {
 export const startingLibrary = (first: Song = emptySong()): Library => {
   const id = newId()
   return {
-    songs: [{ id, song: first, updatedAt: Date.now() }],
+    songs: [{ id, song: first, updatedAt: Date.now(), lastSynced: null }],
     open: id,
     removed: [],
     setlists: [],

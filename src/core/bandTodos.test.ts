@@ -13,7 +13,7 @@ import { emptySong } from './model.ts'
 import { forgetSent, mergeBand, mergeTodos } from './sync.ts'
 
 const shelf: Library = {
-  songs: [{ id: 's', song: emptySong(), updatedAt: 0 }],
+  songs: [{ id: 's', song: emptySong(), updatedAt: 0, lastSynced: null }],
   open: 's',
   removed: [],
   setlists: [],

@@ -464,7 +464,7 @@ describe('loadLibrary', () => {
       { id: 't2', text: 'Book the room', done: true, active: false, updatedAt: 6 },
     ]
     saveLibrary({
-      songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }],
+      songs: [{ id: 'a', song: emptySong(), updatedAt: 1, lastSynced: null }],
       open: 'a',
       removed: [],
       setlists: [],

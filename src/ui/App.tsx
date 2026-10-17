@@ -287,7 +287,7 @@ export default function App() {
    * whichever page it was made from.
    */
   const shelve = (song: Song) => {
-    const entry = { id: newId(), song, updatedAt: Date.now() }
+    const entry = { id: newId(), song, updatedAt: Date.now(), lastSynced: null }
     setLibrary((current) =>
       addEntry(withOpenSong(current, state.song, Date.now()), entry),
     )

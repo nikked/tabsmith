@@ -47,8 +47,12 @@ export const records = (library: Library): readonly Synced[] => [
 
 /**
  * Newest wins, one song at a time, and a tie keeps what is here. The library
- * comes back untouched when nothing remote is newer, so a sync that changed
+ * comes back untouched when nothing remote changes it, so a sync that changed
  * nothing does not look like an edit worth syncing again.
+ *
+ * Whatever the sheet is now known to hold becomes each song's last synced
+ * version: a newer copy taken from it, a song that arrived from it, or this
+ * device's own version coming back with the same stamp it went up with.
  *
  * Songs already on the shelf keep their place; new ones join at the end. A
  * deletion only takes a song off the shelf: the sheet is what remembers it, so
@@ -63,21 +67,47 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
       (record.active || known.has(record.id)) &&
       record.at > (known.get(record.id) ?? Number.NEGATIVE_INFINITY),
   )
-  if (newer.length === 0) return library
-
   const won = new Map(newer.map((record) => [record.id, record]))
+  // This device's version, as the sheet now holds it.
+  const echoed = new Map<string, number>(
+    remote.filter((record) => record.active).map((record) => [record.id, record.at]),
+  )
+  const confirmed = (entry: Entry): boolean =>
+    echoed.get(entry.id) === entry.updatedAt && entry.lastSynced?.at !== entry.updatedAt
+  if (newer.length === 0 && !library.songs.some(confirmed)) return library
+
   const kept = library.songs.flatMap((entry): Entry[] => {
     const theirs = won.get(entry.id)
-    if (theirs === undefined) return [entry]
+    if (theirs === undefined) {
+      return [
+        confirmed(entry)
+          ? { ...entry, lastSynced: { at: entry.updatedAt, song: entry.song } }
+          : entry,
+      ]
+    }
     return theirs.active
-      ? [{ id: entry.id, song: theirs.song, updatedAt: theirs.at }]
+      ? [
+          {
+            id: entry.id,
+            song: theirs.song,
+            updatedAt: theirs.at,
+            lastSynced: { at: theirs.at, song: theirs.song },
+          },
+        ]
       : []
   })
   const here = new Set(library.songs.map((entry) => entry.id))
   const arrived = newer.flatMap((record): Entry[] =>
     !record.active || here.has(record.id)
       ? []
-      : [{ id: record.id, song: record.song, updatedAt: record.at }],
+      : [
+          {
+            id: record.id,
+            song: record.song,
+            updatedAt: record.at,
+            lastSynced: { at: record.at, song: record.song },
+          },
+        ],
   )
   const removed = library.removed.filter((gone) => !won.has(gone.id))
   return repair({ ...library, songs: [...kept, ...arrived], removed }) ?? library
