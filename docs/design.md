@@ -688,7 +688,11 @@ On Home a song is dragged by its grip — from All songs into a setlist, within 
 setlist to reorder it, or from one setlist into another, which adds it there too — and lands
 where it is dropped (`placeInSetlist`). It is the same pointer-event drag a tab row uses, read
 from the page rather than one list, since a song crosses from one list to another. × takes a
-song out of a setlist and leaves it on the shelf, and a setlist's `⋯` renames or deletes it. All
+song out of a setlist and leaves it on the shelf, and a setlist's `⋯` moves it up or down,
+renames or deletes it. The setlists keep that order everywhere, by a `position` each one carries
+(`moveSetlist`); a move numbers every shown setlist afresh from its new place, so two made on two
+devices at once with the same position come apart, and only those whose number changed are
+stamped. All
 songs is in alphabetical order in the sidebar tree, since there it is for finding one. Every
 group there starts folded, so the sidebar is a short list of names to open rather than every
 song at once; opening or folding one is remembered per browser (`tabsmith.sidebarOpen`, open or
