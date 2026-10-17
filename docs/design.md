@@ -665,7 +665,8 @@ uses) or **Have structure** (`hasStructure`: at least two sections with somethin
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
 is lit while any is on and that stay on in this browser until turned off
 (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
-song's bpm and key, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
+song's bpm and key, the first setlist it is in
+(the one highest on Home, so a row stays one line) and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
 setlists it is in. Picking a song here opens it in Perform, since a song is mostly picked to be
 played; picked in the sidebar, it opens in the editor or Perform, whichever is up. Renaming the open song goes through the editor, which is what holds
