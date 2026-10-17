@@ -1385,7 +1385,12 @@ button {
 }
 
 .sync-dialog,
+/* The body's font, set again for a prompt opened inside Practice, which would
+   otherwise take the song's face and size: a field under 16px makes iOS zoom. */
 .prompt {
+  font:
+    16px/1.4 system-ui,
+    sans-serif;
   width: min(26rem, 92vw);
   max-height: 80vh;
   padding: 1.5rem;
@@ -2574,4 +2579,36 @@ kbd {
   .practice-bar > button {
     padding: 0 0.55rem;
   }
+}
+
+/* The sound level, in the bar while the meter is on. Tabular figures, so it
+   does not shift as the reading changes; colour only once it is too much. */
+.practice-bar > .level-chip {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.level-chip.tone-quiet {
+  color: var(--muted);
+}
+
+.level-chip.tone-plain {
+  color: var(--fg);
+}
+
+.level-chip.tone-warn {
+  color: var(--cursor);
+}
+
+.level-chip.tone-alert {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+/* A number between − and +, as wide as three digits. */
+.menu-row .menu-value {
+  align-self: center;
+  min-width: 2.5rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }

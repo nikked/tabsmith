@@ -175,11 +175,12 @@ export const minutesToDose = (db: number): number => 480 / 2 ** ((db - 85) / 3)
 
 /**
  * How long until a full day's dose, rounded down so it never promises more
- * time than there is. Above the ceiling only an upper bound is known.
+ * time than there is, assuming the measured average continues. Above the
+ * ceiling only an upper bound is known.
  */
-export const doseText = (db: number): string => {
+export const doseText = (db: number, seconds: number): string => {
   const capped = db >= CEILING
-  const minutes = minutesToDose(capped ? CEILING : db)
+  const minutes = Math.max(0, minutesToDose(capped ? CEILING : db) - seconds / 60)
   const time =
     minutes >= 480
       ? '8h+'

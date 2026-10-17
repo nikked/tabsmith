@@ -172,6 +172,20 @@ describe('minutesToDose', () => {
 
 describe('doseText', () => {
   it.each([
+    [60, '59m'],
+    [1800, '30m'],
+    [3600, '0m'],
+    [7200, '0m'],
+  ])('subtracts %i seconds already measured at 94 dB(A)', (seconds, text) => {
+    expect(doseText(94, seconds)).toBe(text)
+  })
+
+  it('subtracts elapsed time from the upper bound above the ceiling', () => {
+    expect(doseText(115, 120)).toBe('≤1m')
+    expect(doseText(115, 240)).toBe('≤0m')
+  })
+
+  it.each([
     [70, '8h+'],
     [85, '8h+'],
     [86, '6h'],
@@ -180,18 +194,18 @@ describe('doseText', () => {
     [95, '47m'],
     [100, '15m'],
   ])('at %i dB(A) reads %s', (db, text) => {
-    expect(doseText(db)).toBe(text)
+    expect(doseText(db, 0)).toBe(text)
   })
 
   it('rounds down, never promising time there is not', () => {
     // 93.9 dB(A) leaves just over an hour, which is still read as 1h.
-    expect(doseText(93.9)).toBe('1h')
-    expect(doseText(94.1)).toBe('58m')
+    expect(doseText(93.9, 0)).toBe('1h')
+    expect(doseText(94.1, 0)).toBe('58m')
   })
 
   it('gives only an upper bound above the ceiling', () => {
-    expect(doseText(CEILING)).toBe('≤3m')
-    expect(doseText(115)).toBe('≤3m')
+    expect(doseText(CEILING, 0)).toBe('≤3m')
+    expect(doseText(115, 0)).toBe('≤3m')
   })
 })
 
