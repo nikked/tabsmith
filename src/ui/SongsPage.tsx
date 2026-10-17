@@ -28,6 +28,22 @@ import { Checklist } from './Checklist.tsx'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
 
+/** A funnel, the usual mark for narrowing a list. */
+const FunnelIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="14"
+    height="14"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinejoin="round"
+  >
+    <path d="M2 3h12l-4.6 5.4v4.8l-2.8 1.4V8.4z" />
+  </svg>
+)
+
 type Props = {
   readonly library: Library
   /** The setlist it was opened from, or null from All songs. */
@@ -144,6 +160,7 @@ export function SongsPage(props: Props) {
   )
 
   // Built on the latest filters, like the sidebar's folds, so two in a row both land.
+  const filtering = only.tab || only.structure || only.todo
   const flip = (filter: keyof Filters) =>
     setOnly((current) => {
       const next = { ...current, [filter]: !current[filter] }
@@ -329,49 +346,55 @@ export function SongsPage(props: Props) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <button
-            type="button"
-            className="filter"
-            aria-pressed={only.tab}
-            title="Only songs with something written in the tab"
-            onClick={() => flip('tab')}
-          >
-            Has tab
-          </button>
-          <button
-            type="button"
-            className="filter"
-            aria-pressed={only.structure}
-            title="Only songs with at least two parts written out"
-            onClick={() => flip('structure')}
-          >
-            Has structure
-          </button>
-          <button
-            type="button"
-            className="filter"
-            aria-pressed={only.todo}
-            title="Only songs with something left to do"
-            onClick={() => flip('todo')}
-          >
-            Has TODO
-          </button>
-          <Toggle
-            small
-            label="Order"
-            options={[
-              { value: 'name', label: 'Name' },
-              { value: 'edited', label: 'Last edited' },
-            ]}
-            value={order}
-            onChange={setOrder}
-          />
+          <div className="song-order">
+            {/* Set now and then, so folded behind one button; lit while any is on,
+                since a list missing songs should say why. */}
+            <div className={filtering ? 'song-filters on' : 'song-filters'}>
+              <Menu
+                label={<FunnelIcon />}
+                title={filtering ? 'Filter songs (on)' : 'Filter songs'}
+              >
+                <MenuChecks
+                  items={[
+                    {
+                      id: 'tab',
+                      label: 'Has tab',
+                      checked: only.tab,
+                      onToggle: () => flip('tab'),
+                    },
+                    {
+                      id: 'structure',
+                      label: 'Has structure',
+                      checked: only.structure,
+                      onToggle: () => flip('structure'),
+                    },
+                    {
+                      id: 'todo',
+                      label: 'Has TODO',
+                      checked: only.todo,
+                      onToggle: () => flip('todo'),
+                    },
+                  ]}
+                />
+              </Menu>
+            </div>
+            <Toggle
+              small
+              label="Order"
+              options={[
+                { value: 'name', label: 'Name' },
+                { value: 'edited', label: 'Last edited' },
+              ]}
+              value={order}
+              onChange={setOrder}
+            />
+          </div>
         </div>
         {shown.length === 0 ? (
           <p className="panel-empty">
             {query.trim() === ''
               ? 'No song has everything those filters ask for.'
-              : `No song matches “${query.trim()}”${only.tab || only.structure || only.todo ? ' with those filters' : ''}.`}
+              : `No song matches “${query.trim()}”${filtering ? ' with those filters' : ''}.`}
           </p>
         ) : (
           <ul className="song-rows">

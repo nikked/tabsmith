@@ -661,8 +661,9 @@ and ideas at the top, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be searched — case and accents do not
 matter — narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
-them, since every song starts with an empty Intro), filters that stay on in this browser until
-turned off (`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
+them, since every song starts with an empty Intro), filters ticked behind a funnel button that
+is lit while any is on and that stay on in this browser until turned off
+(`tabsmith.songFilters`), and sorted by name or by last edit, and each row shows the
 song's bpm and key, the setlists it is in and when it was last edited. Its `⋯` opens, renames, copies,
 exports, copies a link to or deletes that song, whether or not it is the open one, and ticks the
 setlists it is in. Picking a song here opens it in Perform, since a song is mostly picked to be

@@ -2417,20 +2417,32 @@ kbd {
   border-radius: 6px;
 }
 
-/* On or off, each on its own: a filter is a narrowing you add, not one of a
-   set of choices, so it is a pressable chip rather than a toggle. */
-.filter {
-  padding: 0.3rem 0.75rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  border-radius: 999px;
+/* The funnel stretches to the order toggle's height, so the two read as a pair. */
+.song-order {
+  display: flex;
+  gap: 0.6rem;
 }
 
-.filter:hover {
+.song-filters {
+  display: flex;
+}
+
+/* On or off, each on its own: a filter is a narrowing you add, not one of a
+   set of choices, so it is a pressable chip rather than a toggle. */
+.song-filters .menu-open {
+  display: grid;
+  place-items: center;
+  padding: 0 0.55rem;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.song-filters .menu-open:hover {
   color: var(--fg);
 }
 
-.filter[aria-pressed='true'] {
+/* Lit like a pressed filter was, while any filter is on. */
+.song-filters.on .menu-open {
   color: var(--bg);
   background: var(--muted);
   border-color: var(--muted);
