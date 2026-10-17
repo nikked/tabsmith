@@ -660,7 +660,9 @@ page, so it keeps to the toggle and two square buttons.
 Copying, deleting and putting a song in setlists are on its `⋯` on Home, not in the editor,
 which is for writing. Copy asks for a name, then the copy joins the shelf and opens.
 
-**Home** is the page for arranging rather than writing (`SongsPage.tsx`): the band's notes and
+**Home** is the page for arranging rather than writing (`SongsPage.tsx`). It has no view toggle
+in the header and marks no song as the open one: a song picked there opens in Perform, and that is
+the way out. It holds the band's notes and
 todo list at the top, side by side on a wide screen and the notes first above the list on a
 narrower one, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform

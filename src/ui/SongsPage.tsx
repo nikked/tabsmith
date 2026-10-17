@@ -6,7 +6,6 @@ import {
   hasStructure,
   hasTab,
   hasTodo,
-  openEntry,
   sortSongs,
   titleOf,
   type Direction,
@@ -175,7 +174,6 @@ const edited = (entry: Entry): string =>
  */
 export function SongsPage(props: Props) {
   const { library, onOpen, onPlace } = props
-  const open = openEntry(library).id
   const bandTodos = activeBandTodos(library)
   // The checklist counts rows; the library knows items by id.
   const onBandTodo = (
@@ -387,7 +385,7 @@ export function SongsPage(props: Props) {
                     <li
                       key={entry.id}
                       data-song={entry.id}
-                      className={`${entry.id === open ? 'current' : ''}${mark(setlist.id, others, entry)}`}
+                      className={mark(setlist.id, others, entry).trim() || undefined}
                     >
                       <button
                         type="button"
@@ -503,7 +501,7 @@ export function SongsPage(props: Props) {
               const inSetlists = setlistsWith(library, entry.id)
               const todos = entry.song.todos.filter(isOpen)
               return (
-                <li key={entry.id} className={entry.id === open ? 'current' : undefined}>
+                <li key={entry.id}>
                   <button type="button" {...grip(entry.id, null, title)}>
                     ⠿
                   </button>

@@ -2697,10 +2697,6 @@ kbd {
   background: color-mix(in srgb, var(--fg) 5%, transparent);
 }
 
-.song-rows li.current {
-  background: color-mix(in srgb, var(--fg) 9%, transparent);
-}
-
 .song-rows .grip {
   align-self: stretch;
   padding: 0 0.1rem 0 0.5rem;
