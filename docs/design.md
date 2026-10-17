@@ -712,8 +712,8 @@ The shelf can be kept in step across your own devices through a Google Sheet, wi
 Script web app in front of it (`apps-script/Code.gs`). Without it set up, nothing changes: the
 shelf lives in `localStorage` as above.
 
-One round trip does both directions. The app POSTs every song and every deletion it knows of;
-the sheet keeps the newest record of each id and answers with all of them; the app runs the
+One round trip does both directions. The app POSTs every song edited since its last sync and
+every deletion it knows of, so a sync on a weak connection stays small; the sheet keeps the newest record of each id and answers with all of them; the app runs the
 same newest-wins merge (`core/sync.ts`) on its side. Each song carries `updatedAt`, stamped when
 an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` only until a sync
 has carried it to the sheet. From then the sheet's inactive row is what keeps a device that
@@ -725,7 +725,8 @@ make a fresh edit look older than the copy it was made to.
 
 Each song also remembers `lastSynced`: the version the sheet last held, as far as this device
 knows — what a sync last sent up or brought down. An edit since then is one the sheet has not
-seen, and it is what tells this device's edits apart from another's.
+seen, and it is what tells this device's edits apart from another's. Songs kept before this
+have no such record, so each device sends all of them once on its first sync.
 
 Setlists sync the same way, newest wins per setlist, in a `setlists` tab of their own. A
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
