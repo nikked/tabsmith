@@ -809,6 +809,7 @@ src/
     notation.ts   the tab as notes on a treble staff, for reading it as notation
     engrave.ts    where that notation goes: widths, line breaks, stems, ledger lines
     synths.ts     the synth names, sounds and controls earlier songs used, offered again
+    suggest.ts    which suggestions to show under a field as it is typed into
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
@@ -818,6 +819,7 @@ src/
     Chart.tsx     title, bpm, key, note and the sections
     NotedLines.tsx chart lines with the note after `//` set apart
     Synths.tsx    a song's synths in edit, and in a panel at the top of Practice
+    Suggest.tsx   a field with its suggestions in a list drawn by the app
     TabGrid.tsx   grid of cells, cursor, keydown and click -> dispatch
     Shortcuts.tsx the §4 keymap: the essential few, and all of it grouped in a dialog
     SongList.tsx  the setlist tree beside the editor, for switching songs

@@ -10,6 +10,7 @@ import {
 } from '../core/model.ts'
 import { KEYS_BY_SEMITONE, suggestKey } from '../core/notation.ts'
 import { NotedLines } from './NotedLines.tsx'
+import { Suggest } from './Suggest.tsx'
 import { Synths } from './Synths.tsx'
 
 type Props = {
@@ -160,12 +161,6 @@ export function Chart({ song, songs, dispatch }: Props) {
 
       <Synths song={song} songs={songs} dispatch={dispatch} />
 
-      <datalist id="section-names">
-        {SECTION_NAMES.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-
       {song.chart.map((section, index) => (
         <article
           className={`section${dropMark(index)}`}
@@ -205,15 +200,13 @@ export function Chart({ song, songs, dispatch }: Props) {
                 ⠿
               </button>
             )}
-            <input
+            <Suggest
               className="section-name"
-              aria-label={`Section ${index + 1} name`}
-              list="section-names"
+              label={`Section ${index + 1} name`}
               placeholder={suggestedName(index)}
               value={section.name}
-              onChange={(event) =>
-                setSection(index, { ...section, name: event.target.value })
-              }
+              suggestions={SECTION_NAMES}
+              onChange={(name) => setSection(index, { ...section, name })}
             />
             <label className="repeat">
               ×
