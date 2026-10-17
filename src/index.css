@@ -80,6 +80,14 @@ body::before {
   }
 }
 
+/* Opened from a home screen, iOS blurs a strip under the status bar into its
+   glass, and the page's top would sit in it; Safari's own bar has no such edge. */
+@media (max-width: 64rem) and (display-mode: standalone) {
+  main {
+    padding-top: calc(1.6rem + env(safe-area-inset-top, 0px));
+  }
+}
+
 /* Centred, not baseline-aligned: the toggle and the square buttons are padded
    boxes whose baselines are not their text's. */
 header {
