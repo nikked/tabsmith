@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { scoreHasContent } from '../core/edit.ts'
 import type { Key, Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
@@ -10,19 +17,34 @@ import {
   type Part,
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import {
+  HIGHEST_TARGET,
+  HOLD,
+  LOWEST_TARGET,
+  offsetFor,
+  referenceOf,
+  silence,
+  slowDb,
+  type Level,
+} from '../core/level.ts'
 import { FIFTHS, notation } from '../core/notation.ts'
 import { synthSummary } from '../core/synths.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
+import { Prompt } from './Prompt.tsx'
+import { SoundLevel, type MicTrouble } from './SoundLevel.tsx'
 import { Toggle } from './Toggle.tsx'
 import {
+  loadMeter,
   loadReading,
   loadSynthsShown,
   loadViews,
+  saveMeter,
   saveReading,
   saveSynthsShown,
   saveViews,
   withView,
+  type Meter,
   type Reading,
   type View,
   type Views,
@@ -75,6 +97,12 @@ const useWakeLock = (): void => {
     }
   }, [])
 }
+
+const onVisibility = (change: () => void) => {
+  document.addEventListener('visibilitychange', change)
+  return () => document.removeEventListener('visibilitychange', change)
+}
+const pageVisible = () => document.visibilityState === 'visible'
 
 /** Corners pointing out to go full screen, and in to come back. */
 const FullScreenIcon = ({ exit }: { readonly exit: boolean }) => (
@@ -273,6 +301,31 @@ export function Practice({
   const ruler = useRef<HTMLSpanElement>(null)
   useWakeLock()
 
+  // The sound level meter, on or off and in the mode it was last left on this
+  // device, so it carries on through a rehearsal from song to song.
+  const [meter, setMeter] = useState<Meter>(loadMeter)
+  // A hidden page has no microphone on a phone anyway; it is opened again on
+  // coming back, with the average started afresh.
+  const visible = useSyncExternalStore(onVisibility, pageVisible, () => true)
+  const [micTrouble, setMicTrouble] = useState<MicTrouble | null>(null)
+  const [calibrating, setCalibrating] = useState(false)
+  const heard = useRef<Level>(silence)
+  const changeMeter = (change: Partial<Meter>) => {
+    const next = { ...meter, ...change }
+    saveMeter(next)
+    setMeter(next)
+  }
+  const toggleListening = () => {
+    heard.current = silence
+    setMicTrouble(null)
+    changeMeter({ on: !meter.on })
+  }
+  // Off for good, so a blocked microphone is not asked for each time Practice opens.
+  const stopListening = (trouble: MicTrouble) => {
+    changeMeter({ on: false })
+    setMicTrouble(trouble)
+  }
+
   useLayoutEffect(() => {
     window.scrollTo(0, 0)
   }, [songId])
@@ -315,11 +368,11 @@ export function Practice({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onLeave()
+      if (event.key === 'Escape' && !calibrating) onLeave()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onLeave])
+  }, [onLeave, calibrating])
 
   /** A menu item to the song either side, greyed out at the end of the setlist. */
   const stepTo = (target: string | null, icon: string, label: string): MenuItem => ({
@@ -430,8 +483,69 @@ export function Practice({
                   checked: showSynths,
                   onToggle: toggleSynths,
                 },
+                {
+                  id: 'sound',
+                  label: 'Sound level',
+                  checked: meter.on,
+                  onToggle: toggleListening,
+                },
               ]}
             />
+            {micTrouble !== null && (
+              <p className="menu-label">
+                {micTrouble === 'blocked'
+                  ? 'Microphone blocked in Settings'
+                  : 'No microphone to listen with'}
+              </p>
+            )}
+            {meter.on && (
+              <>
+                <div className="menu-toggle">
+                  <Toggle
+                    small
+                    label="Measure"
+                    options={[
+                      { value: 'room', label: 'Room', title: 'Average and dose' },
+                      { value: 'voice', label: 'Voice', title: `Loudest of ${HOLD} s` },
+                    ]}
+                    value={meter.mode}
+                    onChange={(mode) => changeMeter({ mode })}
+                  />
+                </div>
+                {meter.mode === 'voice' && (
+                  <>
+                    <p className="menu-label">Voice target, dB(A)</p>
+                    <div className="menu-row" role="group" aria-label="Voice target">
+                      <button
+                        type="button"
+                        aria-label="Lower target"
+                        disabled={meter.target <= LOWEST_TARGET}
+                        onClick={() => changeMeter({ target: meter.target - 1 })}
+                      >
+                        −
+                      </button>
+                      <span className="menu-value">{meter.target}</span>
+                      <button
+                        type="button"
+                        aria-label="Higher target"
+                        disabled={meter.target >= HIGHEST_TARGET}
+                        onClick={() => changeMeter({ target: meter.target + 1 })}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </>
+                )}
+                <MenuItems
+                  items={[
+                    {
+                      label: meter.offset === null ? 'Calibrate…' : 'Calibrate again…',
+                      onSelect: () => setCalibrating(true),
+                    },
+                  ]}
+                />
+              </>
+            )}
             {/* The bar has its own Tab or Notation toggle until a tablet folds it in. */}
             {hasTab && (
               <div className="compact-only">
@@ -494,6 +608,15 @@ export function Practice({
         >
           A+
         </button>
+        {meter.on && visible && (
+          <SoundLevel
+            meter={meter}
+            onHear={(level) => {
+              heard.current = level
+            }}
+            onStop={stopListening}
+          />
+        )}
         {onFull !== undefined && (
           <button
             type="button"
@@ -560,6 +683,27 @@ export function Practice({
           .filter((part) => showSynths || part.kind !== 'synths')
           .map(partView(tab, song.key, spacing, columns, widthEm))}
       </div>
+      {calibrating && (
+        <Prompt
+          heading="Calibrate the sound level"
+          label="Reference dB(A)"
+          initial=""
+          confirm="Calibrate"
+          accepts={(text) =>
+            referenceOf(text) !== null && Number.isFinite(slowDb(heard.current))
+          }
+          onConfirm={(text) => {
+            const reference = referenceOf(text)
+            if (reference !== null) {
+              changeMeter({ offset: offsetFor(reference, slowDb(heard.current)) })
+            }
+          }}
+          onClose={() => setCalibrating(false)}
+        >
+          Play a steady sound and put a sound level meter, such as the NIOSH SLM app,
+          beside this device. Type the dB(A) it reads, A-weighted and slow.
+        </Prompt>
+      )}
     </section>
   )
 }
