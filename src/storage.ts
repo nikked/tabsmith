@@ -241,6 +241,8 @@ const setlist = z.object({
   name: z.string(),
   songs: z.array(z.string()),
   active: z.boolean(),
+  // Stored before setlists had an order; the list's own order stands in.
+  position: z.number().optional(),
   updatedAt: z.number(),
   // Kept before the sheet's copy was remembered: sent once to find out.
   syncedAt: z.number().nullable().default(null),
@@ -268,7 +270,12 @@ const library = z.object({
     )
     .default([]),
   // A shelf stored before setlists existed simply has none.
-  setlists: z.array(setlist).default([]),
+  setlists: z
+    .array(setlist)
+    .default([])
+    .transform((setlists) =>
+      setlists.map((each, index) => ({ ...each, position: each.position ?? index })),
+    ),
   // Nor one stored before the band's todo list.
   todos: z
     .array(
