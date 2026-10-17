@@ -47,6 +47,21 @@ const DirectionIcon = ({ direction }: { readonly direction: Direction }) => (
   </svg>
 )
 
+/** A plus drawn rather than typed, so it sits level with the word beside it. */
+const PlusIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="12"
+    height="12"
+    aria-hidden="true"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
+    <path d="M8 2.5v11M2.5 8h11" />
+  </svg>
+)
+
 /** A funnel, the usual mark for narrowing a list. */
 const FunnelIcon = () => (
   <svg
@@ -280,11 +295,13 @@ export function SongsPage(props: Props) {
           <h2>Setlists</h2>
           <button
             type="button"
+            className="add-new"
             aria-label="New setlist"
             title="New setlist"
             onClick={props.onNewSetlist}
           >
-            + New
+            <PlusIcon />
+            New
           </button>
         </div>
         {activeSetlists(library).length === 0 && (
@@ -381,7 +398,15 @@ export function SongsPage(props: Props) {
               : 'All songs'}
           </h2>
           <div className="new-song">
-            <Menu label="+ New" title="New song">
+            <Menu
+              label={
+                <>
+                  <PlusIcon />
+                  New
+                </>
+              }
+              title="New song"
+            >
               <MenuItems items={props.adding} />
             </Menu>
           </div>

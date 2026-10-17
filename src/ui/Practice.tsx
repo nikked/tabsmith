@@ -10,9 +10,10 @@ import { scoreHasContent } from '../core/edit.ts'
 import type { Key, Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
 import {
-  sectionHeading,
+  repeatText,
   songParts,
   staffLines,
+  tabPieces,
   trimScore,
   type Part,
 } from '../core/render.ts'
@@ -174,18 +175,28 @@ const partView =
                     <span className="synth-sound">{sound}</span>
                   </dt>
                   <dd>
-                    {[dials, knobs]
-                      .filter((group) => group.length > 0)
-                      .map((group) => (
-                        <span key={group[0]?.label} className="synth-group">
-                          {group.map((control) => (
-                            <span key={control.label} className="synth-setting">
-                              <span className="synth-label">{control.label}</span>{' '}
-                              {control.value}
-                            </span>
-                          ))}
+                    {(
+                      [
+                        ['dial', 'Dial', dials],
+                        ['knob', 'Knob', knobs],
+                      ] as const
+                    ).flatMap(([kind, name, controls]) =>
+                      controls.map((control) => (
+                        <span
+                          key={`${kind}${control.number}`}
+                          className={`synth-setting ${kind}`}
+                          title={`${name} ${control.number}`}
+                        >
+                          <span
+                            className="synth-mark"
+                            aria-label={`${name} ${control.number}`}
+                          >
+                            {control.number}
+                          </span>
+                          {control.value}
                         </span>
-                      ))}
+                      )),
+                    )}
                   </dd>
                 </Fragment>
               )
@@ -207,12 +218,20 @@ const partView =
           <div key={index}>
             {part.title !== '' && <h4>{part.title}</h4>}
             {part.note !== '' && <p className="tab-note">{part.note}</p>}
-            <pre>
+            <pre className="tab-text">
               {staffLines(tab, part.row, spacing, columns).map(
-                ({ text, aside }, line) => (
+                ({ text, aside, chords }, line) => (
                   <Fragment key={line}>
                     {line > 0 && '\n'}
-                    {text}
+                    {chords ? (
+                      <span className="chord-line">{text}</span>
+                    ) : (
+                      tabPieces(text).map((piece, at) => (
+                        <span key={at} className={`piece-${piece.kind}`}>
+                          {piece.text}
+                        </span>
+                      ))
+                    )}
                     {aside !== null && <span className="tab-aside"> {aside}</span>}
                   </Fragment>
                 ),
@@ -232,7 +251,12 @@ const partView =
       case 'section':
         return (
           <div key={index}>
-            {part.section.name !== '' && <h3>{sectionHeading(part.section)}</h3>}
+            {part.section.name !== '' && (
+              <h3>
+                {part.section.name}
+                <span className="repeat-count">{repeatText(part.section)}</span>
+              </h3>
+            )}
             {part.section.body !== '' && (
               <pre>
                 <NotedLines body={part.section.body} />

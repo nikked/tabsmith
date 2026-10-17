@@ -645,16 +645,16 @@ h1 img {
   display: grid;
   grid-template-columns: auto auto 1fr;
   align-items: center;
-  gap: 0.35em 0.6em;
+  gap: 0.25em 0.55em;
   width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 0.4em 0.9em 0.4em 0.4em;
+  padding: 0.3em 0.75em 0.3em 0.3em;
   font-family: system-ui, sans-serif;
   /* Set to the page's size, not the song's: A− and A+ size what is read
      while playing, and the patches are set before it starts. */
-  font-size: 1rem;
+  font-size: 0.9rem;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -669,12 +669,12 @@ h1 img {
 /* Lit the way the chosen page is in the header's toggle, so a synth reads as
    a setting being shown rather than a line of the song. */
 .synth-list .synth-name {
-  padding: 0.1em 0.65em;
-  font-weight: 700;
+  padding: 0 0.5em;
+  font-weight: 600;
   text-align: center;
   color: var(--bg);
   background: var(--fg);
-  border-radius: 7px;
+  border-radius: 6px;
 }
 
 /* The patch it is set to reads as a value of the synth, not part of its name. */
@@ -690,22 +690,33 @@ h1 img {
   margin: 0 0 0 0.65em;
 }
 
-/* The dials and the knobs each keep together, a rule between them marking
-   where the one set ends and the other starts. */
-.synth-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15em 0.9em;
+/* Each control is its number in a mark, then what it does: a dial's mark is
+   round and a knob's square, and each kind keeps its own colour, so the two
+   tell apart at a glance without a word or a rule between them. */
+.synth-setting {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
 }
 
-.synth-group + .synth-group {
-  padding-left: 0.9em;
-  border-left: 1px solid var(--line);
+.synth-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  font-size: 0.7em;
+  font-weight: 600;
+  /* A digit has no descender, so the room a line keeps for one would sink it. */
+  line-height: 1;
+  border: 1px solid currentColor;
 }
 
-.synth-label {
-  font-size: 0.85em;
-  color: var(--muted);
+.dial .synth-mark {
+  border-radius: 50%;
+}
+
+.knob .synth-mark {
+  border-radius: 0.3em;
 }
 
 /* A phone has no width to spare, and the patches are glanced at, not read
@@ -1018,8 +1029,9 @@ h1 img {
   display: flex;
   flex-direction: column;
   gap: 2.5em;
-  color: #000;
-  background: #fff;
+  /* White with only a breath of warmth, so it reads as paper rather than a screen. */
+  color: #1a1a1a;
+  background: #fffffd;
   border-radius: 0.3rem;
 }
 
@@ -2229,46 +2241,33 @@ kbd {
 
   /* Side by side, the two headings below sit on one line close under the box,
      so the band's part of the page needs a little more air before them. */
-  .band-todo {
+  .band-boxes {
     margin-bottom: 1rem;
   }
 }
 
-/* The band's name heads the page, an underline only while it is being edited.
-   It spans both columns, above the band's box. */
-.band-name {
+/* The band's own notes and list, boxed the way the synth settings are, so they
+   read as the band's rather than as one of the songs below. Side by side where
+   a laptop has the width, one above the other on a tablet or a phone. */
+.band-boxes {
+  display: grid;
   grid-column: 1 / -1;
-  max-width: 44rem;
-  margin-bottom: -1.2rem;
-  padding: 0.1rem 0;
-  font: inherit;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: inherit;
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  gap: 1rem;
+  align-items: start;
 }
 
-.band-name:hover {
-  box-shadow: inset 0 -1px 0 var(--line);
+@media (min-width: 88rem) {
+  .band-boxes {
+    grid-template-columns: repeat(2, minmax(0, 44rem));
+  }
 }
 
-.band-name:focus {
-  outline: none;
-  box-shadow: inset 0 -1px 0 var(--fg);
-}
-
-/* The band's own list and notes, boxed the way the synth settings are, so they
-   read as the band's rather than as one of the songs below. */
-.band-todo {
+.band-box {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  grid-column: 1 / -1;
   box-sizing: border-box;
   width: 100%;
-  max-width: 44rem;
   padding: 0.7rem 0.9rem;
   font-size: 0.9rem;
   background: var(--raised);
@@ -2278,7 +2277,7 @@ kbd {
 
 /* The same free text as a song's ideas, outside the chart's fields. The box
    around it already says where it is, so it draws no rule of its own. */
-.band-todo .ideas textarea {
+.band-notes .ideas textarea {
   padding: 0.15rem 0;
   font: inherit;
   color: inherit;
@@ -2289,8 +2288,212 @@ kbd {
   resize: none;
 }
 
-.band-todo .ideas textarea:focus {
+.band-notes .ideas textarea:focus {
   outline: none;
+}
+
+/* The styled copy sets the height and the field lies exactly over it, so both
+   break their lines in the same places and the field never scrolls. */
+.markdown-field {
+  position: relative;
+}
+
+.markdown-mirror {
+  min-height: 1lh;
+  padding: 0.15rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.band-notes .markdown-field textarea {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  color: transparent;
+  caret-color: var(--fg);
+}
+
+.markdown-field textarea::placeholder {
+  color: var(--muted);
+}
+
+.markdown-field textarea::selection {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--cursor) 35%, transparent);
+}
+
+/* Markdown in the colours of Catppuccin's editor themes: headings by level, bold
+   maroon, code green, links lavender, the marks themselves dimmed. While it is
+   written, weight is drawn with a shadow rather than a bolder face, which would
+   widen the words and leave the caret behind. */
+.md-mark {
+  color: var(--overlay0);
+}
+
+/* Each level its own colour, warm to cool as Catppuccin's Markdown themes run,
+   softened into the text so a page of notes stays calm. */
+:root {
+  --h1-colour: color-mix(in srgb, var(--peach) 75%, var(--fg));
+  --h2-colour: color-mix(in srgb, var(--yellow) 75%, var(--fg));
+  --h3-colour: color-mix(in srgb, var(--teal) 75%, var(--fg));
+  --h4-colour: color-mix(in srgb, var(--blue) 75%, var(--fg));
+}
+
+.md-mark:has(+ .md-h1),
+.md-h1 {
+  color: var(--h1-colour);
+}
+
+.md-mark:has(+ .md-h2),
+.md-h2 {
+  color: var(--h2-colour);
+}
+
+.md-mark:has(+ .md-h3),
+.md-h3 {
+  color: var(--h3-colour);
+}
+
+.md-mark:has(+ .md-h4),
+.md-h4 {
+  color: var(--h4-colour);
+}
+
+.md-heading {
+  text-shadow: 0.03em 0 0 currentColor;
+}
+
+.md-bold {
+  color: var(--maroon);
+  text-shadow: 0.03em 0 0 currentColor;
+}
+
+.md-italic {
+  font-style: normal;
+  color: var(--overlay2);
+}
+
+.md-code {
+  color: var(--green);
+}
+
+.md-link,
+.md-image {
+  color: var(--lavender);
+}
+
+/* Read, the notes are set out the way a README is: headings by size, lists
+   bulleted, quotes barred, and the marks gone. */
+.markdown-view {
+  cursor: text;
+  overflow-wrap: break-word;
+}
+
+.markdown-view:focus {
+  outline: none;
+}
+
+.markdown-view > :first-child {
+  margin-top: 0;
+}
+
+.markdown-view > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-view :is(h1, h2, h3, h4, h5, h6) {
+  display: block;
+  margin: 1.1em 0 0.5em;
+  padding: 0;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: normal;
+  color: var(--peach);
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.markdown-view h1 {
+  font-size: 1.6em;
+  color: var(--h1-colour);
+}
+
+.markdown-view h2 {
+  font-size: 1.3em;
+  color: var(--h2-colour);
+}
+
+.markdown-view h3 {
+  font-size: 1.1em;
+  color: var(--h3-colour);
+}
+
+/* The band's list sits beside its notes, so its heading reads as one of
+   theirs: set the way a ## is. */
+.band-todo h3.checklist-title {
+  margin: 0 0 0.3em;
+  font-size: 1.3em;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--h2-colour);
+}
+
+.markdown-view :is(h4, h5, h6) {
+  font-size: 1em;
+  color: var(--h4-colour);
+}
+
+.markdown-view p,
+.markdown-view ul,
+.markdown-view ol {
+  margin: 0 0 0.7em;
+}
+
+.markdown-view ul,
+.markdown-view ol {
+  padding-left: 1.6em;
+}
+
+.markdown-view blockquote {
+  margin: 0 0 0.7em;
+  padding: 0.1em 0 0.1em 0.8em;
+  color: var(--overlay2);
+  border-left: 3px solid var(--line);
+}
+
+.markdown-view li::marker {
+  color: var(--overlay0);
+}
+
+.markdown-view strong {
+  color: var(--maroon);
+}
+
+.markdown-view em {
+  color: var(--overlay2);
+}
+
+.markdown-view code {
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--green);
+  background: color-mix(in srgb, var(--bg) 60%, black);
+  border-radius: 4px;
+}
+
+.markdown-view img {
+  display: block;
+  max-width: 100%;
+  margin: 0.4em 0;
+  border-radius: 6px;
+}
+
+.markdown-view a {
+  color: var(--lavender);
+  text-underline-offset: 0.15em;
 }
 
 .songs-page.dragging {
@@ -2324,6 +2527,28 @@ kbd {
 
 .new-song {
   margin-right: auto;
+}
+
+/* Making something is the one thing on Home worth reaching for, so + New is a
+   pill in one of the palette's own gradients, the way Catppuccin's lander does it. */
+.add-new,
+.new-song .menu-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.9rem 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: linear-gradient(90deg, var(--pink), var(--mauve));
+  border: none;
+  border-radius: 999px;
+  transition: filter 160ms;
+}
+
+.add-new:hover,
+.new-song .menu-open:hover {
+  filter: brightness(1.08) saturate(1.1);
 }
 
 .panel-empty {
@@ -2409,38 +2634,45 @@ kbd {
   }
 }
 
-/* Shaped like the funnel beside it. */
-.song-direction {
-  display: grid;
-  place-items: center;
-  padding: 0 0.55rem;
-  border-radius: 8px;
-  color: var(--muted);
-}
-
-.song-direction:hover {
-  color: var(--fg);
-}
-
-/* On or off, each on its own: a filter is a narrowing you add, not one of a
-   set of choices, so it is a pressable chip rather than a toggle. */
+/* The funnel and the direction sit in the same well and border as the order
+   toggle beside them, so the three read as one row of controls. */
+.song-direction,
 .song-filters .menu-open {
   display: grid;
   place-items: center;
   padding: 0 0.55rem;
-  border-radius: 8px;
   color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition:
+    color 220ms,
+    background 220ms;
 }
 
+.song-direction:hover,
 .song-filters .menu-open:hover {
   color: var(--fg);
 }
 
-/* Lit like a pressed filter was, while any filter is on. */
+/* On or off, each on its own: a filter is a narrowing you add, not one of a
+   set of choices. While any is on the funnel itself lights up. */
 .song-filters.on .menu-open {
-  color: var(--bg);
-  background: var(--muted);
-  border-color: var(--muted);
+  color: var(--mauve);
+}
+
+/* Filled in as well as lit, so on and off differ in shape, not just colour. */
+.song-filters.on .menu-open svg {
+  fill: currentColor;
+}
+
+/* The order in force, lit like the view you are in. */
+.song-order .toggle.small::before {
+  background: linear-gradient(90deg, var(--mauve), var(--lavender));
+}
+
+.song-order .toggle button[aria-pressed='true'] {
+  color: var(--on-accent);
 }
 
 /* One row per song: what it is on the left, where it is used and when it was
@@ -2708,4 +2940,171 @@ kbd {
   min-width: 2.5rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+/*
+ * Colour roles, the same on every page, read the way Catppuccin's editor
+ * themes colour code, so one colour always means one thing:
+ *   the song's title           name               mauve, as a keyword
+ *   setlist                                       peach softened into the text
+ *   fret, repeat               number             peach
+ *   heading                    keyword            mauve
+ *   chord                      function           blue
+ *   string name                type               yellow
+ *   synth                      parameter          maroon (an outline in Perform)
+ *   bar line                   operator           sky
+ *   technique                  string             green
+ *   dashes                     punctuation        overlay0
+ *   note, aside                comment            overlay2, italic
+ *   dial  teal     knob  lavender     work left to do  red softened into the text
+ *   Home's headings stay plain, so mauve marks a song's own parts;
+ *   bpm, key and note: yellow softened into the text; synth sounds stay plain
+ *   the brand and where you are: the lander's gradients
+ */
+:root {
+  --setlist-colour: color-mix(in srgb, var(--peach) 65%, var(--fg));
+  --facts-colour: color-mix(in srgb, var(--yellow) 70%, var(--fg));
+  --todo-colour: color-mix(in srgb, var(--alert) 70%, var(--fg));
+}
+
+.practice .bar-title,
+.chart .title {
+  color: var(--mauve);
+}
+
+.setlist-card-head h3,
+.song-tree .setlist:not(.all) .setlist-name,
+.step-where {
+  color: var(--setlist-colour);
+}
+
+.song-setlists .chip {
+  color: var(--setlist-colour);
+  border-color: color-mix(in srgb, var(--setlist-colour) 45%, transparent);
+}
+
+/* bpm, key and note, wherever they show: a hint of yellow, nothing louder. */
+.song-facts,
+.practice-song .facts .chip,
+.chart .facts .chip {
+  color: var(--facts-colour);
+}
+
+.practice-song .facts .chip,
+.chart .facts .chip {
+  border-color: color-mix(in srgb, var(--yellow) 40%, var(--line));
+}
+
+.practice-song .repeat-count,
+.chart .repeat,
+.practice-song .piece-fret,
+.cell:not(.current) {
+  color: var(--peach);
+}
+
+.practice-song h3,
+.practice-song h4,
+.chart .section-name,
+.row-title {
+  color: var(--mauve);
+}
+
+.chord-line,
+.chord {
+  color: var(--blue);
+}
+
+.chord::placeholder {
+  color: var(--blue);
+  opacity: 0.45;
+}
+
+.practice-song .piece-label,
+.staff .label,
+.synth-list .synth-sound,
+.chart .synth-sound {
+  color: color-mix(in srgb, var(--fg) 75%, var(--muted));
+}
+
+.chart .synth-name {
+  color: var(--maroon);
+}
+
+.practice-song .synth-list .synth-name {
+  color: var(--maroon);
+  background: none;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.practice-song .piece-bar,
+.staff .barline {
+  color: var(--sky);
+}
+
+.practice-song .piece-technique {
+  color: var(--green);
+}
+
+.practice-song .piece-rule {
+  color: var(--overlay0);
+}
+
+.line-note,
+.tab-aside,
+.tab-note,
+.row-note,
+.row-aside {
+  font-style: italic;
+  color: var(--overlay2);
+}
+
+/* In edit a note was picked out with a highlight; the comment's colour does that now. */
+.chart .line-note {
+  background: none;
+}
+
+.synth-setting.dial,
+.synth-kind.dial,
+.synth-control.dial,
+.chart .synth-control.dial input {
+  color: var(--teal);
+}
+
+.synth-setting.knob,
+.synth-kind.knob,
+.synth-control.knob,
+.chart .synth-control.knob input {
+  color: var(--lavender);
+}
+
+h3.checklist-title {
+  color: var(--todo-colour);
+}
+
+.chip.song-todo {
+  color: var(--todo-colour);
+  border-color: color-mix(in srgb, var(--todo-colour) 60%, transparent);
+}
+
+/* The app's name, in a gradient the way the lander's heading is, kept to the
+   cold end of the palette. */
+.brand-name {
+  color: transparent;
+  /* A shade under the accents themselves, so the name sits back from the page. */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--sapphire) 75%, var(--bg)),
+    color-mix(in srgb, var(--blue) 75%, var(--bg)),
+    color-mix(in srgb, var(--lavender) 75%, var(--bg))
+  );
+  background-clip: text;
+}
+
+/* Where you are, Home, Perform or Edit, lit like any choice in force. */
+header .toggle::before {
+  background: linear-gradient(90deg, var(--mauve), var(--lavender));
+}
+
+header .toggle button[aria-pressed='true'] {
+  color: var(--on-accent);
 }
