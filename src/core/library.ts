@@ -85,6 +85,15 @@ export type Library = {
   readonly band: Band
 }
 
+/**
+ * When an edit to something last stamped `previous` happens, by this device's
+ * clock. Never at or before `previous`: a clock running slow, or a stamp that
+ * came from a device whose clock runs fast, must not make a fresh edit look
+ * older than what it changed, or a sync would throw it away.
+ */
+export const stampAfter = (previous: number, at: number): number =>
+  Math.max(at, previous + 1)
+
 /** `open` can only dangle if something built a library without `repair`. */
 export const openEntry = (library: Library): Entry =>
   library.songs.find((entry) => entry.id === library.open) ?? library.songs[0]
@@ -158,7 +167,13 @@ export const retitle = (
 ): Library => {
   const [first, ...rest] = library.songs
   const update = (entry: Entry): Entry =>
-    entry.id === id ? { ...entry, song: { ...entry.song, title }, updatedAt: at } : entry
+    entry.id === id
+      ? {
+          ...entry,
+          song: { ...entry.song, title },
+          updatedAt: stampAfter(entry.updatedAt, at),
+        }
+      : entry
   return { ...library, songs: [update(first), ...rest.map(update)] }
 }
 
@@ -171,7 +186,9 @@ export const withOpenSong = (library: Library, song: Song, at: number): Library 
   if (openEntry(library).song === song) return library
   const [first, ...rest] = library.songs
   const update = (entry: Entry): Entry =>
-    entry.id === library.open ? { ...entry, song, updatedAt: at } : entry
+    entry.id === library.open
+      ? { ...entry, song, updatedAt: stampAfter(entry.updatedAt, at) }
+      : entry
   return { ...library, songs: [update(first), ...rest.map(update)] }
 }
 
@@ -194,7 +211,10 @@ export const removeEntry = (library: Library, id: string, at: number): Library =
   const [first, ...rest] = library.songs.filter((entry) => entry.id !== id)
   if (first === undefined) return library
   const songs: Songs = [first, ...rest]
-  const removed = [...library.removed, { id, at, song: gone.song }]
+  const removed = [
+    ...library.removed,
+    { id, at: stampAfter(gone.updatedAt, at), song: gone.song },
+  ]
   if (library.open !== id) return { ...library, songs, removed }
   return {
     ...library,

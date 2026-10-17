@@ -1,4 +1,4 @@
-import type { Entry, Library, Setlist } from './library.ts'
+import { stampAfter, type Entry, type Library, type Setlist } from './library.ts'
 
 /** A deleted setlist is kept for the sheet, so everything shown filters it out. */
 export const activeSetlists = (library: Library): readonly Setlist[] =>
@@ -62,7 +62,9 @@ const change = (
 ): Library => ({
   ...library,
   setlists: library.setlists.map((setlist) =>
-    setlist.id === id ? { ...setlist, ...edit(setlist), updatedAt: at } : setlist,
+    setlist.id === id
+      ? { ...setlist, ...edit(setlist), updatedAt: stampAfter(setlist.updatedAt, at) }
+      : setlist,
   ),
 })
 
