@@ -2150,6 +2150,31 @@ kbd {
   }
 }
 
+/* The band's name heads the page, an underline only while it is being edited.
+   It spans both columns, above the band's box. */
+.band-name {
+  grid-column: 1 / -1;
+  max-width: 44rem;
+  margin-bottom: -1.2rem;
+  padding: 0.1rem 0;
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.band-name:hover {
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+
+.band-name:focus {
+  outline: none;
+  box-shadow: inset 0 -1px 0 var(--fg);
+}
+
 /* The band's own list and notes, boxed the way the synth settings are, so they
    read as the band's rather than as one of the songs below. */
 .band-todo {

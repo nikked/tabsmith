@@ -59,10 +59,21 @@ export type BandTodo = {
 }
 
 /**
- * The band's own free text, beside its todo list: ideas no song has yet. One
- * block of text stamped as a whole, so the newer of two offline edits wins.
+ * One of the band's own texts, stamped as a whole, so the newer of two offline
+ * edits wins.
  */
-export type BandIdeas = { readonly text: string; readonly updatedAt: number }
+export type BandField = { readonly text: string; readonly updatedAt: number }
+
+/** What is the band's rather than any song's: its name, and ideas no song has yet. */
+export type Band = { readonly name: BandField; readonly ideas: BandField }
+
+export const BAND_FIELDS = ['name', 'ideas'] as const satisfies readonly (keyof Band)[]
+
+/** Never edited, so any copy from another device wins over it. */
+export const emptyBand: Band = {
+  name: { text: '', updatedAt: 0 },
+  ideas: { text: '', updatedAt: 0 },
+}
 
 /** The whole shelf, in the order it is shown, and which of them is open. */
 export type Library = {
@@ -71,7 +82,7 @@ export type Library = {
   readonly removed: readonly Removed[]
   readonly setlists: readonly Setlist[]
   readonly todos: readonly BandTodo[]
-  readonly ideas: BandIdeas
+  readonly band: Band
 }
 
 /** `open` can only dangle if something built a library without `repair`. */
@@ -202,22 +213,14 @@ export const openSong = (library: Library, id: string): Library =>
  * but one with no songs at all cannot be anything.
  */
 export const repair = (
-  songs: readonly Entry[],
-  open: string,
-  removed: readonly Removed[],
-  setlists: readonly Setlist[],
-  todos: readonly BandTodo[],
-  ideas: BandIdeas,
+  library: Omit<Library, 'songs'> & { readonly songs: readonly Entry[] },
 ): Library | null => {
-  const [first, ...rest] = songs
+  const [first, ...rest] = library.songs
   if (first === undefined) return null
-  const all: Songs = [first, ...rest]
+  const songs: Songs = [first, ...rest]
   return {
-    songs: all,
-    open: all.some((entry) => entry.id === open) ? open : first.id,
-    removed,
-    setlists,
-    todos,
-    ideas,
+    ...library,
+    songs,
+    open: songs.some((entry) => entry.id === library.open) ? library.open : first.id,
   }
 }

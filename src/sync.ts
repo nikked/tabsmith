@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { records, type Synced } from './core/sync.ts'
-import type { BandIdeas, BandTodo, Library, Setlist } from './core/library.ts'
+import {
+  BAND_FIELDS,
+  type Band,
+  type BandTodo,
+  type Library,
+  type Setlist,
+} from './core/library.ts'
 import { DEMO_TITLE } from './demo.ts'
 import { pack, unpack } from './share.ts'
 import { decode, encode, type Loaded } from './storage.ts'
@@ -65,10 +71,11 @@ const todoRow = z.object({
   active: z.boolean(),
 })
 
-/** One of the band's own fields, by name: only `ideas` so far. */
+/** One of the band's own fields, by name: its name, and its ideas. */
 const bandRow = z.object({ id: z.string().min(1), at: z.number(), text: z.string() })
 
-const IDEAS = 'ideas'
+const bandFieldOf = (id: string): keyof Band | undefined =>
+  BAND_FIELDS.find((field) => field === id)
 
 const reply = z.discriminatedUnion('ok', [
   z.object({
@@ -89,7 +96,7 @@ export type Pulled =
       readonly records: readonly Synced[]
       readonly setlists: readonly Setlist[]
       readonly todos: readonly BandTodo[]
-      readonly ideas: BandIdeas | null
+      readonly band: Partial<Band>
     }
   | { readonly ok: false; readonly error: string }
 
@@ -163,9 +170,10 @@ export const todosToWire = (library: Library) =>
 
 // Never edited is nothing to send: a sheet without the row loses nothing.
 export const bandToWire = (library: Library) =>
-  library.ideas.updatedAt === 0
-    ? []
-    : [{ id: IDEAS, at: library.ideas.updatedAt, text: library.ideas.text }]
+  BAND_FIELDS.flatMap((field) => {
+    const { text, updatedAt } = library.band[field]
+    return updatedAt === 0 ? [] : [{ id: field, at: updatedAt, text }]
+  })
 
 /**
  * Rows come from a sheet that can be edited by hand, so one that is not a song
@@ -206,13 +214,14 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
       const { id, at, text, done, active } = each.data
       return [{ id, text, done, active, updatedAt: at }]
     }),
-    ideas:
-      parsed.data.band.flatMap((value): BandIdeas[] => {
-        const each = bandRow.safeParse(value)
-        return each.success && each.data.id === IDEAS
-          ? [{ text: each.data.text, updatedAt: each.data.at }]
-          : []
-      })[0] ?? null,
+    // A field this build does not know is someone else's, and left to them.
+    band: parsed.data.band.reduce<Partial<Band>>((band, value) => {
+      const each = bandRow.safeParse(value)
+      const field = each.success ? bandFieldOf(each.data.id) : undefined
+      return each.success && field !== undefined
+        ? { ...band, [field]: { text: each.data.text, updatedAt: each.data.at } }
+        : band
+    }, {}),
   }
 }
 

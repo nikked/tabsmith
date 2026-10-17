@@ -730,8 +730,8 @@ sheet, and one pulled from the sheet only takes the setlist off the device. A sc
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
-on each device until it is redeployed. The band's ideas sync beside it in a `band` tab, by
-field name, the newer text winning whole.
+on each device until it is redeployed. The band's name and ideas sync beside it in a `band`
+tab, each by field name, the newer text winning whole.
 
 A todo's text and the ideas are written as typed, list dashes and indents included. A cell that
 starts with `=`, `+`, `-` or `@` is read as a formula, so `Code.gs` stores them as JSON strings,
@@ -828,7 +828,7 @@ src/
     fields.ts     which field an arrow key moves to in a form of rows and columns
     library.ts    the shelf: Library, Entry, Setlist and the functions over them
     setlists.ts   adding, renaming, ordering and deleting setlists
-    bandTodos.ts  the band's own todo list and ideas
+    bandTodos.ts  the band's own todo list, ideas and name
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, mergeSetlists — newest wins per song and setlist (§5)
   ui/

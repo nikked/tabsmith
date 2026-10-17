@@ -41,7 +41,7 @@ const shelf = (...setlists: readonly Setlist[]): Library => ({
   removed: [],
   setlists,
   todos: [],
-  ideas: { text: '', updatedAt: 0 },
+  band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
 })
 
 const songsIn = (library: Library, id: string) =>
