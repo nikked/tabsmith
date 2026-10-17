@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { records, type Synced } from './core/sync.ts'
 import {
   BAND_FIELDS,
+  isUnsynced,
   type Band,
   type BandTodo,
   type Library,
@@ -121,13 +122,20 @@ const CELL_LIMIT = 50_000
  * Packed, because a song with much tab outgrows a cell as indented JSON. A
  * song still too long stays on this device and is named, so the rest sync. A
  * deletion of one goes up without its content: the sheet keeps what it held.
+ *
+ * Only what the sheet has not seen goes up — songs edited since their last
+ * sync, and deletions — so a sync on a weak connection stays small. The answer
+ * still brings everything down.
  */
 export const toSheet = async (library: Library) => {
+  const changed = new Set(library.songs.filter(isUnsynced).map((entry) => entry.id))
   const rows = await Promise.all(
-    toWire(library).map(async (row) => ({
-      ...row,
-      song: row.song === null ? null : await pack(row.song),
-    })),
+    toWire(library)
+      .filter((row) => !row.active || changed.has(row.id))
+      .map(async (row) => ({
+        ...row,
+        song: row.song === null ? null : await pack(row.song),
+      })),
   )
   const fits = (row: (typeof rows)[number]) =>
     row.song === null || row.song.length <= CELL_LIMIT

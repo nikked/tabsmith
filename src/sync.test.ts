@@ -63,6 +63,28 @@ describe('sync wire format', () => {
     })
   })
 
+  it('sends only songs edited since their last sync, and every deletion', async () => {
+    const synced = { ...emptySong(), title: 'Synced' }
+    const { records: sent } = await toSheet({
+      ...library,
+      songs: [
+        { id: 'same', song: synced, updatedAt: 3, lastSynced: { at: 3, song: synced } },
+        {
+          id: 'edited',
+          song: { ...synced, title: 'Edited' },
+          updatedAt: 4,
+          lastSynced: { at: 3, song: synced },
+        },
+        { id: 'new', song: { ...synced, title: 'New' }, updatedAt: 5, lastSynced: null },
+      ],
+    })
+    expect(sent.map(({ id, active }) => [id, active])).toEqual([
+      ['edited', true],
+      ['new', true],
+      ['b', false],
+    ])
+  })
+
   it('keeps the demo off the sheet, edited or deleted, until it is renamed', () => {
     const demo = { ...emptySong(), title: DEMO_TITLE }
     const sent = toWire({
