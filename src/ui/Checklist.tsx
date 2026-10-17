@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
+import { isOpen } from '../core/model.ts'
 
 export type ChecklistItem = {
   /** Stable across edits, so a row keeps its field while others come and go. */
@@ -15,6 +16,9 @@ type Props = {
   readonly onToggle: (index: number) => void
   readonly onRemove: (index: number) => void
   readonly onClearDone: () => void
+  /** Asked for once, from a count of what is left: the first item still to do takes focus. */
+  readonly focusFirstOpen?: boolean
+  readonly onFocused?: () => void
 }
 
 /**
@@ -30,6 +34,8 @@ export function Checklist({
   onToggle,
   onRemove,
   onClearDone,
+  focusFirstOpen = false,
+  onFocused,
 }: Props) {
   const list = useRef<HTMLUListElement>(null)
   // Set by adding, so the new item takes the typing once it is drawn; any
@@ -42,6 +48,19 @@ export function Checklist({
     const fields = list.current?.querySelectorAll<HTMLInputElement>('input[type="text"]')
     fields?.[fields.length - 1]?.focus()
   }, [items.length])
+
+  const focusOpen = useEffectEvent(() => {
+    const index = items.findIndex(isOpen)
+    const field =
+      list.current?.querySelectorAll<HTMLInputElement>('input[type="text"]')[index]
+    field?.focus()
+    field?.scrollIntoView({ block: 'center' })
+    onFocused?.()
+  })
+
+  useEffect(() => {
+    if (focusFirstOpen) focusOpen()
+  }, [focusFirstOpen])
 
   const add = () => {
     focusLast.current = true
