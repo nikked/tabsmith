@@ -35,7 +35,7 @@ export function SettingsDialog({
       </form>
       <div className="shelf-actions">
         <button type="button" className="tint-green" onClick={onBackUp}>
-          Back up all songs
+          Download backup
         </button>
       </div>
       <Sync
