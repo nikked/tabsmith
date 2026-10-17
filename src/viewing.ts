@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MODES, type Mode } from './core/level.ts'
 
 const KEY = 'tabsmith.viewing'
 
@@ -76,4 +77,43 @@ export const loadSynthsShown = (): boolean => {
 
 export const saveSynthsShown = (shown: boolean): void => {
   localStorage.setItem(SYNTHS_KEY, shown ? 'shown' : 'hidden')
+}
+
+const METER_KEY = 'tabsmith.meter'
+
+/**
+ * The sound level meter's settings on this device. The offset belongs to this
+ * device's microphone, so like a song's size it never goes to the sheet. Null
+ * until calibrated against a real meter.
+ */
+export type Meter = {
+  /** Whether it is listening, so it is on again wherever Practice is next opened. */
+  readonly on: boolean
+  readonly offset: number | null
+  readonly mode: Mode
+  /** The voice level aimed for, in dB(A). */
+  readonly target: number
+}
+
+export const NO_METER: Meter = { on: false, offset: null, mode: 'room', target: 70 }
+
+const meter = z.object({
+  // Saved before it was kept; read as off rather than losing the calibration.
+  on: z.boolean().default(false),
+  offset: z.number().nullable(),
+  mode: z.enum(MODES),
+  target: z.number(),
+})
+
+export const loadMeter = (): Meter => {
+  try {
+    const result = meter.safeParse(JSON.parse(localStorage.getItem(METER_KEY) ?? 'null'))
+    return result.success ? result.data : NO_METER
+  } catch {
+    return NO_METER
+  }
+}
+
+export const saveMeter = (value: Meter): void => {
+  localStorage.setItem(METER_KEY, JSON.stringify(value))
 }
