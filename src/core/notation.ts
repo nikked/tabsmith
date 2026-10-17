@@ -78,6 +78,21 @@ export const FIFTHS: Readonly<Record<Key, number>> = {
   Dm: -1,
 }
 
+const isMinor = (key: Key): boolean => key.endsWith('m')
+
+/** The key's own first note, C = 0: a minor key is its relative major's sixth. */
+const tonicOf = (key: Key): number =>
+  (((FIFTHS[key] * 7 + (isMinor(key) ? 9 : 0)) % 12) + 12) % 12
+
+/**
+ * The keys as a player goes looking for one, up by semitone from C, each major
+ * before the minor on the same note. KEYS itself stays round the circle of
+ * fifths, which is the order key suggestion breaks its ties in.
+ */
+export const KEYS_BY_SEMITONE: readonly Key[] = [...KEYS].sort(
+  (a, b) => tonicOf(a) - tonicOf(b) || Number(isMinor(a)) - Number(isMinor(b)),
+)
+
 const PITCH_CLASS: Readonly<Record<string, number>> = {
   C: 0,
   D: 2,

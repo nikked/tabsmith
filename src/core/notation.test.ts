@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   beamGroups,
   chordName,
+  KEYS_BY_SEMITONE,
   notation,
   openPitches,
   placeOctaves,
@@ -347,6 +348,37 @@ describe('beamGroups', () => {
     expect(beamGroups([note(1, 0), rest(1), note(1, 2), note(2, 3), note(1, 5)])).toEqual(
       [[0], [2], [4]],
     )
+  })
+})
+
+describe('KEYS_BY_SEMITONE', () => {
+  it('goes up by semitone from C, the major before the minor on each note', () => {
+    expect(KEYS_BY_SEMITONE).toEqual([
+      'C',
+      'Cm',
+      'Db',
+      'C#m',
+      'D',
+      'Dm',
+      'Eb',
+      'Ebm',
+      'E',
+      'Em',
+      'F',
+      'Fm',
+      'F#',
+      'F#m',
+      'G',
+      'Gm',
+      'Ab',
+      'G#m',
+      'A',
+      'Am',
+      'Bb',
+      'Bbm',
+      'B',
+      'Bm',
+    ])
   })
 })
 
