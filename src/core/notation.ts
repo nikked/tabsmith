@@ -296,6 +296,40 @@ export const chordName = (sounding: readonly number[]): string | null => {
   return `${names[chord.root] ?? ''}${chord.suffix}${slash}`
 }
 
+/** The fretted notes of one tab column, as MIDI numbers. */
+const soundingIn = (column: Column, open: readonly number[]): readonly number[] =>
+  column.cells.flatMap((cell, slot) => {
+    const string = open[slot]
+    return cell?.kind === 'fret' && string !== undefined ? [string + cell.fret] : []
+  })
+
+/** The chord a tab column's notes make, named as the staff names it. */
+export const recognizedChord = (column: Column, open: readonly number[]): string | null =>
+  chordName(soundingIn(column, open))
+
+/**
+ * Each column the player left unnamed given the name the staff would give its
+ * notes, so the tab says what is played without anyone typing it. A typed name
+ * always wins: it may be the chord the band calls it rather than what the
+ * strings spell.
+ */
+export const recognizedChords = (score: Score): Score => {
+  const open = openPitches(score.tuning)
+  return {
+    ...score,
+    rows: score.rows.map((row) => ({
+      ...row,
+      bars: row.bars.map((bar) => ({
+        columns: bar.columns.map((column) => {
+          if ((column.chord ?? '').trim() !== '') return column
+          const name = recognizedChord(column, open)
+          return name === null ? column : { ...column, chord: name }
+        }),
+      })),
+    })),
+  }
+}
+
 // Two strings on the same note are one head on the staff.
 const sameNote = (a: Pitch, b: Pitch): boolean =>
   a.step === b.step && a.accidental === b.accidental
@@ -309,10 +343,7 @@ const chordOf = (
   open: readonly number[],
   fifths: number | null,
 ): Chord | null => {
-  const sounding = column.cells.flatMap((cell, slot) => {
-    const string = open[slot]
-    return cell?.kind === 'fret' && string !== undefined ? [string + cell.fret] : []
-  })
+  const sounding = soundingIn(column, open)
   if (sounding.length === 0) return null
   const sharps = fifths === null ? (identify(sounding)?.sharps ?? false) : fifths > 0
   return {
