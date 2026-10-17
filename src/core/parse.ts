@@ -435,6 +435,7 @@ export const parseSong = (text: string, title = ''): Parsed => {
       chart: sections.length > 0 ? sections : [{ name: '', body: '' }],
       tab,
       tabFirst: false,
+      synths: [],
     },
   }
 }

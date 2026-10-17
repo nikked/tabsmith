@@ -5,6 +5,7 @@ import {
   emptyRow,
   emptySection,
   emptySong,
+  emptySynth,
   suggestedName,
   type Bar,
   type Cell,
@@ -17,6 +18,7 @@ import {
   type Score,
   type Section,
   type Song,
+  type Synth,
   type Tuning,
 } from './model.ts'
 
@@ -63,6 +65,9 @@ export type Action =
   | { readonly kind: 'setBpm'; readonly bpm: number | null }
   | { readonly kind: 'setKey'; readonly key: Key | null }
   | { readonly kind: 'setNote'; readonly note: string }
+  | { readonly kind: 'addSynth'; readonly name: string }
+  | { readonly kind: 'removeSynth'; readonly index: number }
+  | { readonly kind: 'setSynth'; readonly index: number; readonly synth: Synth }
   | { readonly kind: 'addSection'; readonly after: number }
   | { readonly kind: 'duplicateSection'; readonly index: number }
   | { readonly kind: 'splitSection'; readonly index: number; readonly at: number }
@@ -323,6 +328,7 @@ export const songHasContent = (song: Song): boolean =>
   song.bpm !== null ||
   song.key !== null ||
   song.note !== '' ||
+  song.synths.length > 0 ||
   !defaultChart(song.chart) ||
   scoreHasContent(song.tab)
 
@@ -330,6 +336,13 @@ const withTab = (state: EditorState, tab: Score): EditorState => ({
   ...state,
   song: { ...state.song, tab },
 })
+
+// Refusing a change that changes nothing keeps it off the undo history.
+const withSynths = (state: EditorState, synths: readonly Synth[]): EditorState =>
+  synths.length === state.song.synths.length &&
+  synths.every((synth, index) => synth === state.song.synths[index])
+    ? state
+    : { ...state, song: { ...state.song, synths } }
 
 const withChart = (state: EditorState, chart: readonly Section[]): EditorState => ({
   ...state,
@@ -650,6 +663,23 @@ export const apply = (state: EditorState, action: Action): EditorState => {
     case 'setNote':
       return { ...state, song: { ...state.song, note: action.note } }
 
+    case 'addSynth':
+      return withSynths(state, [...state.song.synths, emptySynth(action.name)])
+
+    case 'removeSynth':
+      return withSynths(
+        state,
+        state.song.synths.filter((_, index) => index !== action.index),
+      )
+
+    case 'setSynth':
+      return withSynths(
+        state,
+        state.song.synths.map((synth, index) =>
+          index === action.index ? action.synth : synth,
+        ),
+      )
+
     case 'setTabFirst':
       return { ...state, song: { ...state.song, tabFirst: action.tabFirst } }
 
@@ -770,6 +800,8 @@ const typingIn = (action: Action): string | null => {
       return `heading:${action.row}`
     case 'setSection':
       return `section:${action.index}`
+    case 'setSynth':
+      return `synth:${action.index}`
     default:
       return null
   }

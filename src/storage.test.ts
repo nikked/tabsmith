@@ -130,6 +130,23 @@ describe('encode / decode', () => {
     expect(readBack(song)).toEqual(song)
   })
 
+  it('round-trips synth settings, blank slots and all', () => {
+    const song: Song = {
+      ...emptySong(),
+      synths: [
+        { name: 'iRig', sound: 'TALOS', dials: [], knobs: ['Drive', 'Squash', ''] },
+        { name: 'Nektar', sound: 'Synth 1', dials: ['Filter'], knobs: [] },
+      ],
+    }
+    expect(readBack(song)).toEqual(song)
+  })
+
+  it('reads a song saved before synths as one with none', () => {
+    const { synths: _, ...before } = emptySong()
+    const result = decode(JSON.stringify({ version: 4, song: before }))
+    expect(result.ok && result.song.synths).toEqual([])
+  })
+
   it('writes something a person can read in an editor', () => {
     expect(encode(emptySong())).toContain('\n  "version": 4')
   })

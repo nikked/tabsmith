@@ -118,6 +118,13 @@ const withoutTempo = (value: unknown): unknown => {
  * rather than in a migration, because the shelf and the sheet hold songs too
  * and neither goes through the file's version chain.
  */
+const synth = z.object({
+  name: z.string(),
+  sound: z.string(),
+  dials: z.array(z.string()),
+  knobs: z.array(z.string()),
+})
+
 const song = z.preprocess(
   withoutTempo,
   z.object({
@@ -129,6 +136,7 @@ const song = z.preprocess(
     chart: z.array(section).nonempty(),
     tab: score,
     tabFirst: z.boolean().default(false),
+    synths: z.array(synth).default([]),
   }),
 )
 

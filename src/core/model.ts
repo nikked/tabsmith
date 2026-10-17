@@ -83,6 +83,26 @@ export const KEYS = [
 
 export type Key = (typeof KEYS)[number]
 
+/**
+ * One synth's patch for a song: the sound it is set to and what each of its
+ * dials and knobs is assigned to. Dial 1 is the first of `dials`, so the list
+ * order is the numbering, and a blank entry keeps a slot whose number matters.
+ */
+export type Synth = {
+  readonly name: string
+  readonly sound: string
+  readonly dials: readonly string[]
+  readonly knobs: readonly string[]
+}
+
+/** Three of each to fill in, as the synths the band plays have. */
+export const emptySynth = (name: string): Synth => ({
+  name,
+  sound: '',
+  dials: ['', '', ''],
+  knobs: ['', '', ''],
+})
+
 export type Song = {
   readonly title: string
   readonly bpm: number | null
@@ -92,6 +112,7 @@ export type Song = {
   readonly chart: readonly Section[]
   readonly tab: Score
   readonly tabFirst: boolean
+  readonly synths: readonly Synth[]
 }
 
 export type Cursor = {
@@ -161,4 +182,5 @@ export const emptySong = (): Song => ({
   chart: [emptySection(suggestedName(0))],
   tab: emptyScore(),
   tabFirst: false,
+  synths: [],
 })

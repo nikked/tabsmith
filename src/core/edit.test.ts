@@ -1112,6 +1112,69 @@ describe('what counts as content', () => {
   })
 })
 
+describe('synths', () => {
+  const synthsOf = (state: EditorState) => state.song.synths
+
+  it('adds a synth by name after the ones there are, with three empty slots of each', () => {
+    const state = run(
+      initialState(),
+      { kind: 'addSynth', name: 'iRig' },
+      { kind: 'addSynth', name: 'Nektar' },
+    )
+    expect(synthsOf(state)).toEqual([
+      { name: 'iRig', sound: '', dials: ['', '', ''], knobs: ['', '', ''] },
+      { name: 'Nektar', sound: '', dials: ['', '', ''], knobs: ['', '', ''] },
+    ])
+  })
+
+  it('sets one synth and removes another, leaving the rest alone', () => {
+    const talos = { name: 'iRig', sound: 'TALOS', dials: [], knobs: ['Drive', 'Squash'] }
+    const state = run(
+      initialState(),
+      { kind: 'addSynth', name: 'iRig' },
+      { kind: 'addSynth', name: 'Nektar' },
+      { kind: 'setSynth', index: 0, synth: talos },
+      { kind: 'removeSynth', index: 1 },
+    )
+    expect(synthsOf(state)).toEqual([talos])
+  })
+
+  it('refuses to set a synth that is not there', () => {
+    const state = initialState()
+    expect(
+      apply(state, {
+        kind: 'setSynth',
+        index: 0,
+        synth: { name: 'x', sound: '', dials: [], knobs: [] },
+      }),
+    ).toBe(state)
+  })
+
+  it('changes nothing when a synth is set to what it already is', () => {
+    const state = apply(initialState(), { kind: 'addSynth', name: 'iRig' })
+    const [synth] = state.song.synths
+    if (synth === undefined) throw new Error('a synth was added')
+    expect(apply(state, { kind: 'setSynth', index: 0, synth })).toBe(state)
+  })
+
+  it('counts as work, so clearing the song asks first', () => {
+    expect(
+      songHasContent(apply(initialState(), { kind: 'addSynth', name: '' }).song),
+    ).toBe(true)
+  })
+
+  it('undoes a run of typing into one synth as a single step', () => {
+    const typed = ['P', 'Pu', 'Pur'].map((sound) => ({
+      kind: 'setSynth' as const,
+      index: 0,
+      synth: { name: 'iRig', sound, dials: [], knobs: [] },
+    }))
+    const added = step(initialTimeline(), { kind: 'addSynth', name: 'iRig' })
+    const after = typed.reduce(step, added)
+    expect(step(after, { kind: 'undo' }).present.song).toBe(added.present.song)
+  })
+})
+
 describe('undo', () => {
   const walk = (timeline: Timeline, ...actions: readonly TimelineAction[]): Timeline =>
     actions.reduce(step, timeline)
