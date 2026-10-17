@@ -146,18 +146,51 @@ export const clockOf = (at: number): string => {
 export const titleOf = (entry: Entry): string =>
   entry.song.title === '' ? 'Untitled' : entry.song.title
 
+const byName = (a: Entry, b: Entry): number =>
+  titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' })
+
 /**
  * By name, the way a person looks one up: case and accents do not reorder it,
  * and an untitled song sorts as Untitled because that is what it shows as.
  */
 export const byTitle = (entries: readonly Entry[]): readonly Entry[] =>
-  [...entries].sort((a, b) =>
-    titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' }),
-  )
+  [...entries].sort(byName)
 
-/** Newest edit first, for finding what you were working on. */
-export const byEdited = (entries: readonly Entry[]): readonly Entry[] =>
-  [...entries].sort((a, b) => b.updatedAt - a.updatedAt)
+export type SongOrder = 'name' | 'edited' | 'bpm'
+export type Direction = 'asc' | 'desc'
+
+/**
+ * Which way each order starts: names A to Z, the newest edit first for finding
+ * what you were working on, the slowest song first.
+ */
+export const DEFAULT_DIRECTION: Readonly<Record<SongOrder, Direction>> = {
+  name: 'asc',
+  edited: 'desc',
+  bpm: 'asc',
+}
+
+const ascending: Readonly<Record<SongOrder, (a: Entry, b: Entry) => number>> = {
+  name: byName,
+  edited: (a, b) => a.updatedAt - b.updatedAt,
+  bpm: (a, b) => (a.song.bpm ?? 0) - (b.song.bpm ?? 0),
+}
+
+/**
+ * Songs in the order asked for, ties by name. A song with no tempo has no place
+ * among the tempos, so it goes last whichever way they run.
+ */
+export const sortSongs = (
+  entries: readonly Entry[],
+  order: SongOrder,
+  direction: Direction,
+): readonly Entry[] => {
+  const sign = direction === 'asc' ? 1 : -1
+  return [...entries].sort((a, b) => {
+    const untimed = Number(a.song.bpm === null) - Number(b.song.bpm === null)
+    if (order === 'bpm' && untimed !== 0) return untimed
+    return sign * ascending[order](a, b) || byName(a, b)
+  })
+}
 
 /** A tab something has been written into, rather than the empty staff every song starts with. */
 export const hasTab = (entry: Entry): boolean => scoreHasContent(entry.song.tab)
