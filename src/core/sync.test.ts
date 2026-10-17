@@ -6,6 +6,11 @@ import { isUnsynced } from './library.ts'
 
 const named = (title: string): Song => ({ ...emptySong(), title })
 
+const NOW = { at: 1_000, newId: () => 'copy' }
+
+const mergedOf = (library: Library, remote: readonly Synced[]): Library =>
+  merge(library, remote, NOW).library
+
 const entry = (id: string, updatedAt: number, title = id): Entry => ({
   id,
   song: named(title),
@@ -58,21 +63,21 @@ describe('sync', () => {
 
   it('comes back untouched when nothing remote is newer', () => {
     const library = shelf(entry('a', 5))
-    expect(merge(library, [live('a', 4, 'theirs')])).toBe(library)
-    expect(merge(library, [])).toBe(library)
+    expect(mergedOf(library, [live('a', 4, 'theirs')])).toBe(library)
+    expect(mergedOf(library, [])).toBe(library)
   })
 
   it('remembers a song as synced once the sheet holds this version of it', () => {
     const library = shelf(entry('a', 5))
-    const confirmed = merge(library, [live('a', 5, 'a')])
+    const confirmed = mergedOf(library, [live('a', 5, 'a')])
     expect(confirmed.songs[0].lastSynced).toEqual({ at: 5, song: named('a') })
     expect(isUnsynced(confirmed.songs[0])).toBe(false)
     // Already known to be synced, the same answer again changes nothing.
-    expect(merge(confirmed, [live('a', 5, 'a')])).toBe(confirmed)
+    expect(mergedOf(confirmed, [live('a', 5, 'a')])).toBe(confirmed)
   })
 
   it('remembers what it took from the sheet, and what arrived from it', () => {
-    const merged = merge(shelf(entry('a', 1)), [
+    const merged = mergedOf(shelf(entry('a', 1)), [
       live('a', 2, 'newer a'),
       live('b', 3, 'b'),
     ])
@@ -84,26 +89,28 @@ describe('sync', () => {
   })
 
   it('takes a newer copy of a song in the place it already has', () => {
-    const merged = merge(shelf(entry('a', 1), entry('b', 1)), [live('a', 2, 'newer a')])
+    const merged = mergedOf(shelf(entry('a', 1), entry('b', 1)), [
+      live('a', 2, 'newer a'),
+    ])
     expect(titles(merged)).toEqual(['newer a', 'b'])
     expect(merged.songs[0].updatedAt).toBe(2)
   })
 
   it('adds a song this device has never seen at the end', () => {
-    const merged = merge(shelf(entry('a', 1)), [live('z', 1)])
+    const merged = mergedOf(shelf(entry('a', 1)), [live('z', 1)])
     expect(titles(merged)).toEqual(['a', 'z'])
     expect(merged.open).toBe('a')
   })
 
   it('takes a song off the shelf that was deleted elsewhere, and leaves remembering it to the sheet', () => {
-    const merged = merge(shelf(entry('a', 1), entry('b', 1)), [gone('b', 2)])
+    const merged = mergedOf(shelf(entry('a', 1), entry('b', 1)), [gone('b', 2)])
     expect(titles(merged)).toEqual(['a'])
     expect(merged.removed).toEqual([])
   })
 
   it('changes nothing for a deletion of a song this device does not have', () => {
     const library = shelf(entry('a', 1))
-    expect(merge(library, [gone('z', 2), gone('y', 3, null)])).toBe(library)
+    expect(mergedOf(library, [gone('z', 2), gone('y', 3, null)])).toBe(library)
   })
 
   it('forgets a deletion here once the sheet has a newer one', () => {
@@ -111,12 +118,73 @@ describe('sync', () => {
       ...shelf(entry('a', 1)),
       removed: [{ id: 'b', at: 2, song: named('b') }],
     }
-    expect(merge(library, [gone('b', 3)]).removed).toEqual([])
+    expect(mergedOf(library, [gone('b', 3)]).removed).toEqual([])
+  })
+
+  // A song both sides last agreed on at 10, as this device and the sheet saw it.
+  const agreed = (id: string, here: string, at: number): Entry => ({
+    id,
+    song: named(here),
+    updatedAt: at,
+    lastSynced: { at: 10, song: named('agreed') },
+  })
+
+  it('takes a newer copy straight over a song not edited here since they agreed', () => {
+    const library = shelf(agreed('a', 'agreed', 10))
+    const result = merge(library, [live('a', 12, 'theirs')], NOW)
+    expect(result.library.songs.map((each) => each.song.title)).toEqual(['theirs'])
+    expect(result.conflicts).toEqual([])
+  })
+
+  it('keeps this version as a copy when both sides changed the song since they agreed', () => {
+    const library = shelf(agreed('a', 'mine', 11))
+    const result = merge(library, [live('a', 12, 'theirs')], NOW)
+    const [original, copy] = result.library.songs
+    expect(original).toMatchObject({ id: 'a', song: named('theirs'), updatedAt: 12 })
+    expect(original?.lastSynced?.at).toBe(12)
+    expect(copy?.id).toBe('copy')
+    expect(copy?.song.title).toMatch(/^mine \(conflict \d\d:\d\d\)$/)
+    expect(copy?.lastSynced).toBeNull()
+    expect(result.conflicts).toEqual(['mine'])
+  })
+
+  it('keeps no copy when both sides made the same change', () => {
+    const library = shelf(agreed('a', 'same', 11))
+    const result = merge(library, [live('a', 12, 'same')], NOW)
+    expect(result.library.songs).toHaveLength(1)
+    expect(result.conflicts).toEqual([])
+  })
+
+  it('makes a copy even when this device stamped its edit later', () => {
+    // The sheet changed at 12; this edit, made without seeing it, is stamped 20.
+    const result = merge(shelf(agreed('a', 'mine', 20)), [live('a', 12, 'theirs')], NOW)
+    expect(result.library.songs.map((each) => each.song.title)).toEqual([
+      'theirs',
+      expect.stringMatching(/^mine \(conflict/),
+    ])
+  })
+
+  it('brings back a song edited here that was deleted elsewhere since they agreed', () => {
+    const result = merge(shelf(agreed('a', 'mine', 11)), [gone('a', 12)], NOW)
+    const [kept] = result.library.songs
+    expect(kept?.song.title).toBe('mine')
+    expect(kept?.updatedAt).toBe(1_000)
+    // One not edited here goes the way it went elsewhere.
+    const plain = shelf(agreed('b', 'agreed', 10), entry('c', 1))
+    expect(
+      merge(plain, [gone('b', 12)], NOW).library.songs.map((each) => each.id),
+    ).toEqual(['c'])
+  })
+
+  it('goes by newest stamp for a song with no record of agreeing, as before', () => {
+    const library = shelf(entry('a', 5, 'mine'))
+    expect(mergedOf(library, [live('a', 6, 'theirs')]).songs[0].song.title).toBe('theirs')
+    expect(mergedOf(library, [live('a', 4, 'theirs')])).toBe(library)
   })
 
   it('keeps a song edited here after it was deleted elsewhere', () => {
     const library = shelf(entry('a', 1), entry('b', 3))
-    expect(merge(library, [gone('b', 2)])).toBe(library)
+    expect(mergedOf(library, [gone('b', 2)])).toBe(library)
   })
 
   it('does not bring back a song deleted here by an older copy', () => {
@@ -124,7 +192,7 @@ describe('sync', () => {
       ...shelf(entry('a', 1)),
       removed: [{ id: 'b', at: 2, song: named('b') }],
     }
-    expect(merge(library, [live('b', 1)])).toBe(library)
+    expect(mergedOf(library, [live('b', 1)])).toBe(library)
   })
 
   it('brings back a song deleted here when it was edited later elsewhere', () => {
@@ -132,19 +200,19 @@ describe('sync', () => {
       ...shelf(entry('a', 1)),
       removed: [{ id: 'b', at: 2, song: named('b') }],
     }
-    const merged = merge(library, [live('b', 3)])
+    const merged = mergedOf(library, [live('b', 3)])
     expect(titles(merged)).toEqual(['a', 'b'])
     expect(merged.removed).toEqual([])
   })
 
   it('opens another song when the open one was deleted elsewhere', () => {
     const library = { ...shelf(entry('a', 1), entry('b', 1)), open: 'b' }
-    expect(merge(library, [gone('b', 2)]).open).toBe('a')
+    expect(mergedOf(library, [gone('b', 2)]).open).toBe('a')
   })
 
   it('keeps the shelf rather than empty it when every song was deleted elsewhere', () => {
     const library = shelf(entry('a', 1))
-    expect(merge(library, [gone('a', 2)])).toBe(library)
+    expect(mergedOf(library, [gone('a', 2)])).toBe(library)
   })
 
   it('forgets the deletions a sync sent, and keeps one made while it was on its way', () => {

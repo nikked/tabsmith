@@ -713,8 +713,11 @@ Script web app in front of it (`apps-script/Code.gs`). Without it set up, nothin
 shelf lives in `localStorage` as above.
 
 One round trip does both directions. The app POSTs every song edited since its last sync and
-every deletion it knows of, so a sync on a weak connection stays small; the sheet keeps the newest record of each id and answers with all of them; the app runs the
-same newest-wins merge (`core/sync.ts`) on its side. Each song carries `updatedAt`, stamped when
+every deletion it knows of, so a sync on a weak connection stays small; the sheet keeps the newest record of each id and answers with all of them; the app merges them
+on its side (`core/sync.ts`). A song the sheet changed since `lastSynced` and this device did not
+is taken. One changed on both keeps the sheet's version, with this device's kept beside it as a
+conflict copy, "Title (conflict HH:MM)", so neither side's work is lost. A song with no
+`lastSynced` goes by newest stamp, as every song once did. Each song carries `updatedAt`, stamped when
 an edit reaches the shelf, and a deleted song leaves a tombstone in `removed` only until a sync
 has carried it to the sheet. From then the sheet's inactive row is what keeps a device that
 still has the old copy from bringing it back, and a deletion the app pulls only takes a song off
@@ -824,6 +827,7 @@ the body is monospace, and nudging a chord a space over is easy once you can see
 src/
   core/
     model.ts      types, emptySong, emptyScore, emptyBar, emptyColumn
+    same.ts       whether two values hold the same data
     edit.ts       Action, apply, step — every state transition and the undo timeline
     keymap.ts     keyToAction
     render.ts     renderScore, songParts and their helpers
