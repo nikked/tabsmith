@@ -1,16 +1,18 @@
 import { useState, type PointerEvent } from 'react'
 import { z } from 'zod'
 import {
-  byEdited,
-  byTitle,
   clockOf,
+  DEFAULT_DIRECTION,
   hasStructure,
   hasTab,
   hasTodo,
   openEntry,
+  sortSongs,
   titleOf,
+  type Direction,
   type Entry,
   type Library,
+  type SongOrder,
 } from '../core/library.ts'
 import {
   activeBandTodos,
@@ -26,6 +28,24 @@ import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Checklist } from './Checklist.tsx'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
+
+/** An arrow up and one down side by side, the one in force drawn full and the other faint. */
+const DirectionIcon = ({ direction }: { readonly direction: Direction }) => (
+  <svg
+    viewBox="0 0 16 16"
+    width="14"
+    height="14"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 14V2M2 5l3-3 3 3" opacity={direction === 'asc' ? 1 : 0.35} />
+    <path d="M11 2v12M8 11l3 3 3-3" opacity={direction === 'desc' ? 1 : 0.35} />
+  </svg>
+)
 
 /** A funnel, the usual mark for narrowing a list. */
 const FunnelIcon = () => (
@@ -148,10 +168,15 @@ export function SongsPage(props: Props) {
     const todo = bandTodos[index]
     if (todo !== undefined) props.onBandEdit((current, at) => edit(current, todo.id, at))
   }
-  const [order, setOrder] = useState<'name' | 'edited'>('name')
+  const [order, setOrder] = useState<SongOrder>('name')
+  const [direction, setDirection] = useState<Direction>(DEFAULT_DIRECTION.name)
+  const orderBy = (next: SongOrder) => {
+    setOrder(next)
+    setDirection(DEFAULT_DIRECTION[next])
+  }
   const [drag, setDrag] = useState<Drag | null>(null)
 
-  const sorted = order === 'name' ? byTitle(library.songs) : byEdited(library.songs)
+  const sorted = sortSongs(library.songs, order, direction)
   const [only, setOnly] = useState(rememberedFilters)
   const shown = sorted.filter(
     (entry) =>
@@ -394,10 +419,20 @@ export function SongsPage(props: Props) {
               options={[
                 { value: 'name', label: 'Name' },
                 { value: 'edited', label: 'Last edited' },
+                { value: 'bpm', label: 'BPM' },
               ]}
               value={order}
-              onChange={setOrder}
+              onChange={orderBy}
             />
+            <button
+              type="button"
+              className="song-direction"
+              aria-label={direction === 'asc' ? 'Ascending' : 'Descending'}
+              title={direction === 'asc' ? 'Ascending' : 'Descending'}
+              onClick={() => setDirection(direction === 'asc' ? 'desc' : 'asc')}
+            >
+              <DirectionIcon direction={direction} />
+            </button>
           </div>
         </div>
         {shown.length === 0 ? (

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   addEntry,
-  byEdited,
   emptyBand,
   byTitle,
+  DEFAULT_DIRECTION,
+  sortSongs,
+  type Direction,
   hasStructure,
   hasTab,
   hasTodo,
@@ -123,13 +125,42 @@ describe('library', () => {
     expect(hasTodo(entry('b'))).toBe(false)
   })
 
-  it('puts the most recently edited song first', () => {
+  it('sorts by last edit either way, the newest first by default', () => {
     const songs = [
       { ...entry('a'), updatedAt: 1 },
       { ...entry('b'), updatedAt: 3 },
       { ...entry('c'), updatedAt: 2 },
     ]
-    expect(byEdited(songs).map((each) => each.id)).toEqual(['b', 'c', 'a'])
+    const ids = (direction: Direction) =>
+      sortSongs(songs, 'edited', direction).map((each) => each.id)
+    expect(ids(DEFAULT_DIRECTION.edited)).toEqual(['b', 'c', 'a'])
+    expect(ids('asc')).toEqual(['a', 'c', 'b'])
+  })
+
+  it('sorts by name either way', () => {
+    const songs = [entry('b', 'Banana'), entry('a', 'apple'), entry('c', 'Cherry')]
+    expect(sortSongs(songs, 'name', 'asc').map(titleOf)).toEqual([
+      'apple',
+      'Banana',
+      'Cherry',
+    ])
+    expect(sortSongs(songs, 'name', 'desc').map(titleOf)).toEqual([
+      'Cherry',
+      'Banana',
+      'apple',
+    ])
+  })
+
+  it('sorts by tempo either way, a song with none last both ways, ties by name', () => {
+    const at = (id: string, bpm: number | null): Entry => ({
+      ...entry(id),
+      song: { ...named(id), bpm },
+    })
+    const songs = [at('none', null), at('fast', 140), at('b-slow', 70), at('a-slow', 70)]
+    const ids = (direction: Direction) =>
+      sortSongs(songs, 'bpm', direction).map((each) => each.id)
+    expect(ids('asc')).toEqual(['a-slow', 'b-slow', 'fast', 'none'])
+    expect(ids('desc')).toEqual(['fast', 'a-slow', 'b-slow', 'none'])
   })
 
   it('renames one song and stamps only that one', () => {
