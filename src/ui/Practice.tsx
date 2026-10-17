@@ -17,7 +17,7 @@ import {
   trimScore,
   type Part,
 } from '../core/render.ts'
-import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
+import { Menu, MenuChecks } from './Menu.tsx'
 import {
   HIGHEST_TARGET,
   HOLD,
@@ -398,17 +398,6 @@ export function Practice({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onLeave, calibrating])
 
-  /** A menu item to the song either side, greyed out at the end of the setlist. */
-  const stepTo = (target: string | null, icon: string, label: string): MenuItem => ({
-    icon,
-    label,
-    keepsOpen: true,
-    disabled: target === null,
-    onSelect: () => {
-      if (target !== null) onStep?.(target)
-    },
-  })
-
   const choose = (next: number) => {
     const size = STEPS[next]
     if (size !== undefined) remember({ size })
@@ -468,22 +457,41 @@ export function Practice({
             line; anywhere wider the menu leaves those to the bar. */}
         <div className="bar-more">
           <Menu label="⋯" title="Perform options">
-            {/* The setlist being played at the top, then two panels: how the song
-                is shown, and the sound level, which is the microphone's. */}
+            {/* Three panels: the setlist being played, how the song is shown,
+                and the sound level, which is the microphone's. */}
             {place !== null && onStep !== undefined && (
-              <div className="menu-section phone-only">
+              <div className="menu-section menu-panel phone-only" aria-label="Setlist">
                 <p className="menu-heading setlist-heading">
                   {place.setlist.name}{' '}
                   <span className="menu-count">
                     {place.index + 1}/{place.count}
                   </span>
                 </p>
-                <MenuItems
-                  items={[
-                    stepTo(place.previous, '‹', 'Previous song'),
-                    stepTo(place.next, '›', 'Next song'),
-                  ]}
-                />
+                <div
+                  className="menu-row"
+                  role="group"
+                  aria-label="Step through the setlist"
+                >
+                  {(
+                    [
+                      [place.previous, '‹', 'Previous song'],
+                      [place.next, '›', 'Next song'],
+                    ] as const
+                  ).map(([target, icon, label]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      aria-label={label}
+                      title={label}
+                      disabled={target === null}
+                      onClick={() => {
+                        if (target !== null) onStep?.(target)
+                      }}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="menu-section menu-panel" aria-label="View">
