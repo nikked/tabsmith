@@ -1,34 +1,6 @@
-/* Catppuccin: Latte in the light, Macchiato in the dark. The names on the right
-   are the palette's, so a token can be re-picked without guessing at a hex. */
+/* Catppuccin Macchiato, the only theme. The names on the right are the
+   palette's, so a token can be re-picked without guessing at a hex. */
 :root {
-  --bg: #eff1f5; /* base */
-  --raised: #e6e9ef; /* mantle */
-  --fg: #4c4f69; /* text */
-  --muted: #8c8fa1; /* overlay1 */
-  --line: #bcc0cc; /* surface1 */
-  --cursor: #df8e1d; /* yellow */
-  --on-cursor: #eff1f5; /* base */
-  --alert: #d20f39; /* red */
-  color-scheme: light dark;
-}
-
-/* The system's choice unless one was made in the menu, which sets data-theme.
-   The dark palette is written out twice because a media query and an
-   attribute cannot share one rule. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #24273a; /* base */
-    --raised: #1e2030; /* mantle */
-    --fg: #cad3f5; /* text */
-    --muted: #8087a2; /* overlay1 */
-    --line: #494d64; /* surface1 */
-    --cursor: #eed49f; /* yellow */
-    --on-cursor: #24273a; /* base */
-    --alert: #ed8796; /* red */
-  }
-}
-
-:root[data-theme='dark'] {
   --bg: #24273a; /* base */
   --raised: #1e2030; /* mantle */
   --fg: #cad3f5; /* text */
@@ -37,11 +9,22 @@
   --cursor: #eed49f; /* yellow */
   --on-cursor: #24273a; /* base */
   --alert: #ed8796; /* red */
+  /* Accents, paired into the lander's gradients; text on them is --on-accent. */
+  --peach: #f5a97f; /* peach */
+  --pink: #f5bde6; /* pink */
+  --maroon: #ee99a0; /* maroon */
+  --mauve: #c6a0f6; /* mauve */
+  --blue: #8aadf4; /* blue */
+  --sapphire: #7dc4e4; /* sapphire */
+  --green: #a6da95; /* green */
+  --sky: #91d7e3; /* sky */
+  --overlay0: #6e738d; /* overlay0 */
+  --overlay2: #939ab7; /* overlay2 */
+  --lavender: #b7bdf8; /* lavender */
+  --teal: #8bd5ca; /* teal */
+  --yellow: #eed49f; /* yellow */
+  --on-accent: #181926; /* crust */
   color-scheme: dark;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
 }
 
 body {
