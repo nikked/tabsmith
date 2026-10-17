@@ -26,9 +26,12 @@ says. Where the tab goes is a question about the finished page, not about editin
 the thing you are working on to answer it would be a strange way to ask. The chart is the part
 you read on stage; the tab is there for the parts you have to look up.
 
-The header carries the logo, the **Home | Perform | Edit** toggle (§4b, §5) and, at the right,
-the sync button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is
-reached for while writing.
+The header carries the **Home | Perform | Edit** toggle (§4b, §5) and, at the right, the sync
+button and, on Home, a cog for the settings (§5). Nothing in it is loud: none of it is reached
+for while writing. It carries no name or logo: the browser tab and the home-screen icon already
+say which app this is. On Home, with nothing else in it, it has no row of its own: on a wide screen
+the band's boxes start at the top beside its two buttons, and narrower than that the two buttons
+sit at the right of the Setlists heading instead, the same buttons drawn in a second place.
 
 A first visit's shelf starts with a demo song already written, because an empty editor and
 nothing saved to restore says nothing about what any of this is for, and the fastest way to say
@@ -48,11 +51,7 @@ file has to keep: a song with that title never goes to the sheet (§5), so every
 does not add another copy there. Renaming it is how the demo becomes one of your songs.
 
 The logo is a bar of tab: a bracketed bar with one lit cell, the editing cursor sitting where a
-note would. It sits with the name in a single bordered chip so the app announces itself as one
-object rather than as loose text in the header, and it stays at the volume of the
-buttons beside it, because the song's title is the biggest thing on the page and the app's name
-is not. The chip renders the favicon file itself, so the logo and the tab icon cannot drift
-apart.
+note would. It is the favicon and the home-screen icon.
 
 The editor is set like the page it prints rather than like a form. The song's title is the
 largest thing on it, section names are headings, and the fields have no boxes: an underline
@@ -473,6 +472,10 @@ A link or decoration key on a cell that holds no fret — empty or muted — is 
 returns the state unchanged. Modifiers are always typed after the fret, so `9` then `h` gives
 `h9`.
 
+A song opened in Edit, from Perform or from the sidebar, puts the caret in its first section, the
+intro or the first verse, not in the grid: the grid draws its focus ring and scrolls to its cursor
+only once it is being typed in, so moving between Perform and Edit leaves the page where it was.
+
 Clicking a grid cell sets the cursor. Under each column sits a text field for its chord name,
 reached by `↓` from the lowest string or by clicking it, and left by `↑` or `↓`.
 Those are the only mouse interactions: no drag, no selection.
@@ -556,7 +559,7 @@ with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`
 rather than with the song: a phone and an iPad want different sizes for the same song, so they
 stay off the sheet. A song with no size chosen is fitted to the screen.
 
-**Sound level** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
+**Sound level, dB** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
 band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
 microphone closes while Perform is left or the page is hidden and opens again on coming back,
@@ -570,12 +573,14 @@ the last 3 seconds against a target set with − and + in the menu, 70 by defaul
 target only means something at a set distance — a voice reads about 6 dB less each time the
 distance doubles — so the device stays in one place on the stand. Tapping the chip starts the
 average again. The palette has no green and nothing in the app is loud, so a fine level is
-muted or plain and only too much takes colour.
+muted or plain and only too much takes colour. Until the first reading arrives the chip shows a struck-through microphone, since the
+microphone is what it is waiting on; tapping it starts the audio, which a browser holds back until
+the page is touched.
 
 The browser gives samples relative to the microphone's full scale, not sound pressure, so the
 level is A-weighted by three IIR sections (`aWeighting` in `core/level.ts`, by the bilinear
 transform of IEC 61672-1's poles), averaged as energy, and moved into dB(A) by an offset kept per
-device. **Calibrate…** asks what a sound level meter beside the device reads now, such as the
+device. **Calibrate mic** asks what a sound level meter beside the device reads now, such as the
 NIOSH SLM app, and keeps the difference. Asking for the microphone without echo cancellation is
 what turns Safari's automatic gain off: WebKit ignores `autoGainControl`, and with the gain on a
 loud band and a quiet room would read close to each other. Before building this a prototype was
@@ -663,7 +668,7 @@ which is for writing. Copy asks for a name, then the copy joins the shelf and op
 **Home** is the page for arranging rather than writing (`SongsPage.tsx`). It has no view toggle
 in the header and marks no song as the open one: a song picked there opens in Perform, and that is
 the way out. It holds the band's notes and
-todo list at the top, side by side on a wide screen and the notes first above the list on a
+todo list at the top, side by side from an iPad held upright and the notes first above the list on a
 narrower one, then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under

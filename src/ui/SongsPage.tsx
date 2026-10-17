@@ -1,4 +1,4 @@
-import { useState, type PointerEvent } from 'react'
+import { useState, type PointerEvent, type ReactNode } from 'react'
 import { z } from 'zod'
 import {
   clockOf,
@@ -83,6 +83,8 @@ type Props = {
   readonly library: Library
   /** The setlist it was opened from, or null from All songs. */
   readonly onOpen: (song: string, setlist: string | null) => void
+  /** Sync and settings, shown in the Setlists heading where Home has no header row. */
+  readonly controls: ReactNode
   /** Straight to Edit, where a song's todos are ticked off. */
   readonly onEdit: (song: string) => void
   readonly onRename: (song: string) => void
@@ -331,6 +333,7 @@ export function SongsPage(props: Props) {
             <PlusIcon />
             New
           </button>
+          <div className="page-controls">{props.controls}</div>
         </div>
         {activeSetlists(library).length === 0 && (
           <p className="panel-empty">
