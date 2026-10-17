@@ -63,7 +63,6 @@ import { Shortcuts } from './Shortcuts.tsx'
 import { SongTree } from './SongList.tsx'
 import { SongsPage } from './SongsPage.tsx'
 import { SettingsDialog } from './Settings.tsx'
-import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 import { Toggle } from './Toggle.tsx'
 import { loadMode, saveMode, type Mode } from '../screen.ts'
@@ -165,7 +164,6 @@ export default function App() {
   const guide = useRef<HTMLDialogElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
-  const syncDialog = useRef<HTMLDialogElement>(null)
   const settingsDialog = useRef<HTMLDialogElement>(null)
 
   // The browser tab is named after the band notes' first # heading, so a
@@ -585,7 +583,7 @@ export default function App() {
                 : 'Sync now'
         }
         onClick={() =>
-          syncWith === null ? show(syncDialog.current) : void sync(syncWith)
+          syncWith === null ? show(settingsDialog.current) : void sync(syncWith)
         }
       >
         <SyncIcon />
@@ -844,16 +842,9 @@ export default function App() {
       )}
       <SettingsDialog
         dialog={settingsDialog}
-        onBackUp={() => void backUp()}
-        onSync={() => {
-          settingsDialog.current?.close()
-          show(syncDialog.current)
-        }}
-      />
-      <Sync
-        dialog={syncDialog}
         syncWith={syncWith}
         syncNote={syncNote}
+        onBackUp={() => void backUp()}
         onConnect={connect}
         onSync={() => {
           if (syncWith !== null) void sync(syncWith)

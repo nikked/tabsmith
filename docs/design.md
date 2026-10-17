@@ -853,7 +853,7 @@ it from triggering itself. The answer is merged into the shelf and editor as the
 lands, so typing during a sync is kept; the editor is reloaded only when the open song was the
 one replaced or deleted.
 
-The URL and a token are typed into the sync dialog (the sync button, or the cog > Database sync) on each device
+The URL and a token are typed into Database sync in the settings dialog (the cog, or the sync button before sync is set up) on each device
 and kept in `localStorage` under `tabsmith.sync`. They are not built into the site: it is
 public, and a URL in its bundle would let anyone read and overwrite every song. The script
 refuses any request without the token. The app calls it a database and never names Google
@@ -942,7 +942,7 @@ src/
     Menu.tsx      a button and the popover it opens
     Toggle.tsx    a choice of two or three, with a thumb that slides to the one in force
     Paste.tsx     the Paste… dialog
-    Sync.tsx      the Database sync dialog
+    Sync.tsx      Database sync, a section of the settings dialog
     Settings.tsx  the settings dialog: backup and sync
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens

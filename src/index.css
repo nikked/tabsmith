@@ -1315,7 +1315,6 @@ button {
 
 .guide::backdrop,
 .paste::backdrop,
-.sync-dialog::backdrop,
 .settings-dialog::backdrop,
 .prompt::backdrop {
   background: rgb(0 0 0 / 55%);
@@ -1378,7 +1377,6 @@ button {
   color: var(--alert);
 }
 
-.sync-dialog,
 .settings-dialog,
 /* The body's font, set again for a prompt opened inside Perform, which would
    otherwise take the song's face and size: a field under 16px makes iOS zoom. */
@@ -1398,10 +1396,60 @@ button {
   border-radius: 6px;
 }
 
-.sync-dialog h2,
 .settings-dialog h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.9rem;
   font-size: 1.1rem;
+  color: var(--mauve);
+}
+
+/* Closing is a corner ✕ rather than a button of its own beside the actions. */
+.dialog-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  border: none;
+  border-radius: 8px;
+}
+
+.dialog-close:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+/* An action tinted with its own colour, the background barely there. */
+.tint-green,
+.tint-blue,
+.tint-red {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--raised));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 8px;
+}
+
+.tint-green:hover,
+.tint-blue:hover,
+.tint-red:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--raised));
+}
+
+.tint-green {
+  --accent: var(--green);
+}
+
+.tint-blue {
+  --accent: var(--blue);
+}
+
+/* Undoing something, such as cutting the link to the sheet. */
+.tint-red {
+  --accent: var(--alert);
 }
 
 /* Hung off its setlist's name by a guide line, like a folder's contents: enough
@@ -1964,19 +2012,15 @@ header .menu-open:has(+ .menu:popover-open) {
   gap: 0.5rem;
 }
 
-.sync-dialog form,
-.settings-dialog form {
-  margin-top: 1.5rem;
-}
-
+/* A section of Settings, under a small heading of its own. */
 .settings-dialog h3 {
-  margin: 1.25rem 0 0.4rem;
+  margin: 1.25rem 0 0.5rem;
   font-size: 0.8rem;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--muted);
 }
 
-.sync-dialog form.sync {
+.settings-dialog form.sync {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1984,7 +2028,7 @@ header .menu-open:has(+ .menu:popover-open) {
   margin-top: 0;
 }
 
-.sync-dialog .sync input {
+.settings-dialog .sync input {
   font: inherit;
   box-sizing: border-box;
   width: 100%;
@@ -1995,7 +2039,7 @@ header .menu-open:has(+ .menu:popover-open) {
   border-radius: 4px;
 }
 
-.sync-dialog .sync-note {
+.settings-dialog .sync-note {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
