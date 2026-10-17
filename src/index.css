@@ -716,6 +716,14 @@ h1 img {
   color: var(--muted);
 }
 
+/* A phone has no width to spare, and the patches are glanced at, not read
+   from the stand, so the panel shrinks for it. Its insides are in ems. */
+@media (max-width: 40rem) {
+  .synth-list {
+    font-size: 0.8rem;
+  }
+}
+
 /* Close under the title in the bar, past the gap the song's parts keep apart. */
 .practice-song .facts {
   margin-top: -0.6em;
