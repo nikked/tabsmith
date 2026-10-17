@@ -1,5 +1,6 @@
 import {
   repair,
+  type BandIdeas,
   type BandTodo,
   type Entry,
   type Library,
@@ -168,3 +169,9 @@ export const mergeTodos = (library: Library, remote: readonly BandTodo[]): Libra
   const todos = newestOf(library.todos, remote)
   return todos === library.todos ? library : { ...library, todos }
 }
+
+/** The newer of the two texts, whole; a tie or nothing sent keeps what is here. */
+export const mergeIdeas = (library: Library, remote: BandIdeas | null): Library =>
+  remote === null || remote.updatedAt <= library.ideas.updatedAt
+    ? library
+    : { ...library, ideas: remote }

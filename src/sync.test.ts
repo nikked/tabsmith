@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import type { Library } from './core/library.ts'
 import { emptySong } from './core/model.ts'
 import { DEMO_TITLE } from './demo.ts'
-import { fromWire, setlistsToWire, todosToWire, toSheet, toWire } from './sync.ts'
+import {
+  bandToWire,
+  fromWire,
+  setlistsToWire,
+  todosToWire,
+  toSheet,
+  toWire,
+} from './sync.ts'
 
 const library: Library = {
   songs: [{ id: 'a', song: { ...emptySong(), title: 'Slow Machine' }, updatedAt: 1 }],
@@ -16,7 +23,7 @@ const library: Library = {
     { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
     { id: 't2', text: 'Book the room', done: false, active: false, updatedAt: 6 },
   ],
-  ideas: { text: '', updatedAt: 0 },
+  ideas: { text: 'Learn a cover for the encore', updatedAt: 7 },
 }
 
 describe('sync wire format', () => {
@@ -32,6 +39,7 @@ describe('sync wire format', () => {
       records: sent,
       setlists: setlistsToWire(library),
       todos: todosToWire(library),
+      band: bandToWire(library),
     })
     expect(pulled).toEqual({
       ok: true,
@@ -41,6 +49,7 @@ describe('sync wire format', () => {
       ],
       setlists: library.setlists,
       todos: library.todos,
+      ideas: library.ideas,
     })
   })
 
@@ -58,7 +67,7 @@ describe('sync wire format', () => {
     expect(sent.map(({ id }) => id)).toEqual(['mine'])
   })
 
-  it('reads a sheet from before songs were packed, deleted songs kept, setlists or todos existed', async () => {
+  it('reads a sheet from before songs were packed, deleted songs kept, setlists, todos or band fields existed', async () => {
     const [kept] = toWire(library)
     const pulled = await fromWire({
       ok: true,
@@ -75,6 +84,7 @@ describe('sync wire format', () => {
       ],
       setlists: [],
       todos: [],
+      ideas: null,
     })
   })
 
@@ -97,6 +107,10 @@ describe('sync wire format', () => {
         { id: 'loose', at: 1, text: 'Strings', done: 'yes', active: true },
         { id: 'room', at: 2, text: 'Book the room', done: false, active: true },
       ],
+      band: [
+        { id: 'colour', at: 3, text: 'Not a field the app knows' },
+        { id: 'ideas', at: 'later', text: 'Broken' },
+      ],
     })
     expect(pulled).toEqual({
       ok: true,
@@ -110,6 +124,7 @@ describe('sync wire format', () => {
       todos: [
         { id: 'room', text: 'Book the room', done: false, active: true, updatedAt: 2 },
       ],
+      ideas: null,
     })
   })
 
