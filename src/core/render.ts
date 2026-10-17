@@ -9,7 +9,9 @@ import type {
   Section,
   Song,
   Spacing,
+  Synth,
 } from './model.ts'
+import { synthIsBlank } from './synths.ts'
 
 const PAD = '-'
 
@@ -268,6 +270,7 @@ export const trimScore = (score: Score): Score => ({
  */
 export type Part =
   | { readonly kind: 'facts'; readonly facts: readonly string[] }
+  | { readonly kind: 'synths'; readonly synths: readonly Synth[] }
   | { readonly kind: 'section'; readonly section: Section }
   | {
       readonly kind: 'system'
@@ -286,6 +289,8 @@ const isBlank = (part: Part): boolean => {
       return false
     case 'facts':
       return part.facts.length === 0
+    case 'synths':
+      return part.synths.length === 0
   }
 }
 
@@ -313,6 +318,8 @@ export const songParts = (song: Song): readonly Part[] => {
       kind: 'facts',
       facts: [...songFacts(song), ...(song.note === '' ? [] : [song.note])],
     },
+    // Patches are set before counting in, so they come straight after the facts.
+    { kind: 'synths', synths: song.synths.filter((synth) => !synthIsBlank(synth)) },
   ]
   const chart = song.chart.map((section): Part => ({
     kind: 'section',

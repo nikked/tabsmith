@@ -439,6 +439,17 @@ describe('songParts', () => {
     expect(kinds(song({ title: 'Endless Skies' }))[0]).toBe('section')
   })
 
+  it('puts the synths straight after the facts, leaving out blank ones', () => {
+    const talos = { name: 'iRig', sound: 'TALOS', dials: [], knobs: ['Drive'] }
+    const blank = { name: '', sound: ' ', dials: [''], knobs: [] }
+    expect(songParts(song({ bpm: 78, synths: [talos, blank] })).slice(0, 2)).toEqual([
+      { kind: 'facts', facts: ['78 bpm'] },
+      { kind: 'synths', synths: [talos] },
+    ])
+    expect(kinds(song({ synths: [blank] }))).not.toContain('synths')
+    expect(kinds(song({}))).not.toContain('synths')
+  })
+
   it('passes a section on as typed, spacing and all', () => {
     const verse = {
       name: 'Verse 1',

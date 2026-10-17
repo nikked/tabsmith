@@ -11,6 +11,7 @@ import {
 } from '../core/render.ts'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { FIFTHS, notation } from '../core/notation.ts'
+import { synthSummary } from '../core/synths.ts'
 import { NotedLines } from './NotedLines.tsx'
 import { Notation } from './Notation.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -130,6 +131,37 @@ const partView =
   (tab: Score, key: Key | null, spacing: Spacing, columns: number, width: number) =>
   (part: Part, index: number) => {
     switch (part.kind) {
+      case 'synths':
+        return (
+          <dl key={index} className="synth-list">
+            {part.synths.map((synth, i) => {
+              const { name, sound, dials, knobs } = synthSummary(synth)
+              return (
+                <Fragment key={i}>
+                  <dt>
+                    {/* Both always there, even blank: each is a column of the panel. */}
+                    <span className={name === '' ? undefined : 'synth-name'}>{name}</span>
+                    <span className="synth-sound">{sound}</span>
+                  </dt>
+                  <dd>
+                    {[dials, knobs]
+                      .filter((group) => group.length > 0)
+                      .map((group) => (
+                        <span key={group[0]?.label} className="synth-group">
+                          {group.map((control) => (
+                            <span key={control.label} className="synth-setting">
+                              <span className="synth-label">{control.label}</span>{' '}
+                              {control.value}
+                            </span>
+                          ))}
+                        </span>
+                      ))}
+                  </dd>
+                </Fragment>
+              )
+            })}
+          </dl>
+        )
       case 'facts':
         return (
           <p key={index} className="facts">
