@@ -468,28 +468,15 @@ export function Practice({
             line; anywhere wider the menu leaves those to the bar. */}
         <div className="bar-more">
           <Menu label="⋯" title="Perform options">
-            <div className="menu-row phone-only" role="group" aria-label="Text size">
-              <button
-                type="button"
-                aria-label="Smaller text"
-                disabled={step === 0}
-                onClick={() => choose(step - 1)}
-              >
-                A−
-              </button>
-              <button
-                type="button"
-                aria-label="Bigger text"
-                disabled={step === STEPS.length - 1}
-                onClick={() => choose(step + 1)}
-              >
-                A+
-              </button>
-            </div>
+            {/* The setlist being played at the top, then two panels: how the song
+                is shown, and the sound level, which is the microphone's. */}
             {place !== null && onStep !== undefined && (
-              <div className="phone-only">
-                <p className="menu-label">
-                  {place.setlist.name} {place.index + 1}/{place.count}
+              <div className="menu-section phone-only">
+                <p className="menu-heading setlist-heading">
+                  {place.setlist.name}{' '}
+                  <span className="menu-count">
+                    {place.index + 1}/{place.count}
+                  </span>
                 </p>
                 <MenuItems
                   items={[
@@ -499,105 +486,128 @@ export function Practice({
                 />
               </div>
             )}
-            <MenuChecks
-              items={[
-                {
-                  id: 'synths',
-                  label: 'Show synth controls',
-                  checked: showSynths,
-                  onToggle: toggleSynths,
-                },
-                {
-                  id: 'sound',
-                  label: 'Sound level, dB',
-                  checked: meter.on,
-                  onToggle: toggleListening,
-                },
-              ]}
-            />
-            {micTrouble !== null && (
-              <p className="menu-label">
-                {micTrouble === 'blocked'
-                  ? 'Microphone blocked in Settings'
-                  : 'No microphone to listen with'}
-              </p>
-            )}
-            {meter.on && (
-              <>
-                <div className="menu-toggle">
-                  <Toggle
-                    small
-                    label="Measure"
-                    options={[
-                      { value: 'room', label: 'Room', title: 'Average and dose' },
-                      { value: 'voice', label: 'Voice', title: `Loudest of ${HOLD} s` },
+            <div className="menu-section menu-panel" aria-label="View">
+              <div className="menu-row phone-only" role="group" aria-label="Text size">
+                <button
+                  type="button"
+                  aria-label="Smaller text"
+                  disabled={step === 0}
+                  onClick={() => choose(step - 1)}
+                >
+                  A−
+                </button>
+                <button
+                  type="button"
+                  aria-label="Bigger text"
+                  disabled={step === STEPS.length - 1}
+                  onClick={() => choose(step + 1)}
+                >
+                  A+
+                </button>
+              </div>
+              {/* The bar has its own Tab or Notation toggle until a tablet folds it in. */}
+              {hasTab && (
+                <div className="compact-only">
+                  <MenuChecks
+                    items={[
+                      {
+                        id: 'notation',
+                        label: 'Notation',
+                        checked: asNotation,
+                        onToggle: toggleNotation,
+                      },
                     ]}
-                    value={meter.mode}
-                    onChange={(mode) => changeMeter({ mode })}
                   />
                 </div>
-                {meter.mode === 'voice' && (
-                  <>
-                    <p className="menu-label">Voice target, dB(A)</p>
-                    <div className="menu-row" role="group" aria-label="Voice target">
-                      <button
-                        type="button"
-                        aria-label="Lower target"
-                        disabled={meter.target <= LOWEST_TARGET}
-                        onClick={() => changeMeter({ target: meter.target - 1 })}
-                      >
-                        −
-                      </button>
-                      <span className="menu-value">{meter.target}</span>
-                      <button
-                        type="button"
-                        aria-label="Higher target"
-                        disabled={meter.target >= HIGHEST_TARGET}
-                        onClick={() => changeMeter({ target: meter.target + 1 })}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </>
-                )}
-                <MenuItems
-                  items={[
-                    {
-                      label:
-                        meter.offset === null ? 'Calibrate mic' : 'Calibrate mic again',
-                      onSelect: () => setCalibrating(true),
-                    },
-                  ]}
-                />
-              </>
-            )}
-            {/* The bar has its own Tab or Notation toggle until a tablet folds it in. */}
-            {hasTab && (
-              <div className="compact-only">
-                <MenuChecks
-                  items={[
-                    {
-                      id: 'notation',
-                      label: 'Notation',
-                      checked: asNotation,
-                      onToggle: toggleNotation,
-                    },
-                  ]}
-                />
-              </div>
-            )}
-            {hasTab && !asNotation && (
+              )}
               <MenuChecks
                 items={[
+                  ...(hasTab && !asNotation
+                    ? [
+                        {
+                          id: 'dense',
+                          label: 'Dense tab',
+                          checked: dense,
+                          onToggle: toggleDense,
+                        },
+                      ]
+                    : []),
                   {
-                    id: 'dense',
-                    label: 'Dense tab',
-                    checked: dense,
-                    onToggle: toggleDense,
+                    id: 'synths',
+                    label: 'Show synth controls',
+                    checked: showSynths,
+                    onToggle: toggleSynths,
                   },
                 ]}
               />
-            )}
+            </div>
+            <div className="menu-section menu-panel" aria-label="Sound level">
+              <MenuChecks
+                items={[
+                  {
+                    id: 'sound',
+                    label: 'Sound level, dB',
+                    checked: meter.on,
+                    onToggle: toggleListening,
+                  },
+                ]}
+              />
+              {micTrouble !== null && (
+                <p className="menu-label">
+                  {micTrouble === 'blocked'
+                    ? 'Microphone blocked in Settings'
+                    : 'No microphone to listen with'}
+                </p>
+              )}
+              {meter.on && (
+                <>
+                  <div className="menu-toggle">
+                    <Toggle
+                      small
+                      label="Measure"
+                      options={[
+                        { value: 'room', label: 'Room', title: 'Average and dose' },
+                        { value: 'voice', label: 'Voice', title: `Loudest of ${HOLD} s` },
+                      ]}
+                      value={meter.mode}
+                      onChange={(mode) => changeMeter({ mode })}
+                    />
+                  </div>
+                  {meter.mode === 'voice' && (
+                    <>
+                      <p className="menu-label">Voice target, dB(A)</p>
+                      <div className="menu-row" role="group" aria-label="Voice target">
+                        <button
+                          type="button"
+                          aria-label="Lower target"
+                          disabled={meter.target <= LOWEST_TARGET}
+                          onClick={() => changeMeter({ target: meter.target - 1 })}
+                        >
+                          −
+                        </button>
+                        <span className="menu-value">{meter.target}</span>
+                        <button
+                          type="button"
+                          aria-label="Higher target"
+                          disabled={meter.target >= HIGHEST_TARGET}
+                          onClick={() => changeMeter({ target: meter.target + 1 })}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="menu-action tint-blue"
+                    data-closes-menu
+                    onClick={() => setCalibrating(true)}
+                  >
+                    {meter.offset === null ? 'Calibrate mic' : 'Calibrate mic again'}
+                  </button>
+                </>
+              )}
+            </div>
           </Menu>
         </div>
         {/* The same notes read either way; a song with no tab has neither. */}
