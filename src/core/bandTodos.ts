@@ -1,4 +1,4 @@
-import type { BandTodo, Library } from './library.ts'
+import type { Band, BandTodo, Library } from './library.ts'
 
 /** The list as it is shown: what is left once cleared and removed ones go. */
 export const activeBandTodos = (library: Library): readonly BandTodo[] =>
@@ -40,7 +40,12 @@ export const clearDoneBandTodos = (library: Library, at: number): Library => ({
 })
 
 /** Stamped as a whole on every change, the way a song is. */
-export const setBandIdeas = (library: Library, text: string, at: number): Library => ({
+export const setBandField = (
+  library: Library,
+  field: keyof Band,
+  text: string,
+  at: number,
+): Library => ({
   ...library,
-  ideas: { text, updatedAt: at },
+  band: { ...library.band, [field]: { text, updatedAt: at } },
 })

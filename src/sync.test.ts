@@ -23,7 +23,10 @@ const library: Library = {
     { id: 't1', text: 'Buy strings', done: true, active: true, updatedAt: 5 },
     { id: 't2', text: 'Book the room', done: false, active: false, updatedAt: 6 },
   ],
-  ideas: { text: 'Learn a cover for the encore', updatedAt: 7 },
+  band: {
+    name: { text: 'Fättig', updatedAt: 8 },
+    ideas: { text: 'Learn a cover for the encore', updatedAt: 7 },
+  },
 }
 
 describe('sync wire format', () => {
@@ -49,7 +52,7 @@ describe('sync wire format', () => {
       ],
       setlists: library.setlists,
       todos: library.todos,
-      ideas: library.ideas,
+      band: library.band,
     })
   })
 
@@ -84,7 +87,7 @@ describe('sync wire format', () => {
       ],
       setlists: [],
       todos: [],
-      ideas: null,
+      band: {},
     })
   })
 
@@ -124,7 +127,7 @@ describe('sync wire format', () => {
       todos: [
         { id: 'room', text: 'Book the room', done: false, active: true, updatedAt: 2 },
       ],
-      ideas: null,
+      band: {},
     })
   })
 

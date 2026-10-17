@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addEntry,
   byEdited,
+  emptyBand,
   byTitle,
   hasStructure,
   hasTab,
@@ -37,7 +38,7 @@ const shelf = (...ids: readonly string[]): Library => {
     removed: [],
     setlists: [],
     todos: [],
-    ideas: { text: '', updatedAt: 0 },
+    band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
   }
 }
 
@@ -176,15 +177,37 @@ describe('library', () => {
 
   it('repairs a document whose open song is not on the shelf', () => {
     expect(
-      repair([entry('a'), entry('b')], 'gone', [], [], [], { text: '', updatedAt: 0 })
-        ?.open,
+      repair({
+        songs: [entry('a'), entry('b')],
+        open: 'gone',
+        removed: [],
+        setlists: [],
+        todos: [],
+        band: emptyBand,
+      })?.open,
     ).toBe('a')
     expect(
-      repair([entry('a'), entry('b')], 'b', [], [], [], { text: '', updatedAt: 0 })?.open,
+      repair({
+        songs: [entry('a'), entry('b')],
+        open: 'b',
+        removed: [],
+        setlists: [],
+        todos: [],
+        band: emptyBand,
+      })?.open,
     ).toBe('b')
   })
 
   it('refuses a document with no songs at all', () => {
-    expect(repair([], 'a', [], [], [], { text: '', updatedAt: 0 })).toBeNull()
+    expect(
+      repair({
+        songs: [],
+        open: 'a',
+        removed: [],
+        setlists: [],
+        todos: [],
+        band: emptyBand,
+      }),
+    ).toBeNull()
   })
 })

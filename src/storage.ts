@@ -1,14 +1,12 @@
 import { z } from 'zod'
 import { MAX_FRET } from './core/edit.ts'
-import { repair, type Entry, type Library } from './core/library.ts'
+import { emptyBand, repair, type Entry, type Library } from './core/library.ts'
 import { emptySection, emptySong, KEYS, type Song } from './core/model.ts'
 
 const KEY = 'tabsmith'
 const LIBRARY_KEY = 'tabsmith.library'
 const CURRENT_VERSION = 4
 const LIBRARY_VERSION = 1
-
-const NO_IDEAS = { text: '', updatedAt: 0 }
 
 const link = z.enum(['h', 'p', '/', '\\'])
 
@@ -244,6 +242,10 @@ const setlist = z.object({
   updatedAt: z.number(),
 })
 
+const bandField = z
+  .object({ text: z.string(), updatedAt: z.number() })
+  .default({ text: '', updatedAt: 0 })
+
 const library = z.object({
   songs: z.array(entry),
   open: z.string(),
@@ -271,10 +273,10 @@ const library = z.object({
       }),
     )
     .default([]),
-  // Nor their ideas; never edited, so any copy from another device wins.
-  ideas: z
-    .object({ text: z.string(), updatedAt: z.number() })
-    .default({ text: '', updatedAt: 0 }),
+  // Nor the band's name or ideas; never edited, so any copy from another device wins.
+  band: z
+    .object({ name: bandField, ideas: bandField })
+    .default({ name: emptyBand.name, ideas: emptyBand.ideas }),
 })
 
 export const newId = (): string => crypto.randomUUID()
@@ -307,16 +309,7 @@ const readLibrary = (raw: string): Library | null => {
   }
   if (!isDoc(parsed) || parsed.version !== LIBRARY_VERSION) return null
   const result = library.safeParse(parsed.library)
-  return result.success
-    ? repair(
-        result.data.songs,
-        result.data.open,
-        result.data.removed,
-        result.data.setlists,
-        result.data.todos,
-        result.data.ideas,
-      )
-    : null
+  return result.success ? repair(result.data) : null
 }
 
 /**
@@ -330,7 +323,14 @@ const inherited = (): Library | null => {
   if (raw === null) return null
   const result = decode(raw)
   return result.ok
-    ? repair([{ id: newId(), song: result.song, updatedAt: 0 }], '', [], [], [], NO_IDEAS)
+    ? repair({
+        songs: [{ id: newId(), song: result.song, updatedAt: 0 }],
+        open: '',
+        removed: [],
+        setlists: [],
+        todos: [],
+        band: emptyBand,
+      })
     : null
 }
 
@@ -355,7 +355,7 @@ export const startingLibrary = (first: Song = emptySong()): Library => {
     removed: [],
     setlists: [],
     todos: [],
-    ideas: NO_IDEAS,
+    band: emptyBand,
   }
 }
 

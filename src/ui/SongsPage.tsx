@@ -18,7 +18,7 @@ import {
   activeBandTodos,
   clearDoneBandTodos,
   removeBandTodo,
-  setBandIdeas,
+  setBandField,
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
@@ -194,6 +194,16 @@ export function SongsPage(props: Props) {
 
   return (
     <div className={`songs-page${drag === null ? '' : ' dragging'}`}>
+      <input
+        className="band-name"
+        aria-label="Band name"
+        placeholder="Band name"
+        value={library.band.name.text}
+        onChange={(event) => {
+          const text = event.target.value
+          props.onBandEdit((current, at) => setBandField(current, 'name', text, at))
+        }}
+      />
       <section className="band-todo" aria-label="Band">
         <Checklist
           title="TODO"
@@ -211,11 +221,11 @@ export function SongsPage(props: Props) {
           <textarea
             aria-label="Ideas"
             placeholder="Covers to learn, a set idea, anything not a song yet"
-            rows={Math.max(1, library.ideas.text.split('\n').length)}
-            value={library.ideas.text}
+            rows={Math.max(1, library.band.ideas.text.split('\n').length)}
+            value={library.band.ideas.text}
             onChange={(event) => {
               const text = event.target.value
-              props.onBandEdit((current, at) => setBandIdeas(current, text, at))
+              props.onBandEdit((current, at) => setBandField(current, 'ideas', text, at))
             }}
           />
         </label>

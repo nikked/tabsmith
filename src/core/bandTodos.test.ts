@@ -4,13 +4,13 @@ import {
   addBandTodo,
   clearDoneBandTodos,
   removeBandTodo,
-  setBandIdeas,
+  setBandField,
   setBandTodoText,
   toggleBandTodo,
 } from './bandTodos.ts'
 import type { BandTodo, Library } from './library.ts'
 import { emptySong } from './model.ts'
-import { forgetSent, mergeIdeas, mergeTodos } from './sync.ts'
+import { forgetSent, mergeBand, mergeTodos } from './sync.ts'
 
 const shelf: Library = {
   songs: [{ id: 's', song: emptySong(), updatedAt: 0 }],
@@ -18,7 +18,7 @@ const shelf: Library = {
   removed: [],
   setlists: [],
   todos: [],
-  ideas: { text: '', updatedAt: 0 },
+  band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
 }
 
 const listed = (library: Library) =>
@@ -62,22 +62,34 @@ describe('band todos', () => {
   })
 })
 
-describe('band ideas', () => {
-  it('keeps the text as typed and stamps it', () => {
-    expect(setBandIdeas(shelf, 'A song about the van\n  slow', 9).ideas).toEqual({
-      text: 'A song about the van\n  slow',
-      updatedAt: 9,
+describe('the band', () => {
+  it('keeps its name and ideas as typed, each stamped on its own', () => {
+    const named = setBandField(shelf, 'name', 'Fättig', 8)
+    const both = setBandField(named, 'ideas', 'A song about the van\n  slow', 9)
+    expect(both.band).toEqual({
+      name: { text: 'Fättig', updatedAt: 8 },
+      ideas: { text: 'A song about the van\n  slow', updatedAt: 9 },
     })
   })
 })
 
-describe('syncing band ideas', () => {
-  const here = setBandIdeas(shelf, 'Mine', 5)
+describe('syncing the band', () => {
+  const here = setBandField(setBandField(shelf, 'name', 'Mine', 5), 'ideas', 'Mine', 5)
 
-  it('takes the newer text whole, and keeps this one on a tie or when none came', () => {
-    expect(mergeIdeas(here, { text: 'Theirs', updatedAt: 6 }).ideas.text).toBe('Theirs')
-    expect(mergeIdeas(here, { text: 'Theirs', updatedAt: 5 })).toBe(here)
-    expect(mergeIdeas(here, null)).toBe(here)
+  it('takes each newer text whole, field by field', () => {
+    const merged = mergeBand(here, {
+      name: { text: 'Theirs', updatedAt: 6 },
+      ideas: { text: 'Older', updatedAt: 4 },
+    })
+    expect(merged.band).toEqual({
+      name: { text: 'Theirs', updatedAt: 6 },
+      ideas: { text: 'Mine', updatedAt: 5 },
+    })
+  })
+
+  it('comes back as it was on a tie or when nothing came', () => {
+    expect(mergeBand(here, { name: { text: 'Theirs', updatedAt: 5 } })).toBe(here)
+    expect(mergeBand(here, {})).toBe(here)
   })
 })
 

@@ -1,6 +1,7 @@
 import {
   repair,
-  type BandIdeas,
+  type Band,
+  type BandField,
   type BandTodo,
   type Entry,
   type Library,
@@ -79,16 +80,7 @@ export const merge = (library: Library, remote: readonly Synced[]): Library => {
       : [{ id: record.id, song: record.song, updatedAt: record.at }],
   )
   const removed = library.removed.filter((gone) => !won.has(gone.id))
-  return (
-    repair(
-      [...kept, ...arrived],
-      library.open,
-      removed,
-      library.setlists,
-      library.todos,
-      library.ideas,
-    ) ?? library
-  )
+  return repair({ ...library, songs: [...kept, ...arrived], removed }) ?? library
 }
 
 const withoutSentDeletions = <T extends Listed>(
@@ -170,8 +162,19 @@ export const mergeTodos = (library: Library, remote: readonly BandTodo[]): Libra
   return todos === library.todos ? library : { ...library, todos }
 }
 
-/** The newer of the two texts, whole; a tie or nothing sent keeps what is here. */
-export const mergeIdeas = (library: Library, remote: BandIdeas | null): Library =>
-  remote === null || remote.updatedAt <= library.ideas.updatedAt
+/**
+ * Each of the band's texts on its own: the newer one, whole, and a tie or
+ * nothing sent keeps what is here.
+ */
+export const mergeBand = (library: Library, remote: Partial<Band>): Library => {
+  const newer = (field: keyof Band): BandField => {
+    const theirs = remote[field]
+    return theirs !== undefined && theirs.updatedAt > library.band[field].updatedAt
+      ? theirs
+      : library.band[field]
+  }
+  const band: Band = { name: newer('name'), ideas: newer('ideas') }
+  return band.name === library.band.name && band.ideas === library.band.ideas
     ? library
-    : { ...library, ideas: remote }
+    : { ...library, band }
+}
