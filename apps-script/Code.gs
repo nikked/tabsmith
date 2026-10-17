@@ -2,7 +2,7 @@
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
  * POST takes { token, records: [{ id, at, title, song, active, baseAt? }], setlists:
- * [{ id, at, name, songs, active }], todos: [{ id, at, text, done, active }],
+ * [{ id, at, name, songs, active, position? }], todos: [{ id, at, text, done, active }],
  * band: [{ id, at, text }] }, where song is the document a tabsmith file holds,
  * packed by the app, songs is a setlist's song ids in order, todos are the
  * band's list, band holds the band's own fields by name (ideas), and active is
@@ -21,7 +21,7 @@
  * Script cannot answer the CORS preflight a JSON content type would trigger.
  */
 const HEADER = ['id', 'at', 'title', 'song', 'active']
-const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active']
+const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active', 'position']
 const TODO_HEADER = ['id', 'at', 'text', 'done', 'active']
 const BAND_HEADER = ['id', 'at', 'text']
 
@@ -96,7 +96,12 @@ function doPost(e) {
 
     // An app from before setlists sends none, which changes nothing here.
     const lists = tab('setlists', SETLIST_HEADER)
-    const setlists = newestOf(readSetlists(lists), body.setlists, (setlist) => setlist)
+    // An app from before setlists had an order sends none; the order it had stays.
+    const setlists = newestOf(readSetlists(lists), body.setlists, (setlist, before) =>
+      setlist.position === undefined && before && before.position !== undefined
+        ? { ...setlist, position: before.position }
+        : setlist,
+    )
     writeSetlists(lists, setlists)
 
     // An app from before the band's todos sends none, which changes nothing here.
@@ -188,6 +193,10 @@ function readSetlists(sheet) {
         name: String(row[2]),
         songs: songs.map(String),
         active: row[4] === true,
+        // A row from before setlists had an order has an empty cell here.
+        ...(row[5] === '' || !Number.isFinite(Number(row[5]))
+          ? {}
+          : { position: Number(row[5]) }),
       }
       return setlist.id !== '' && Number.isFinite(setlist.at) ? [setlist] : []
     })
@@ -203,6 +212,7 @@ function writeSetlists(sheet, setlists) {
       setlist.name,
       JSON.stringify(setlist.songs),
       setlist.active,
+      setlist.position ?? '',
     ]),
   )
 }
@@ -305,7 +315,8 @@ function parseBody(text) {
         typeof setlist.name === 'string' &&
         Array.isArray(setlist.songs) &&
         setlist.songs.every((song) => typeof song === 'string') &&
-        typeof setlist.active === 'boolean',
+        typeof setlist.active === 'boolean' &&
+        (setlist.position === undefined || Number.isFinite(setlist.position)),
     )
     .map((setlist) => ({
       id: setlist.id,
@@ -313,6 +324,7 @@ function parseBody(text) {
       name: plain(setlist.name),
       songs: setlist.songs,
       active: setlist.active,
+      ...(setlist.position === undefined ? {} : { position: setlist.position }),
     }))
   const todos = (Array.isArray(body.todos) ? body.todos : [])
     .filter(

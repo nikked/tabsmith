@@ -7,6 +7,8 @@ import {
   addToSetlist,
   deleteSetlist,
   moveInSetlist,
+  moveSetlist,
+  nextPosition,
   placeInSetlist,
   placeOf,
   removeFromSetlist,
@@ -28,11 +30,13 @@ const set = (
   songs: readonly string[],
   updatedAt = 1,
   name = id,
+  position = 0,
 ): Setlist => ({
   id,
   name,
   songs,
   active: true,
+  position,
   updatedAt,
   syncedAt: null,
 })
@@ -251,5 +255,71 @@ describe('forgetSent', () => {
     const sent = shelf({ ...set('gig', ['a'], 2), active: false })
     const library = shelf({ ...set('gig', ['a'], 4), active: false })
     expect(forgetSent(library, sent)).toBe(library)
+  })
+})
+
+describe('setlist order', () => {
+  const order = (library: Library) => activeSetlists(library).map((setlist) => setlist.id)
+  const library = shelf(
+    set('c', [], 1, 'c', 2),
+    set('a', [], 1, 'a', 0),
+    { ...set('gone', [], 1, 'gone', 1), active: false },
+    set('b', [], 1, 'b', 1),
+  )
+
+  it('shows setlists by position, deleted ones left out', () => {
+    expect(order(library)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('puts a song’s setlists in that order, the first mattering most', () => {
+    const both = shelf(
+      set('late', ['a'], 1, 'late', 5),
+      set('early', ['a'], 1, 'early', 0),
+    )
+    expect(setlistsWith(both, 'a').map((setlist) => setlist.id)).toEqual([
+      'early',
+      'late',
+    ])
+  })
+
+  it('keeps setlists that share a position in the order they arrived', () => {
+    expect(order(shelf(set('x', [], 1, 'x', 0), set('y', [], 1, 'y', 0)))).toEqual([
+      'x',
+      'y',
+    ])
+  })
+
+  it('places a new setlist after every other, deleted ones counted', () => {
+    expect(nextPosition(library)).toBe(3)
+    expect(nextPosition(shelf())).toBe(0)
+  })
+
+  it('swaps a setlist with its neighbour, stamping only the two that moved', () => {
+    const moved = moveSetlist(library, 'c', -1, 9)
+    expect(order(moved)).toEqual(['a', 'c', 'b'])
+    expect(moved.setlists.map((setlist) => [setlist.id, setlist.updatedAt])).toEqual([
+      ['c', 9],
+      ['a', 1],
+      ['gone', 1],
+      ['b', 9],
+    ])
+    expect(order(moveSetlist(library, 'a', 1, 9))).toEqual(['b', 'a', 'c'])
+  })
+
+  it('leaves the library as it was at either end, or for no such setlist', () => {
+    expect(moveSetlist(library, 'a', -1, 9)).toBe(library)
+    expect(moveSetlist(library, 'c', 1, 9)).toBe(library)
+    expect(moveSetlist(library, 'gone', 1, 9)).toBe(library)
+  })
+
+  it('pulls apart setlists two devices left on the same position', () => {
+    const tied = shelf(
+      set('x', [], 1, 'x', 0),
+      set('y', [], 1, 'y', 0),
+      set('z', [], 1, 'z', 0),
+    )
+    const moved = moveSetlist(tied, 'z', -1, 9)
+    expect(order(moved)).toEqual(['x', 'z', 'y'])
+    expect(moved.setlists.map((setlist) => setlist.position)).toEqual([0, 2, 1])
   })
 })

@@ -52,7 +52,7 @@ describe.each([
   {
     name: 'setlists',
     write: 'writeSetlists',
-    record: { id: 'new', at: 2, name: 'Gig', songs: ['song'], active: true },
+    record: { id: 'new', at: 2, name: 'Gig', songs: ['song'], active: true, position: 3 },
     oversized: {
       id: 'new',
       at: 2,
@@ -60,7 +60,7 @@ describe.each([
       songs: ['x'.repeat(50001)],
       active: true,
     },
-    row: ['new', 2, 'Gig', '["song"]', true],
+    row: ['new', 2, 'Gig', '["song"]', true, 3],
   },
   {
     name: 'todos',
@@ -291,6 +291,35 @@ describe('a sync round trip through the script', () => {
     tabs.get('todos')?.push(['old', 1, 'Buy strings', false, true])
     expect(post({ token: 't', records: [] }).todos).toEqual([
       { id: 'old', at: 1, text: 'Buy strings', done: false, active: true },
+    ])
+  })
+
+  it('keeps a setlist’s place when an app from before the order renames it', () => {
+    const { tabs, post } = book()
+    const gig = { id: 'gig', name: 'Gig', songs: [], active: true }
+    post({ token: 't', records: [], setlists: [{ ...gig, at: 1, position: 2 }] })
+    const reply = post({
+      token: 't',
+      records: [],
+      setlists: [{ ...gig, at: 2, name: 'Friday' }],
+    })
+    expect(reply.setlists).toEqual([{ ...gig, at: 2, name: 'Friday', position: 2 }])
+    expect(tabs.get('setlists')?.[0]).toEqual([
+      'id',
+      'at',
+      'name',
+      'songs',
+      'active',
+      'position',
+    ])
+  })
+
+  it('reads a setlist written before the order as having no place of its own', () => {
+    const { tabs, post } = book()
+    post({ token: 't', records: [] })
+    tabs.get('setlists')?.push(['old', 1, 'Old', '[]', true])
+    expect(post({ token: 't', records: [] }).setlists).toEqual([
+      { id: 'old', at: 1, name: 'Old', songs: [], active: true },
     ])
   })
 

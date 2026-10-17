@@ -63,6 +63,9 @@ const setlistRow = z.object({
   name: z.string(),
   songs: z.array(z.string()),
   active: z.boolean(),
+  // A script deployed before setlists had an order sends none; the sheet's
+  // own row order stands in.
+  position: z.number().optional(),
 })
 
 const todoRow = z.object({
@@ -179,6 +182,7 @@ export const setlistsToWire = (library: Library) =>
     name: setlist.name,
     songs: setlist.songs,
     active: setlist.active,
+    position: setlist.position,
   }))
 
 export const todosToWire = (library: Library) =>
@@ -224,11 +228,11 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
         }),
       )
     ).flat(),
-    setlists: parsed.data.setlists.flatMap((value): Setlist[] => {
+    setlists: parsed.data.setlists.flatMap((value, index): Setlist[] => {
       const each = setlistRow.safeParse(value)
       if (!each.success) return []
-      const { id, at, name, songs, active } = each.data
-      return [{ id, name, songs, active, updatedAt: at, syncedAt: at }]
+      const { id, at, name, songs, active, position = index } = each.data
+      return [{ id, name, songs, active, position, updatedAt: at, syncedAt: at }]
     }),
     todos: parsed.data.todos.flatMap((value): BandTodo[] => {
       const each = todoRow.safeParse(value)

@@ -396,6 +396,7 @@ describe('what the sheet holds of the band', () => {
     name: 'Friday',
     songs: [],
     active: true,
+    position: 0,
     updatedAt: 3,
     syncedAt: null,
   }
