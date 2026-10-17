@@ -654,12 +654,14 @@ why, in a dismissible line under the header — `localStorage` can discard a bad
 because nobody chose it, but a file is something you picked on purpose.
 
 Adding a song is one **+ New** menu beside the All songs heading on Home: Blank, Paste and
-Import. Copy as link and Export are on the `⋯` beside each song there. Back up all songs and
+Import. Copy as link and Export are on the `⋯` beside each song there. Download backup and
 Database sync are in the settings dialog behind the header's cog, being set for
-the whole app rather than for a song. A backup is the rows the sheet holds, deleted songs
-included, written to one file: a copy of the sheet that does not need the sheet. Sync is set up
-once per device and then left alone, so it is a dialog of its own, opened from the settings or
-from the sync button before it is set up. On a phone the header is the scarcest space on the
+the whole app rather than for a song. A backup is every row the sheet holds, as this device
+last had them: the songs with deleted ones included, the setlists with their order, the band's
+todos, and its notes and name, written to one file: a copy of the sheet that does not need the
+sheet. Syncing first makes it the sheet's latest. Sync is set up once per device and then left
+alone, so it is a section of the settings dialog, opened from the cog or from the sync button
+before it is set up. On a phone the header is the scarcest space on the
 page, so it keeps to the toggle and two square buttons.
 
 Copying, deleting and putting a song in setlists are on its `⋯` on Home, not in the editor,
