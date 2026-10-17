@@ -344,10 +344,11 @@ export function Practice({
             always in sight and the song starts right under the bar. */}
         <h2 className="bar-title">{song.title}</h2>
         {/* On a phone every control below folds into this one menu, so the bar
-            is the song's title and nothing else that takes a line. */}
-        <div className="bar-more">
+            is the song's title and nothing else that takes a line. A tablet
+            folds only the toggles, so its menu hides the rest. */}
+        <div className={hasTab ? 'bar-more' : 'bar-more phone-only'}>
           <Menu label="⋯" title="Practice options">
-            <div className="menu-row" role="group" aria-label="Text size">
+            <div className="menu-row phone-only" role="group" aria-label="Text size">
               <button
                 type="button"
                 aria-label="Smaller text"
@@ -366,7 +367,7 @@ export function Practice({
               </button>
             </div>
             {place !== null && onStep !== undefined && (
-              <>
+              <div className="phone-only">
                 <p className="menu-label">
                   {place.setlist.name} {place.index + 1}/{place.count}
                 </p>
@@ -376,7 +377,7 @@ export function Practice({
                     stepTo(place.next, '›', 'Next song'),
                   ]}
                 />
-              </>
+              </div>
             )}
             {hasTab && (
               <MenuChecks

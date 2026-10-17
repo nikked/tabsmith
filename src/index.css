@@ -1713,6 +1713,28 @@ kbd {
   margin: 0;
 }
 
+/* A tablet. The bar is too narrow for the title beside every control, so the
+   toggles, set once and left, fold into the menu the phone uses. The size and
+   setlist controls stay out where they are pressed mid-song, and the menu
+   drops its own copies of them. */
+@media (max-width: 64rem) {
+  .bar-more {
+    display: block;
+    order: 2;
+  }
+
+  .practice-bar > .toggle.small {
+    display: none;
+  }
+}
+
+@media (min-width: 40.0625rem) and (max-width: 64rem) {
+  .bar-more .phone-only,
+  .practice-bar > .phone-only {
+    display: none;
+  }
+}
+
 /**
  * A phone. iOS zooms the page whenever a field smaller than 16px takes focus,
  * which leaves the app scrolled sideways and the caret somewhere off screen —
