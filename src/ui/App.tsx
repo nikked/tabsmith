@@ -107,6 +107,24 @@ type Asking =
   | { readonly kind: 'renameSetlist'; readonly id: string }
   | { readonly kind: 'deleteSetlist'; readonly id: string }
 
+/** Two arrows chasing each other round, the usual mark for syncing. */
+const SyncIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M13.5 6.5A5.5 5.5 0 0 0 3.6 4.3M2.5 9.5a5.5 5.5 0 0 0 9.9 2.2" />
+    <path d="M3.4 1.8v2.7h2.7M12.6 14.2v-2.7H9.9" />
+  </svg>
+)
+
 export default function App() {
   const [library, setLibrary] = useState<Library>(openingLibrary)
   const [timeline, dispatch] = useReducer(step, undefined, () =>
@@ -123,10 +141,13 @@ export default function App() {
   const [failures, setFailures] = useState(0)
   const pending = pendingCount(library)
   // A retry, a reconnect and an edit can all ask at once; one sync at a time.
+  // The ref is the guard, read the moment a sync is asked for; the state is
+  // the same fact for drawing the turning arrows.
   const syncing = useRef(false)
   // One asked for while another runs, which runs next: the running one may have
   // left out an edit made after it set off.
   const again = useRef(false)
+  const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState<Asking | null>(null)
   // The setlist the open song was opened from, so Practice can step through it.
   const [activeSetlist, setActiveSetlist] = useState<string | null>(null)
@@ -178,6 +199,7 @@ export default function App() {
       return
     }
     syncing.current = true
+    setBusy(true)
     try {
       do {
         again.current = false
@@ -185,6 +207,7 @@ export default function App() {
       } while (again.current)
     } finally {
       syncing.current = false
+      setBusy(false)
     }
   }
 
@@ -566,6 +589,17 @@ export default function App() {
               {pending} not synced
             </button>
           )}
+          <button
+            type="button"
+            className={busy ? 'sync-now busy' : 'sync-now'}
+            aria-label={syncWith === null ? 'Set up sync' : 'Sync now'}
+            title={syncWith === null ? 'Set up sync' : busy ? 'Syncing…' : 'Sync now'}
+            onClick={() =>
+              syncWith === null ? show(syncDialog.current) : void sync(syncWith)
+            }
+          >
+            <SyncIcon />
+          </button>
           <div className="settings">
             <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
               <MenuItems
