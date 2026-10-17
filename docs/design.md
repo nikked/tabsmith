@@ -120,6 +120,8 @@ type Section = {
   readonly body: string                 // chords, and lyrics under them, exactly as typed
 }
 
+type Todo = { readonly text: string; readonly done: boolean }
+
 type Synth = {
   readonly name: string                 // 'iRig'
   readonly sound: string                // the patch or preset
@@ -136,6 +138,8 @@ type Song = {
   readonly tab: Score
   readonly tabFirst: boolean            // tab before the chart, or after it
   readonly synths: readonly Synth[]     // how each synth is set for this song
+  readonly todos: readonly Todo[]       // what is left to work out, kept out of the chart
+  readonly ideas: string                // free text, also kept out of the chart
 }
 
 type Cursor = {

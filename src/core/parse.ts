@@ -436,6 +436,8 @@ export const parseSong = (text: string, title = ''): Parsed => {
       tab,
       tabFirst: false,
       synths: [],
+      todos: [],
+      ideas: '',
     },
   }
 }

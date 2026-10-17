@@ -103,6 +103,15 @@ export const emptySynth = (name: string): Synth => ({
   knobs: ['', '', ''],
 })
 
+/**
+ * Something to sort out before the next practice. Kept once ticked, struck
+ * through, until cleared, so what got done since last time can still be seen.
+ */
+export type Todo = { readonly text: string; readonly done: boolean }
+
+/** A todo with nothing typed in it is not one waiting to be done. */
+export const isOpen = (todo: Todo): boolean => !todo.done && todo.text.trim() !== ''
+
 export type Song = {
   readonly title: string
   readonly bpm: number | null
@@ -113,6 +122,10 @@ export type Song = {
   readonly tab: Score
   readonly tabFirst: boolean
   readonly synths: readonly Synth[]
+  /** What to work on before the next practice, kept out of the chart. */
+  readonly todos: readonly Todo[]
+  /** Lyric drafts and loose thoughts for the song, kept out of the chart too. */
+  readonly ideas: string
 }
 
 export type Cursor = {
@@ -183,4 +196,6 @@ export const emptySong = (): Song => ({
   tab: emptyScore(),
   tabFirst: false,
   synths: [],
+  todos: [],
+  ideas: '',
 })
