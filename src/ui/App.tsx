@@ -6,6 +6,7 @@ import {
   addSetlist,
   addToSetlist,
   deleteSetlist,
+  moveSetlist,
   nextPosition,
   placeInSetlist,
   placeOf,
@@ -677,6 +678,9 @@ export default function App() {
           onNewSetlist={() => setAsking({ kind: 'newSetlist', adding: null })}
           onRenameSetlist={(id) => setAsking({ kind: 'renameSetlist', id })}
           onDeleteSetlist={(id) => setAsking({ kind: 'deleteSetlist', id })}
+          onMoveSetlist={(id, step) =>
+            changeSetlists((current, at) => moveSetlist(current, id, step, at))
+          }
           onRemoveFromSetlist={(setlist, song) =>
             changeSetlists((current, at) => removeFromSetlist(current, setlist, song, at))
           }

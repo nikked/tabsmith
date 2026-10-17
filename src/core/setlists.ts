@@ -89,7 +89,8 @@ export const deleteSetlist = (library: Library, id: string, at: number) =>
 /**
  * Swaps a setlist with the one above (-1) or below (1) it. Every shown setlist
  * is numbered afresh from its new place, so positions two devices left equal
- * come apart, and only the ones whose number changed are stamped for sync.
+ * come apart. Stamp every position: an unchanged one may be a migrated default
+ * the sheet has never held, so its old timestamp would reject that position.
  */
 export const moveSetlist = (
   library: Library,
@@ -106,10 +107,7 @@ export const moveSetlist = (
   ids[from] = other.id
   ids[from + step] = moved.id
   return ids.reduce(
-    (current, each, position) =>
-      current.setlists.find((setlist) => setlist.id === each)?.position === position
-        ? current
-        : change(current, each, at, () => ({ position })),
+    (current, each, position) => change(current, each, at, () => ({ position })),
     library,
   )
 }

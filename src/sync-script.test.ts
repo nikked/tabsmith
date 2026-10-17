@@ -2,13 +2,17 @@
 
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { emptySong } from './core/model.ts'
 import { emptyBand, isUnsynced, type Library } from './core/library.ts'
-import { merge } from './core/sync.ts'
-import { fromWire, toSheet } from './sync.ts'
+import { activeSetlists, moveSetlist } from './core/setlists.ts'
+import { merge, mergeSetlists } from './core/sync.ts'
+import { loadLibrary, startingLibrary } from './storage.ts'
+import { fromWire, setlistsToWire, toSheet } from './sync.ts'
 
 const script = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8')
+
+afterEach(() => vi.unstubAllGlobals())
 
 type Value = string | number | boolean
 
@@ -322,6 +326,52 @@ describe('a sync round trip through the script', () => {
       { id: 'old', at: 1, name: 'Old', songs: [], active: true },
     ])
   })
+
+  it.each([false, true])(
+    'syncs the complete reordered legacy setlists (positions already cached: %s)',
+    async (cached) => {
+      const { post } = book()
+      const legacy = ['gone1', 'gone2', 'a', 'b', 'c'].map((id) => ({
+        id,
+        at: 1,
+        name: id,
+        songs: [],
+        active: !id.startsWith('gone'),
+      }))
+      post({ token: 't', records: [], setlists: legacy })
+      const empty = startingLibrary(emptySong())
+      vi.stubGlobal('localStorage', {
+        getItem: () =>
+          JSON.stringify({
+            version: 1,
+            library: {
+              ...empty,
+              setlists: legacy
+                .filter((each) => each.active)
+                .map((each, position) => ({
+                  ...each,
+                  updatedAt: each.at,
+                  syncedAt: each.at,
+                  ...(cached ? { position } : {}),
+                })),
+            },
+          }),
+      })
+      const migrated = loadLibrary()
+      if (migrated === null) throw new Error('Expected the legacy library to load')
+      post({ token: 't', records: [], setlists: setlistsToWire(migrated) })
+      const moved = moveSetlist(migrated, 'c', -1, 10)
+      const pulled = await fromWire(
+        post({ token: 't', records: [], setlists: setlistsToWire(moved) }),
+      )
+      if (!pulled.ok) throw new Error(pulled.error)
+      for (const device of [moved, empty]) {
+        expect(
+          activeSetlists(mergeSetlists(device, pulled.setlists)).map((each) => each.id),
+        ).toEqual(['a', 'c', 'b'])
+      }
+    },
+  )
 
   it('keeps the newest band ideas from whichever device wrote last', () => {
     const { tabs, post } = book()

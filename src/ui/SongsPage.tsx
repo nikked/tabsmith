@@ -58,6 +58,7 @@ type Props = {
   readonly onNewSetlist: () => void
   readonly onRenameSetlist: (setlist: string) => void
   readonly onDeleteSetlist: (setlist: string) => void
+  readonly onMoveSetlist: (setlist: string, step: -1 | 1) => void
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
   readonly onAddBandTodo: () => void
@@ -264,7 +265,7 @@ export function SongsPage(props: Props) {
             No setlists yet. Make one, then drag songs into it from All songs.
           </p>
         )}
-        {activeSetlists(library).map((setlist) => {
+        {activeSetlists(library).map((setlist, index, shown) => {
           const entries = songsOf(library, setlist)
           const others = entries.filter((entry) => entry.id !== drag?.song)
           return (
@@ -279,6 +280,18 @@ export function SongsPage(props: Props) {
                 <Menu label="⋯" title={`${setlist.name} setlist`}>
                   <MenuItems
                     items={[
+                      {
+                        label: 'Move up',
+                        onSelect: () => props.onMoveSetlist(setlist.id, -1),
+                        keepsOpen: true,
+                        disabled: index === 0,
+                      },
+                      {
+                        label: 'Move down',
+                        onSelect: () => props.onMoveSetlist(setlist.id, 1),
+                        keepsOpen: true,
+                        disabled: index === shown.length - 1,
+                      },
                       {
                         label: 'Rename…',
                         onSelect: () => props.onRenameSetlist(setlist.id),
