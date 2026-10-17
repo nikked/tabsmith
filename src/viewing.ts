@@ -59,3 +59,21 @@ export const loadReading = (): Reading => {
 export const saveReading = (value: Reading): void => {
   localStorage.setItem(READING_KEY, value)
 }
+
+const SYNTHS_KEY = 'tabsmith.synths'
+
+/**
+ * Whether Practice shows a song's synth settings. Only the synth player needs
+ * them, so it is one choice per device, and shown until someone hides it.
+ */
+export const loadSynthsShown = (): boolean => {
+  try {
+    return localStorage.getItem(SYNTHS_KEY) !== 'hidden'
+  } catch {
+    return true
+  }
+}
+
+export const saveSynthsShown = (shown: boolean): void => {
+  localStorage.setItem(SYNTHS_KEY, shown ? 'shown' : 'hidden')
+}

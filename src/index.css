@@ -1065,6 +1065,17 @@ h1 img {
   font-size: 0.9rem;
 }
 
+/* Pressed while the settings show, the way a filter chip is while it narrows. */
+.practice-bar > .synth-toggle {
+  color: var(--muted);
+}
+
+.practice-bar > .synth-toggle[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--muted);
+  border-color: var(--muted);
+}
+
 /* An icon, square, and no wider than it has to be: it only gives room back. */
 .practice-bar > .full-toggle {
   display: grid;
@@ -1913,7 +1924,8 @@ kbd {
     order: 2;
   }
 
-  .practice-bar > .toggle.small {
+  .practice-bar > .toggle.small,
+  .practice-bar > .synth-toggle {
     display: none;
   }
 }
