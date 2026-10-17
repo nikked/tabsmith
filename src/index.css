@@ -1331,6 +1331,7 @@ button {
 .guide::backdrop,
 .paste::backdrop,
 .sync-dialog::backdrop,
+.settings-dialog::backdrop,
 .prompt::backdrop {
   background: rgb(0 0 0 / 55%);
 }
@@ -1393,6 +1394,7 @@ button {
 }
 
 .sync-dialog,
+.settings-dialog,
 /* The body's font, set again for a prompt opened inside Practice, which would
    otherwise take the song's face and size: a field under 16px makes iOS zoom. */
 .prompt {
@@ -1408,7 +1410,8 @@ button {
   border-radius: 6px;
 }
 
-.sync-dialog h2 {
+.sync-dialog h2,
+.settings-dialog h2 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
 }
@@ -1625,13 +1628,11 @@ button {
   box-shadow: 0 4px 16px color-mix(in srgb, #000 25%, transparent);
 }
 
-.settings {
-  margin-left: auto;
-}
-
-/* Beside the menu, in its shell, as square as the full-screen button: it says
-   what it does with its arrows, which turn while a sync is on its way. */
-.sync-now {
+/* The header's last two, in the toggle's shell, as square as the full-screen
+   button. Sync says what it does with its arrows, which turn while a sync is
+   on its way; the cog opens the settings. */
+.sync-now,
+.settings-open {
   display: grid;
   position: relative;
   place-items: center;
@@ -1649,7 +1650,8 @@ button {
   transition: color 220ms;
 }
 
-.sync-now:hover {
+.sync-now:hover,
+.settings-open:hover {
   color: var(--fg);
 }
 
@@ -1671,7 +1673,20 @@ button {
   border-radius: 999px;
 }
 
-.sync-now + .settings {
+.sync-now + .settings-open {
+  margin-left: 0;
+}
+
+/* Says a link reached the clipboard, for a moment, where the header's buttons
+   start. */
+.link-copied {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.link-copied + .sync-now {
   margin-left: 0;
 }
 
@@ -1971,8 +1986,16 @@ header .menu-open:has(+ .menu:popover-open) {
   gap: 0.5rem;
 }
 
-.sync-dialog form {
+.sync-dialog form,
+.settings-dialog form {
   margin-top: 1.5rem;
+}
+
+.settings-dialog h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .sync-dialog form.sync {
@@ -2307,6 +2330,15 @@ kbd {
 .panel-head h2 {
   margin: 0 auto 0 0;
   font-size: 1.15rem;
+}
+
+/* Right by the heading of the songs it adds to, the search and filters after. */
+.all-songs .panel-head h2 {
+  margin-right: 0;
+}
+
+.new-song {
+  margin-right: auto;
 }
 
 .panel-empty {

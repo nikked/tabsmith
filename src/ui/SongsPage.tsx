@@ -25,7 +25,7 @@ import {
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Checklist } from './Checklist.tsx'
-import { Menu, MenuChecks, MenuItems } from './Menu.tsx'
+import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
 
 type Props = {
@@ -36,6 +36,8 @@ type Props = {
   readonly onCopy: (song: string) => void
   readonly onCopyLink: (song: string) => void
   readonly onExport: (song: string) => void
+  /** The ways to start a song: blank, pasted or from a file. */
+  readonly adding: readonly MenuItem[]
   readonly onDelete: (song: string) => void
   readonly onToggleSetlist: (setlist: string, song: string) => void
   readonly onNewSetlist: () => void
@@ -314,6 +316,11 @@ export function SongsPage(props: Props) {
       <section className="all-songs">
         <div className="panel-head">
           <h2>All songs</h2>
+          <div className="new-song">
+            <Menu label="+ New" title="New song">
+              <MenuItems items={props.adding} />
+            </Menu>
+          </div>
           <input
             type="search"
             className="song-search"

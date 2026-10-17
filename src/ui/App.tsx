@@ -60,6 +60,7 @@ import { Practice } from './Practice.tsx'
 import { Shortcuts } from './Shortcuts.tsx'
 import { SongTree } from './SongList.tsx'
 import { SongsPage } from './SongsPage.tsx'
+import { SettingsDialog } from './Settings.tsx'
 import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 import { Toggle } from './Toggle.tsx'
@@ -106,6 +107,24 @@ type Asking =
   | { readonly kind: 'newSetlist'; readonly adding: string | null }
   | { readonly kind: 'renameSetlist'; readonly id: string }
   | { readonly kind: 'deleteSetlist'; readonly id: string }
+
+/** A cog, the usual mark for settings. */
+const CogIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+  >
+    <circle cx="8" cy="8" r="4.4" />
+    <circle cx="8" cy="8" r="1.8" />
+    <path d="M8 1.4v2.2M8 12.4v2.2M1.4 8h2.2M12.4 8h2.2M3.33 3.33l1.56 1.56M11.11 11.11l1.56 1.56M3.33 12.67l1.56-1.56M11.11 4.89l1.56-1.56" />
+  </svg>
+)
 
 /** Two arrows chasing each other round, the usual mark for syncing. */
 const SyncIcon = () => (
@@ -158,6 +177,7 @@ export default function App() {
   const picker = useRef<HTMLInputElement>(null)
   const paste = useRef<HTMLDialogElement>(null)
   const syncDialog = useRef<HTMLDialogElement>(null)
+  const settingsDialog = useRef<HTMLDialogElement>(null)
 
   // The editor holds the open song while it is being written; this is how it
   // gets back to the shelf, which is the thing that is actually persisted.
@@ -555,9 +575,6 @@ export default function App() {
             />
             <span className="brand-name">tabsmith</span>
           </h1>
-          <Menu label="+ New" title="New song">
-            <MenuItems items={adding} />
-          </Menu>
           <input
             ref={picker}
             type="file"
@@ -579,6 +596,11 @@ export default function App() {
             value={mode}
             onChange={setMode}
           />
+          {copied && (
+            <span className="link-copied" role="status">
+              Link copied
+            </span>
+          )}
           <button
             type="button"
             className={busy ? 'sync-now busy' : 'sync-now'}
@@ -611,35 +633,19 @@ export default function App() {
               </span>
             )}
           </button>
-          <div className="settings">
-            <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
-              <MenuItems
-                items={[
-                  { label: 'Copy song as link', onSelect: () => void share(state.song) },
-                  { label: 'Export file…', onSelect: () => void saveToDisk(state.song) },
-                  { label: 'Back up all songs…', onSelect: () => void backUp() },
-                  {
-                    label: 'Database sync…',
-                    onSelect: () => show(syncDialog.current),
-                  },
-                ]}
-              />
-              <p className="menu-label">Theme</p>
-              <div className="menu-toggle">
-                <Toggle
-                  small
-                  label="Theme"
-                  options={[
-                    { value: 'dark', label: 'Dark' },
-                    { value: 'light', label: 'Light' },
-                    { value: 'system', label: 'System' },
-                  ]}
-                  value={theme}
-                  onChange={setTheme}
-                />
-              </div>
-            </Menu>
-          </div>
+          {/* Settings are for the whole app, so they are with the songs on Home
+              rather than over a song being written or read. */}
+          {mode === 'songs' && (
+            <button
+              type="button"
+              className="settings-open"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => show(settingsDialog.current)}
+            >
+              <CogIcon />
+            </button>
+          )}
         </header>
       )}
       {error !== null && (
@@ -664,6 +670,7 @@ export default function App() {
             const song = songOf(id)
             if (song !== undefined) void saveToDisk(song)
           }}
+          adding={adding}
           onDelete={askToDelete}
           onToggleSetlist={toggleSetlist}
           onNewSetlist={() => setAsking({ kind: 'newSetlist', adding: null })}
@@ -866,6 +873,16 @@ export default function App() {
           confirm.
         </Prompt>
       )}
+      <SettingsDialog
+        dialog={settingsDialog}
+        theme={theme}
+        onTheme={setTheme}
+        onBackUp={() => void backUp()}
+        onSync={() => {
+          settingsDialog.current?.close()
+          show(syncDialog.current)
+        }}
+      />
       <Sync
         dialog={syncDialog}
         syncWith={syncWith}
