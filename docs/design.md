@@ -816,6 +816,8 @@ The notes are Markdown: headings, lists, quotes, bold, italic, code and links (`
 Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
 the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
 the marks kept and weight drawn as a shadow, so no character moves from under the caret.
+The browser tab takes the words of the notes' first `#` heading, wherever it is, as the page's
+title (`notesTitle`), so a band's tab reads as theirs; with none, it keeps the app's own.
 
 A todo's text and the ideas are written as typed, list dashes and indents included. A cell that
 starts with `=`, `+`, `-` or `@` is read as a formula, so `Code.gs` stores them as JSON strings,
