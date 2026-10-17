@@ -2,13 +2,13 @@
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
  * POST takes { token, records: [{ id, at, title, song, active }], setlists:
- * [{ id, at, name, songs, active }], todos: [{ id, at, text, done, active }] },
- * where song is the document a tabsmith file holds, packed by the app, songs is
- * a setlist's song ids in order, todos are the band's list, and active is false
- * for a deleted or cleared one. Songs, setlists and todos each live in their
- * own tab. The sheet keeps the newest of each id and answers { ok: true,
- * records, setlists, todos } with all of them, so one round trip both pushes
- * and pulls.
+ * [{ id, at, name, songs, active }], todos: [{ id, at, text, done, active }],
+ * band: [{ id, at, text }] }, where song is the document a tabsmith file holds,
+ * packed by the app, songs is a setlist's song ids in order, todos are the
+ * band's list, band holds the band's own fields by name (ideas), and active is
+ * false for a deleted or cleared one. Each kind lives in its own tab. The sheet
+ * keeps the newest of each id and answers { ok: true, records, setlists, todos,
+ * band } with all of them, so one round trip both pushes and pulls.
  *
  * Nothing is ever deleted here. A deleted song stays in its row, marked
  * inactive, and a record that arrives without a song (from an app older than
@@ -22,6 +22,7 @@
 const HEADER = ['id', 'at', 'title', 'song', 'active']
 const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active']
 const TODO_HEADER = ['id', 'at', 'text', 'done', 'active']
+const BAND_HEADER = ['id', 'at', 'text']
 
 function tab(name, header) {
   const book = SpreadsheetApp.getActiveSpreadsheet()
@@ -92,6 +93,11 @@ function doPost(e) {
     const todos = newestOf(readTodos(todoTab), body.todos, (todo) => todo)
     writeTodos(todoTab, todos)
 
+    // The band's own fields, by name; an app from before them sends none.
+    const bandTab = tab('band', BAND_HEADER)
+    const band = newestOf(readBand(bandTab), body.band, (field) => field)
+    writeBand(bandTab, band)
+
     return json({
       ok: true,
       records: all.map((record) => ({
@@ -102,6 +108,7 @@ function doPost(e) {
       })),
       setlists,
       todos,
+      band,
     })
   } finally {
     lock.releaseLock()
@@ -212,6 +219,23 @@ function writeTodos(sheet, todos) {
   )
 }
 
+function readBand(sheet) {
+  return sheet
+    .getDataRange()
+    .getValues()
+    .slice(1)
+    .map((row) => ({ id: String(row[0]), at: Number(row[1]), text: textOf(row[2]) }))
+    .filter((field) => field.id !== '' && Number.isFinite(field.at))
+}
+
+function writeBand(sheet, band) {
+  writeRows(
+    sheet,
+    BAND_HEADER.length,
+    band.map((field) => [field.id, field.at, textCell(field.text)]),
+  )
+}
+
 // A cell starting with = + - or @ is read as a formula, and a name is free text.
 function plain(text) {
   return String(text || '').replace(/^[\s=+\-@]+/, '')
@@ -296,5 +320,15 @@ function parseBody(text) {
       done: todo.done,
       active: todo.active,
     }))
-  return { token: String(body.token || ''), records, setlists, todos }
+  const band = (Array.isArray(body.band) ? body.band : [])
+    .filter(
+      (field) =>
+        field &&
+        typeof field.id === 'string' &&
+        field.id !== '' &&
+        Number.isFinite(field.at) &&
+        typeof field.text === 'string',
+    )
+    .map((field) => ({ id: field.id, at: field.at, text: field.text }))
+  return { token: String(body.token || ''), records, setlists, todos, band }
 }

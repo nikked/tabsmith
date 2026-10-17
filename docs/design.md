@@ -729,7 +729,12 @@ sheet, and one pulled from the sheet only takes the setlist off the device. A sc
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
-on each device until it is redeployed.
+on each device until it is redeployed. The band's ideas sync beside it in a `band` tab, by
+field name, the newer text winning whole.
+
+A todo's text and the ideas are written as typed, list dashes and indents included. A cell that
+starts with `=`, `+`, `-` or `@` is read as a formula, so `Code.gs` stores them as JSON strings,
+which start with a quote; a cell written before that holds the text itself and still reads.
 
 Nothing is ever deleted from the sheet. A deleted song goes up whole with `active: false`, the
 tombstone keeps the song so it can, and the sheet keeps it in its row marked inactive; the app
@@ -775,7 +780,7 @@ Setting it up:
 
 After changing `Code.gs`, update the existing deployment (Deploy > Manage deployments > Edit >
 New version); saving alone does not change what the URL runs. The script creates the `songs`,
-`setlists` and `todos` tabs on first use. One value longer than a cell makes the script refuse the whole
+`setlists`, `todos` and `band` tabs on first use. One value longer than a cell makes the script refuse the whole
 write, so a song still too long once packed is not sent: it stays on its device, the sync note
 names it, and everything else syncs. Its deletion still goes up, without the song.
 

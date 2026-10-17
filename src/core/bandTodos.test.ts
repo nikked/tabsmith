@@ -10,7 +10,7 @@ import {
 } from './bandTodos.ts'
 import type { BandTodo, Library } from './library.ts'
 import { emptySong } from './model.ts'
-import { forgetSent, mergeTodos } from './sync.ts'
+import { forgetSent, mergeIdeas, mergeTodos } from './sync.ts'
 
 const shelf: Library = {
   songs: [{ id: 's', song: emptySong(), updatedAt: 0 }],
@@ -68,6 +68,16 @@ describe('band ideas', () => {
       text: 'A song about the van\n  slow',
       updatedAt: 9,
     })
+  })
+})
+
+describe('syncing band ideas', () => {
+  const here = setBandIdeas(shelf, 'Mine', 5)
+
+  it('takes the newer text whole, and keeps this one on a tie or when none came', () => {
+    expect(mergeIdeas(here, { text: 'Theirs', updatedAt: 6 }).ideas.text).toBe('Theirs')
+    expect(mergeIdeas(here, { text: 'Theirs', updatedAt: 5 })).toBe(here)
+    expect(mergeIdeas(here, null)).toBe(here)
   })
 })
 

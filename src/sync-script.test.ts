@@ -71,7 +71,15 @@ describe.each([
     },
     row: ['new', 2, '"Buy strings"', false, true],
   },
+  {
+    name: 'band',
+    write: 'writeBand',
+    record: { id: 'new', at: 2, text: 'Learn a cover' },
+    oversized: { id: 'new', at: 2, text: 'x'.repeat(50001) },
+    row: ['new', 2, '"Learn a cover"'],
+  },
 ])('$name sheet writes', ({ write, record, oversized, row }) => {
+  const blank = (width: number) => Array.from({ length: width }, () => '')
   const stored: Value[][] = [
     ['id', 'at', 'name', 'document', 'active'],
     ['kept', 1, 'Kept', 'stored document', true],
@@ -96,7 +104,7 @@ describe.each([
       sheet: sheetWith(values),
       records: [record],
     })
-    expect(values).toEqual([stored[0], row, ['', '', '', '', '']])
+    expect(values).toEqual([stored[0], row, blank(row.length)])
   })
 
   it('clears stale rows when there are no records to write', () => {
@@ -105,7 +113,7 @@ describe.each([
       sheet: sheetWith(values),
       records: [],
     })
-    expect(values).toEqual([stored[0], ['', '', '', '', ''], ['', '', '', '', '']])
+    expect(values).toEqual([stored[0], blank(row.length), blank(row.length)])
   })
 })
 
@@ -168,8 +176,21 @@ describe('todos in a request', () => {
     ])
   })
 
-  it('reads a request from an app without todos as none', () => {
+  it('reads a request from an app without todos or band fields as none', () => {
     expect(parsed({ token: 't', records: [] }).todos).toEqual([])
+    expect(parsed({ token: 't', records: [] }).band).toEqual([])
+  })
+
+  it('keeps well-formed band fields as typed', () => {
+    const body = parsed({
+      token: 't',
+      records: [],
+      band: [
+        { id: 'ideas', at: 1, text: '+Covers' },
+        { id: 'ideas', at: 'later', text: 'Broken' },
+      ],
+    })
+    expect(body.band).toEqual([{ id: 'ideas', at: 1, text: '+Covers' }])
   })
 })
 
@@ -267,5 +288,24 @@ describe('a sync round trip through the script', () => {
     expect(post({ token: 't', records: [] }).todos).toEqual([
       { id: 'old', at: 1, text: 'Buy strings', done: false, active: true },
     ])
+  })
+
+  it('keeps the newest band ideas from whichever device wrote last', () => {
+    const { tabs, post } = book()
+    post({ token: 't', records: [], band: [{ id: 'ideas', at: 2, text: 'Newer' }] })
+    const reply = post({
+      token: 't',
+      records: [],
+      band: [{ id: 'ideas', at: 1, text: 'Older, from a phone that was offline' }],
+    })
+    expect(reply.band).toEqual([{ id: 'ideas', at: 2, text: 'Newer' }])
+    expect(tabs.get('band')?.[0]).toEqual(['id', 'at', 'text'])
+  })
+
+  it('keeps band ideas as typed through the sheet, list dashes and all', () => {
+    const { post } = book()
+    const text = '- a cover\n  - for the encore'
+    post({ token: 't', records: [], band: [{ id: 'ideas', at: 1, text }] })
+    expect(post({ token: 't', records: [] }).band).toEqual([{ id: 'ideas', at: 1, text }])
   })
 })

@@ -22,7 +22,7 @@ import {
   type Library,
 } from '../core/library.ts'
 import { emptySong, type Song } from '../core/model.ts'
-import { forgetSent, merge, mergeSetlists, mergeTodos } from '../core/sync.ts'
+import { forgetSent, merge, mergeIdeas, mergeSetlists, mergeTodos } from '../core/sync.ts'
 import { DEMO } from '../demo.ts'
 import {
   decode,
@@ -39,6 +39,7 @@ import {
   saveSettings,
   setlistsToWire,
   todosToWire,
+  bandToWire,
   syncLibrary,
   toWire,
   type Settings,
@@ -157,12 +158,15 @@ export default function App() {
       return
     }
     const { library: here, song } = latest.current
-    const merged = mergeTodos(
-      mergeSetlists(
-        merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
-        pulled.setlists,
+    const merged = mergeIdeas(
+      mergeTodos(
+        mergeSetlists(
+          merge(forgetSent(withOpenSong(here, song, Date.now()), sent), pulled.records),
+          pulled.setlists,
+        ),
+        pulled.todos,
       ),
-      pulled.todos,
+      pulled.ideas,
     )
     setLibrary(merged)
     const open = openEntry(merged).song
@@ -400,6 +404,7 @@ export default function App() {
       songs: toWire(saved),
       setlists: setlistsToWire(saved),
       todos: todosToWire(saved),
+      band: bandToWire(saved),
     }
     const day = new Date().toISOString().slice(0, 10)
     return saveFile(

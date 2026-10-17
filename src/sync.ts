@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { records, type Synced } from './core/sync.ts'
-import type { BandTodo, Library, Setlist } from './core/library.ts'
+import type { BandIdeas, BandTodo, Library, Setlist } from './core/library.ts'
 import { DEMO_TITLE } from './demo.ts'
 import { pack, unpack } from './share.ts'
 import { decode, encode, type Loaded } from './storage.ts'
@@ -65,14 +65,20 @@ const todoRow = z.object({
   active: z.boolean(),
 })
 
+/** One of the band's own fields, by name: only `ideas` so far. */
+const bandRow = z.object({ id: z.string().min(1), at: z.number(), text: z.string() })
+
+const IDEAS = 'ideas'
+
 const reply = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
     records: z.array(z.unknown()),
     // A script deployed before setlists existed answers without them.
     setlists: z.array(z.unknown()).default([]),
-    // Nor, until it is redeployed, the band's todos.
+    // Nor, until it is redeployed, the band's todos or its own fields.
     todos: z.array(z.unknown()).default([]),
+    band: z.array(z.unknown()).default([]),
   }),
   z.object({ ok: z.literal(false), error: z.string() }),
 ])
@@ -83,6 +89,7 @@ export type Pulled =
       readonly records: readonly Synced[]
       readonly setlists: readonly Setlist[]
       readonly todos: readonly BandTodo[]
+      readonly ideas: BandIdeas | null
     }
   | { readonly ok: false; readonly error: string }
 
@@ -154,6 +161,12 @@ export const todosToWire = (library: Library) =>
     active: todo.active,
   }))
 
+// Never edited is nothing to send: a sheet without the row loses nothing.
+export const bandToWire = (library: Library) =>
+  library.ideas.updatedAt === 0
+    ? []
+    : [{ id: IDEAS, at: library.ideas.updatedAt, text: library.ideas.text }]
+
 /**
  * Rows come from a sheet that can be edited by hand, so one that is not a song
  * any more is dropped rather than failing the whole sync.
@@ -193,6 +206,13 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
       const { id, at, text, done, active } = each.data
       return [{ id, text, done, active, updatedAt: at }]
     }),
+    ideas:
+      parsed.data.band.flatMap((value): BandIdeas[] => {
+        const each = bandRow.safeParse(value)
+        return each.success && each.data.id === IDEAS
+          ? [{ text: each.data.text, updatedAt: each.data.at }]
+          : []
+      })[0] ?? null,
   }
 }
 
@@ -215,6 +235,7 @@ export const syncLibrary = async (
         records,
         setlists: setlistsToWire(library),
         todos: todosToWire(library),
+        band: bandToWire(library),
       }),
     })
     if (!response.ok)
