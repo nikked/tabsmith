@@ -44,6 +44,7 @@ import { forgetLink, linkedSong, toLink } from '../share.ts'
 import {
   loadSettings,
   saveSettings,
+  pendingCount,
   setlistsToWire,
   todosToWire,
   bandToWire,
@@ -89,6 +90,14 @@ const openingLibrary = (): Library =>
 /** Long enough that a burst of typing is one sync rather than one per key. */
 const SYNC_DELAY = 3000
 
+/**
+ * How long to wait before trying again after `failures` syncs in a row did not
+ * get through: soon at first, for a connection that only blinked, then backing
+ * off to once a minute so a long dead spell does not keep the radio busy.
+ */
+const retryAfter = (failures: number): number =>
+  Math.min(60_000, 5_000 * 2 ** (failures - 1))
+
 /** What a Prompt is open for, and which song or setlist it is about. */
 type Asking =
   | { readonly kind: 'copy'; readonly song: string }
@@ -111,6 +120,13 @@ export default function App() {
   const [copied, setCopied] = useState(false)
   const [syncWith, setSyncWith] = useState<Settings | null>(loadSettings)
   const [syncNote, setSyncNote] = useState<string | null>(null)
+  const [failures, setFailures] = useState(0)
+  const pending = pendingCount(library)
+  // A retry, a reconnect and an edit can all ask at once; one sync at a time.
+  const syncing = useRef(false)
+  // One asked for while another runs, which runs next: the running one may have
+  // left out an edit made after it set off.
+  const again = useRef(false)
   const [asking, setAsking] = useState<Asking | null>(null)
   // The setlist the open song was opened from, so Practice can step through it.
   const [activeSetlist, setActiveSetlist] = useState<string | null>(null)
@@ -157,19 +173,37 @@ export default function App() {
    * which is what keeps this from triggering itself forever.
    */
   const sync = async (to: Settings) => {
+    if (syncing.current) {
+      again.current = true
+      return
+    }
+    syncing.current = true
+    try {
+      do {
+        again.current = false
+        await syncOnce(to)
+      } while (again.current)
+    } finally {
+      syncing.current = false
+    }
+  }
+
+  const syncOnce = async (to: Settings) => {
     setSyncNote('Syncing…')
     const sent = latest.current.library
     const { pulled, tooLong } = await syncLibrary(to, latest.current.library)
     if (!pulled.ok) {
       setSyncNote(pulled.error)
+      setFailures((count) => count + 1)
       return
     }
+    setFailures(0)
     const { library: here, song } = latest.current
     const at = Date.now()
     const agreed = acknowledge(
       forgetSent(withOpenSong(here, song, at), sent),
       sent,
-      pulled.records,
+      pulled,
     )
     const songs = merge(agreed, pulled.records, { at, newId })
     const merged = mergeBand(
@@ -203,11 +237,22 @@ export default function App() {
       if (document.visibilityState === 'visible') run()
     }
     document.addEventListener('visibilitychange', onVisible)
+    // Back on the network is the moment a waiting edit can go up.
+    window.addEventListener('online', run)
     return () => {
       window.clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', run)
     }
   }, [library, syncWith])
+
+  // A sync that did not get through is tried again by itself, not only on the
+  // next edit, so nothing waits on someone happening to type.
+  useEffect(() => {
+    if (syncWith === null || failures === 0) return
+    const timer = window.setTimeout(() => void sync(syncWith), retryAfter(failures))
+    return () => window.clearTimeout(timer)
+  }, [failures, syncWith])
 
   const connect = (to: Settings | null) => {
     saveSettings(to)
@@ -511,6 +556,16 @@ export default function App() {
             value={mode}
             onChange={setMode}
           />
+          {syncWith !== null && pending > 0 && (
+            <button
+              type="button"
+              className="sync-pending"
+              title={`${pending} change${pending === 1 ? '' : 's'} on this device the sheet has not got yet${failures > 0 ? '; trying again' : ''}`}
+              onClick={() => show(syncDialog.current)}
+            >
+              {pending} not synced
+            </button>
+          )}
           <div className="settings">
             <Menu label={copied ? 'Link copied' : '⋯'} title="Settings">
               <MenuItems
@@ -721,6 +776,7 @@ export default function App() {
                 songs: asking.adding === null ? [] : [asking.adding],
                 active: true,
                 updatedAt: at,
+                syncedAt: null,
               }),
             )
           }

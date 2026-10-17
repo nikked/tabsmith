@@ -52,6 +52,8 @@ export type Setlist = {
   readonly songs: readonly string[]
   readonly active: boolean
   readonly updatedAt: number
+  /** The stamp the sheet was last seen holding it at; null for never. */
+  readonly syncedAt: number | null
 }
 
 /**
@@ -67,13 +69,20 @@ export type BandTodo = {
   readonly done: boolean
   readonly active: boolean
   readonly updatedAt: number
+  /** The stamp the sheet was last seen holding it at; null for never. */
+  readonly syncedAt: number | null
 }
 
 /**
  * One of the band's own texts, stamped as a whole, so the newer of two offline
  * edits wins.
  */
-export type BandField = { readonly text: string; readonly updatedAt: number }
+export type BandField = {
+  readonly text: string
+  readonly updatedAt: number
+  /** The stamp the sheet was last seen holding it at; null for never. */
+  readonly syncedAt: number | null
+}
 
 /** What is the band's rather than any song's: its name, and ideas no song has yet. */
 export type Band = { readonly name: BandField; readonly ideas: BandField }
@@ -82,9 +91,18 @@ export const BAND_FIELDS = ['name', 'ideas'] as const satisfies readonly (keyof 
 
 /** Never edited, so any copy from another device wins over it. */
 export const emptyBand: Band = {
-  name: { text: '', updatedAt: 0 },
-  ideas: { text: '', updatedAt: 0 },
+  name: { text: '', updatedAt: 0, syncedAt: null },
+  ideas: { text: '', updatedAt: 0, syncedAt: null },
 }
+
+/**
+ * A setlist, band todo or band field changed here since the sheet was last
+ * seen holding it. A band field never edited has nothing to send.
+ */
+export const isUnsent = (item: {
+  readonly updatedAt: number
+  readonly syncedAt: number | null
+}): boolean => item.updatedAt !== 0 && item.syncedAt !== item.updatedAt
 
 /** The whole shelf, in the order it is shown, and which of them is open. */
 export type Library = {

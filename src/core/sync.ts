@@ -217,19 +217,45 @@ export const forgetSent = (library: Library, sent: Library): Library => {
     : { ...library, removed, setlists, todos }
 }
 
+/** What the sheet answers a sync with: everything it holds. */
+export type Sheet = {
+  readonly records: readonly Synced[]
+  readonly setlists: readonly Setlist[]
+  readonly todos: readonly BandTodo[]
+  readonly band: Partial<Band>
+}
+
+type Stamped = { readonly updatedAt: number; readonly syncedAt: number | null }
+
+/** Exactly what the sheet holds, so the sheet has it at this stamp. */
+const heldAs = <T extends Stamped>(item: T, there: T | undefined): T =>
+  there !== undefined &&
+  item.syncedAt !== item.updatedAt &&
+  same({ ...item, syncedAt: there.syncedAt }, there)
+    ? { ...item, syncedAt: item.updatedAt }
+    : item
+
+const heldOf = <T extends Stamped & { readonly id: string }>(
+  items: readonly T[],
+  sheet: readonly T[],
+): readonly T[] => {
+  const there = new Map(sheet.map((item) => [item.id, item]))
+  const held = items.map((item) => heldAs(item, there.get(item.id)))
+  return held.every((item, index) => item === items[index]) ? items : held
+}
+
 /**
- * A song the sheet now holds exactly as this sync sent it is agreed on at that
- * version, even when it has been edited here again while the sync was on its
- * way. Without this the sheet's answer would look like someone else's edit to
- * the same parts, and the edit made meanwhile would turn into a conflict copy
- * of itself. What changed since stays unsynced and goes up next.
+ * What the sheet now holds as it is here is agreed on, so it no longer counts
+ * as waiting to go up.
+ *
+ * A song is agreed on at the version this sync sent, even when it has been
+ * edited here again while the sync was on its way. Without that the sheet's
+ * answer would look like someone else's edit to the same parts, and the edit
+ * made meanwhile would turn into a conflict copy of itself. What changed since
+ * stays unsynced and goes up next.
  */
-export const acknowledge = (
-  library: Library,
-  sent: Library,
-  remote: readonly Synced[],
-): Library => {
-  const theirs = new Map(remote.map((record) => [record.id, record]))
+export const acknowledge = (library: Library, sent: Library, sheet: Sheet): Library => {
+  const theirs = new Map(sheet.records.map((record) => [record.id, record]))
   const agreed = (entry: Entry): Entry => {
     const record = theirs.get(entry.id)
     const mine = sent.songs.find((each) => each.id === entry.id)
@@ -243,9 +269,19 @@ export const acknowledge = (
   }
   const [first, ...rest] = library.songs
   const songs: Songs = [agreed(first), ...rest.map(agreed)]
-  return songs.every((entry, index) => entry === library.songs[index])
+  const setlists = heldOf(library.setlists, sheet.setlists)
+  const todos = heldOf(library.todos, sheet.todos)
+  const band: Band = {
+    name: heldAs(library.band.name, sheet.band.name),
+    ideas: heldAs(library.band.ideas, sheet.band.ideas),
+  }
+  return songs.every((entry, index) => entry === library.songs[index]) &&
+    setlists === library.setlists &&
+    todos === library.todos &&
+    band.name === library.band.name &&
+    band.ideas === library.band.ideas
     ? library
-    : { ...library, songs }
+    : { ...library, songs, setlists, todos, band }
 }
 
 type Listed = {

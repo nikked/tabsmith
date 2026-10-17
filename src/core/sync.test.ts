@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Entry, Library } from './library.ts'
 import { emptySong, type Song } from './model.ts'
-import { acknowledge, forgetSent, merge, records, type Synced } from './sync.ts'
+import {
+  acknowledge,
+  forgetSent,
+  merge,
+  records,
+  type Sheet,
+  type Synced,
+} from './sync.ts'
 import { isUnsynced } from './library.ts'
 
 const named = (title: string): Song => ({ ...emptySong(), title })
@@ -27,9 +34,19 @@ const shelf = (...songs: readonly Entry[]): Library => {
     removed: [],
     setlists: [],
     todos: [],
-    band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
+    band: {
+      name: { text: '', updatedAt: 0, syncedAt: null },
+      ideas: { text: '', updatedAt: 0, syncedAt: null },
+    },
   }
 }
+
+const answer = (records: readonly Synced[]): Sheet => ({
+  records,
+  setlists: [],
+  todos: [],
+  band: {},
+})
 
 const titles = (library: Library) => library.songs.map((each) => each.song.title)
 
@@ -346,7 +363,7 @@ describe('a sync answered while the song was edited again', () => {
   const echo: Synced = { id: 'a', at: 11, active: true, song: sentSong }
 
   it('agrees on what was sent and keeps the edit made since as unsynced', () => {
-    const agreed = acknowledge(here, sent, [echo])
+    const agreed = acknowledge(here, sent, answer([echo]))
     expect(agreed.songs[0].lastSynced).toEqual({ at: 11, song: sentSong })
     expect(agreed.songs[0].song).toBe(typedSince)
     expect(isUnsynced(agreed.songs[0])).toBe(true)
@@ -357,10 +374,60 @@ describe('a sync answered while the song was edited again', () => {
 
   it('does not agree on a version the sheet holds differently', () => {
     const other: Synced = { ...echo, song: named('theirs') }
-    expect(acknowledge(here, sent, [other])).toBe(here)
+    expect(acknowledge(here, sent, answer([other]))).toBe(here)
   })
 
   it('comes back untouched when nothing sent came back', () => {
-    expect(acknowledge(here, sent, [])).toBe(here)
+    expect(acknowledge(here, sent, answer([]))).toBe(here)
+  })
+})
+
+describe('what the sheet holds of the band', () => {
+  const todo = {
+    id: 't',
+    text: 'Buy strings',
+    done: false,
+    active: true,
+    updatedAt: 5,
+    syncedAt: null,
+  }
+  const setlist = {
+    id: 's',
+    name: 'Friday',
+    songs: [],
+    active: true,
+    updatedAt: 3,
+    syncedAt: null,
+  }
+  const library = {
+    ...shelf(entry('a', 1)),
+    setlists: [setlist],
+    todos: [todo],
+    band: {
+      ...shelf(entry('a', 1)).band,
+      name: { text: 'Fättig', updatedAt: 8, syncedAt: null },
+    },
+  }
+
+  it('is no longer waiting to go up once the sheet holds it as it is', () => {
+    const held = acknowledge(library, library, {
+      records: [],
+      setlists: [{ ...setlist, syncedAt: 3 }],
+      todos: [{ ...todo, syncedAt: 5 }],
+      band: { name: { text: 'Fättig', updatedAt: 8, syncedAt: 8 } },
+    })
+    expect(held.setlists[0]?.syncedAt).toBe(3)
+    expect(held.todos[0]?.syncedAt).toBe(5)
+    expect(held.band.name.syncedAt).toBe(8)
+  })
+
+  it('still waits when the sheet holds something else under the same stamp', () => {
+    const held = acknowledge(library, library, {
+      records: [],
+      setlists: [],
+      todos: [{ ...todo, text: 'Book the room', syncedAt: 5 }],
+      band: { name: { text: 'Theirs', updatedAt: 8, syncedAt: 8 } },
+    })
+    expect(held).toBe(library)
   })
 })

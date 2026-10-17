@@ -34,6 +34,7 @@ const set = (
   songs,
   active: true,
   updatedAt,
+  syncedAt: null,
 })
 
 const shelf = (...setlists: readonly Setlist[]): Library => ({
@@ -42,7 +43,10 @@ const shelf = (...setlists: readonly Setlist[]): Library => ({
   removed: [],
   setlists,
   todos: [],
-  band: { name: { text: '', updatedAt: 0 }, ideas: { text: '', updatedAt: 0 } },
+  band: {
+    name: { text: '', updatedAt: 0, syncedAt: null },
+    ideas: { text: '', updatedAt: 0, syncedAt: null },
+  },
 })
 
 const songsIn = (library: Library, id: string) =>
