@@ -8,7 +8,6 @@ import {
   hasTab,
   hasTodo,
   openEntry,
-  openTodos,
   titleOf,
   type Entry,
   type Library,
@@ -21,6 +20,7 @@ import {
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
+import { isOpen } from '../core/model.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
 import { Checklist } from './Checklist.tsx'
@@ -47,6 +47,8 @@ type Props = {
   readonly library: Library
   /** The setlist it was opened from, or null from All songs. */
   readonly onOpen: (song: string, setlist: string | null) => void
+  /** Straight to Edit, where a song's todos are ticked off. */
+  readonly onEdit: (song: string) => void
   readonly onRename: (song: string) => void
   readonly onCopy: (song: string) => void
   readonly onCopyLink: (song: string) => void
@@ -405,6 +407,7 @@ export function SongsPage(props: Props) {
             {shown.map((entry) => {
               const title = titleOf(entry)
               const inSetlists = setlistsWith(library, entry.id)
+              const todos = entry.song.todos.filter(isOpen)
               return (
                 <li key={entry.id} className={entry.id === open ? 'current' : undefined}>
                   <button type="button" {...grip(entry.id, null, title)}>
@@ -422,10 +425,26 @@ export function SongsPage(props: Props) {
                       </span>
                     )}
                   </button>
-                  {openTodos(entry) > 0 && (
-                    <span className="chip song-todo" title="Todos still to do">
-                      {openTodos(entry)} todo
-                    </span>
+                  {todos.length > 0 && (
+                    <button
+                      type="button"
+                      className="song-todos"
+                      // One todo is short enough to read on hover; more are counted.
+                      title={
+                        todos.length === 1
+                          ? todos[0]?.text
+                          : `${todos.length} todos still to do, in Edit`
+                      }
+                      onClick={() => props.onEdit(entry.id)}
+                    >
+                      {/* As many as fit on the row's one line; the rest wrap out of sight. */}
+                      <span className="song-todo-texts">
+                        {todos.map((todo, index) => (
+                          <span key={index}>{todo.text}</span>
+                        ))}
+                      </span>
+                      <span className="chip song-todo">{todos.length}</span>
+                    </button>
                   )}
                   <span className="song-setlists">
                     {/* Only the setlist that matters most, so a row stays one line. */}
