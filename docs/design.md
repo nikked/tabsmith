@@ -784,6 +784,9 @@ Setlists sync the same way, newest wins per setlist, in a `setlists` tab of thei
 deleted setlist is only marked `active: false`, so it is just a newer copy and needs no
 tombstone. Like a deleted song, it stays on the device only until a sync has carried it to the
 sheet, and one pulled from the sheet only takes the setlist off the device. A script deployed before setlists answers without them, which changes nothing here.
+Each setlist's `position` is a column of its own. A row written before it has none, and the app
+reads the sheet's row order in its place; an app from before it sends none, and the sheet keeps
+the position the row already had.
 
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,

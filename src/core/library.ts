@@ -51,6 +51,11 @@ export type Setlist = {
   readonly name: string
   readonly songs: readonly string[]
   readonly active: boolean
+  /**
+   * Where it goes among the setlists, lowest first. Stamped with the rest of
+   * it, so an order set on one device reaches the others.
+   */
+  readonly position: number
   readonly updatedAt: number
   /** The stamp the sheet was last seen holding it at; null for never. */
   readonly syncedAt: number | null
