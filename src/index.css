@@ -12,8 +12,11 @@
   color-scheme: light dark;
 }
 
+/* The system's choice unless one was made in the menu, which sets data-theme.
+   The dark palette is written out twice because a media query and an
+   attribute cannot share one rule. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #24273a; /* base */
     --raised: #1e2030; /* mantle */
     --fg: #cad3f5; /* text */
@@ -23,6 +26,22 @@
     --on-cursor: #24273a; /* base */
     --alert: #ed8796; /* red */
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #24273a; /* base */
+  --raised: #1e2030; /* mantle */
+  --fg: #cad3f5; /* text */
+  --muted: #8087a2; /* overlay1 */
+  --line: #494d64; /* surface1 */
+  --cursor: #eed49f; /* yellow */
+  --on-cursor: #24273a; /* base */
+  --alert: #ed8796; /* red */
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 body {
@@ -1391,6 +1410,10 @@ header .menu-open:has(+ .menu:popover-open) {
   border-radius: 6px;
 }
 
+.toggle.small[data-count='3']::before {
+  width: calc((100% - 4px) / 3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toggle::before,
   .toggle button {
@@ -1477,6 +1500,25 @@ header .menu-open:has(+ .menu:popover-open) {
 .menu button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* A toggle in a menu spans it, and keeps its own buttons rather than taking on
+   the menu's items' padding and hover. */
+.menu-toggle {
+  padding: 0.25rem 0.7rem 0.45rem;
+}
+
+.menu-toggle .toggle {
+  display: grid;
+}
+
+.menu .toggle button {
+  padding: 0.15rem 0.7rem;
+  text-align: center;
+}
+
+.menu .toggle button:hover {
+  background: none;
 }
 
 .menu-icon {

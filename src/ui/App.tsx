@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { initialTimeline, songHasContent, step } from '../core/edit.ts'
 import {
   activeSetlists,
@@ -52,7 +52,14 @@ import { SongsPage } from './SongsPage.tsx'
 import { Sync } from './Sync.tsx'
 import { TabGrid } from './TabGrid.tsx'
 import { Toggle } from './Toggle.tsx'
-import { loadMode, saveMode, type Mode } from '../screen.ts'
+import {
+  loadMode,
+  loadTheme,
+  saveMode,
+  saveTheme,
+  type Mode,
+  type Theme,
+} from '../screen.ts'
 
 /**
  * Asking where to put a file is Chromium-only, and no other browser has an
@@ -88,6 +95,7 @@ export default function App() {
   )
   const state = timeline.present
   const [mode, setMode] = useState<Mode>(loadMode)
+  const [theme, setTheme] = useState<Theme>(loadTheme)
   const [error, setError] = useState<string | null>(null)
   const [shared, setShared] = useState<Song | null>(null)
   const [copied, setCopied] = useState(false)
@@ -117,6 +125,13 @@ export default function App() {
   useEffect(() => {
     saveMode(mode)
   }, [mode])
+
+  // Before the first paint, so a page set to light does not flash dark first.
+  useLayoutEffect(() => {
+    saveTheme(theme)
+    if (theme === 'system') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = theme
+  }, [theme])
 
   // A sync answers after the render that sent it, so it reads the shelf and
   // the editor as they are when the answer lands rather than as they were.
@@ -481,6 +496,20 @@ export default function App() {
                   },
                 ]}
               />
+              <p className="menu-label">Theme</p>
+              <div className="menu-toggle">
+                <Toggle
+                  small
+                  label="Theme"
+                  options={[
+                    { value: 'dark', label: 'Dark' },
+                    { value: 'light', label: 'Light' },
+                    { value: 'system', label: 'System' },
+                  ]}
+                  value={theme}
+                  onChange={setTheme}
+                />
+              </div>
             </Menu>
           </div>
         </header>
