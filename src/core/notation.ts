@@ -288,6 +288,52 @@ const identify = (sounding: readonly number[]): Identified | null => {
   }
 }
 
+// Other ways a chart writes a chord the shapes above already name.
+const SUFFIX_ALIASES: Readonly<Record<string, string>> = {
+  min: 'm',
+  maj: '',
+  M7: 'maj7',
+  sus: 'sus4',
+  '+': 'aug',
+  o: 'dim',
+}
+
+// A root and its sign: H is B the way Finnish and German charts write it.
+const ROOT = /^([A-H])([#b]?)/
+
+const rootClass = (letter: string, sign: string): number =>
+  letter === 'H'
+    ? (11 + (sign === '#' ? 1 : sign === 'b' ? -1 : 0) + 12) % 12
+    : pitchClass(letter + sign)
+
+// The lowest note of a pitch class from E2 up, or from E3 up, where a guitar's
+// low strings and the strings above them sit.
+const fromE = (pc: number, e: number): number => e + ((pc - 4 + 12) % 12)
+
+/**
+ * The notes a chord name is played with, as MIDI numbers lowest first: the bass
+ * (the root, or the note after a slash) low, the chord's notes above it. Null
+ * for a name that is no chord the shapes above know.
+ */
+export const chordNotes = (name: string): readonly number[] | null => {
+  const [main = '', over, ...more] = name.trim().split('/')
+  const root = ROOT.exec(main)
+  if (root === null || more.length > 0) return null
+  const [whole, letter = '', sign = ''] = root
+  const written = main.slice(whole.length)
+  const suffix = SUFFIX_ALIASES[written] ?? written
+  const shape = SHAPES.find(([each]) => each === suffix)
+  if (shape === undefined) return null
+  const bassOf = over === undefined ? null : ROOT.exec(over)
+  if (over !== undefined && (bassOf === null || bassOf[0] !== over)) return null
+  const rootPc = rootClass(letter, sign)
+  const bassPc = bassOf === null ? rootPc : rootClass(bassOf[1] ?? '', bassOf[2] ?? '')
+  const upper = [
+    ...new Set(shape[1].map((step) => fromE((rootPc + step) % 12, 52))),
+  ].sort((a, b) => a - b)
+  return [fromE(bassPc, 40), ...upper]
+}
+
 export const chordName = (sounding: readonly number[]): string | null => {
   const chord = identify(sounding)
   if (chord === null) return null
@@ -297,7 +343,10 @@ export const chordName = (sounding: readonly number[]): string | null => {
 }
 
 /** The fretted notes of one tab column, as MIDI numbers. */
-const soundingIn = (column: Column, open: readonly number[]): readonly number[] =>
+export const columnPitches = (
+  column: Column,
+  open: readonly number[],
+): readonly number[] =>
   column.cells.flatMap((cell, slot) => {
     const string = open[slot]
     return cell?.kind === 'fret' && string !== undefined ? [string + cell.fret] : []
@@ -305,7 +354,7 @@ const soundingIn = (column: Column, open: readonly number[]): readonly number[] 
 
 /** The chord a tab column's notes make, named as the staff names it. */
 export const recognizedChord = (column: Column, open: readonly number[]): string | null =>
-  chordName(soundingIn(column, open))
+  chordName(columnPitches(column, open))
 
 /**
  * Each column the player left unnamed given the name the staff would give its
@@ -343,7 +392,7 @@ const chordOf = (
   open: readonly number[],
   fifths: number | null,
 ): Chord | null => {
-  const sounding = soundingIn(column, open)
+  const sounding = columnPitches(column, open)
   if (sounding.length === 0) return null
   const sharps = fifths === null ? (identify(sounding)?.sharps ?? false) : fifths > 0
   return {

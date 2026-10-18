@@ -93,14 +93,27 @@ export const layout = (
 const measureWidth = (measure: Measure, first: boolean, fifths: number): number =>
   layout(measure, first, fifths).width + PAD
 
-/** A measure, or as much of one as fits a line: only its last piece closes on a bar line. */
-export type Piece = { readonly measure: Measure; readonly closed: boolean }
+/**
+ * A measure, or as much of one as fits a line: only its last piece closes on a
+ * bar line. `bar` is which of the system's measures it is from, so a note in it
+ * can be traced back to its column of tab.
+ */
+export type Piece = {
+  readonly measure: Measure
+  readonly closed: boolean
+  readonly bar: number
+}
 
 /**
  * A measure too wide for a line goes on over as many lines as it needs, cut
  * between notes, rather than running off the side of a phone.
  */
-const piecesOf = (measure: Measure, room: number, fifths: number): readonly Piece[] => {
+const piecesOf = (
+  measure: Measure,
+  bar: number,
+  room: number,
+  fifths: number,
+): readonly Piece[] => {
   const parts = measure.reduce<readonly Measure[]>((parts, event) => {
     const current = parts.at(-1)
     return current !== undefined &&
@@ -109,8 +122,8 @@ const piecesOf = (measure: Measure, room: number, fifths: number): readonly Piec
       : [...parts, [event]]
   }, [])
   return parts.length === 0
-    ? [{ measure, closed: true }]
-    : parts.map((part, i) => ({ measure: part, closed: i === parts.length - 1 }))
+    ? [{ measure, closed: true, bar }]
+    : parts.map((part, i) => ({ measure: part, closed: i === parts.length - 1, bar }))
 }
 
 /**
@@ -125,7 +138,7 @@ export const breakLines = (
   fifths: number,
 ): readonly (readonly Piece[])[] =>
   measures
-    .flatMap((measure) => piecesOf(measure, room, fifths))
+    .flatMap((measure, bar) => piecesOf(measure, bar, room, fifths))
     .reduce<{
       readonly lines: readonly (readonly Piece[])[]
       readonly used: number

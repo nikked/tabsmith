@@ -19,6 +19,7 @@ import {
   repeatText,
   songParts,
   splitNote,
+  staffLines,
   staffText,
   tabPieces,
   trimScore,
@@ -671,5 +672,39 @@ describe('repeatText', () => {
     expect(repeatText({ name: 'Intro', body: '', repeat: 2 })).toBe(' (x2)')
     expect(repeatText({ name: 'Intro', body: '', repeat: 1 })).toBe('')
     expect(repeatText({ name: 'Intro', body: '' })).toBe('')
+  })
+})
+
+describe('staffLines column spans', () => {
+  it('marks where each column of each bar sits along a string, bar lines skipped', () => {
+    const first = place(
+      emptyBar(2, 6),
+      [0, 0, { kind: 'fret', fret: 3 }],
+      [1, 0, { kind: 'fret', fret: 12 }],
+    )
+    const second = place(emptyBar(2, 6), [1, 0, { kind: 'fret', fret: 5 }])
+    const score = scoreOf(STANDARD, first, second)
+    const [top] = staffLines(score, rowOf(first, second))
+    if (top === undefined) throw new Error('no staff')
+    const under = top.columns.map(({ from, to }) => top.text.slice(from, to))
+    expect(top.text).toBe('e|3-12|--5|')
+    expect(under).toEqual(['3-', '12', '--', '5'])
+    expect(top.columns.map(({ column }) => column)).toEqual([
+      ...first.columns,
+      ...second.columns,
+    ])
+  })
+
+  it('gives the lines that are not strings no columns', () => {
+    const bar = chords(place(emptyBar(2, 6), [0, 0, { kind: 'fret', fret: 3 }]), [0, 'G'])
+    const all = staffLines(scoreOf(STANDARD, bar), {
+      ...rowOf(bar),
+      aside: 'a\nb\nc\nd\ne\nf\ng',
+    })
+    expect(
+      all
+        .filter((line) => line.chords || line.text.trim() === '')
+        .every((line) => line.columns.length === 0),
+    ).toBe(true)
   })
 })

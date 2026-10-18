@@ -925,6 +925,7 @@ src/
     setlists.ts   adding, renaming, ordering and deleting setlists
     bandTodos.ts  the band's own todo list, ideas and name
     markdown.ts   the band's notes as Markdown: lines in pieces to style, and blocks to read
+    pluck.ts      a plucked string's samples, for hearing a column or a chord
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
     mergeSong.ts  a song changed on two devices, put together part by part

@@ -90,6 +90,13 @@ const rowHeading = (row: Row): readonly string[] =>
     row.note ?? '',
   ].filter((line) => line !== '')
 
+/** Where one column sits along a line of the staff, in characters. */
+export type ColumnSpan = {
+  readonly from: number
+  readonly to: number
+  readonly column: Column
+}
+
 /**
  * One line of a rendered staff, with the aside that hangs off its end kept
  * apart, so a view can set it as a remark rather than as part of the tab.
@@ -99,6 +106,8 @@ export type StaffLine = {
   readonly aside: string | null
   /** The chord names under the staff, which a view sets apart from the strings. */
   readonly chords: boolean
+  /** Each column's span along a string's line, for a view to know what was tapped. */
+  readonly columns: readonly ColumnSpan[]
 }
 
 /**
@@ -111,22 +120,46 @@ export type StaffLine = {
 const withAside = (
   staff: readonly string[],
   aside: string | undefined,
+  columns: readonly ColumnSpan[],
 ): readonly StaffLine[] => {
   const lines = aside === undefined || aside === '' ? [] : aside.split('\n')
   const margin = ' '.repeat(staff[0]?.length ?? 0)
   const said = (text: string | undefined): string | null =>
     text === undefined || text === '' ? null : text
   return [
-    ...staff.map((text, slot) => ({ text, aside: said(lines[slot]), chords: false })),
+    ...staff.map((text, slot) => ({
+      text,
+      aside: said(lines[slot]),
+      chords: false,
+      columns,
+    })),
     ...lines
       .slice(staff.length)
       .filter((text) => text !== '')
-      .map((text) => ({ text: margin, aside: text, chords: false })),
+      .map((text) => ({ text: margin, aside: text, chords: false, columns: [] })),
   ]
 }
 /** A bar's width in characters, its closing bar line included. */
 const barWidth = ({ sized }: MeasuredBar): number =>
   sized.reduce((sum, { width }) => sum + width, 0) + 1
+
+/** Where each column of a line of bars sits, after the labels and the opening bar line. */
+const spansOf = (
+  system: readonly MeasuredBar[],
+  labelWidth: number,
+): readonly ColumnSpan[] =>
+  system
+    .flatMap(({ sized }) => [...sized, null])
+    .reduce<{ readonly at: number; readonly spans: readonly ColumnSpan[] }>(
+      ({ at, spans }, sized) =>
+        sized === null
+          ? { at: at + 1, spans }
+          : {
+              at: at + sized.width,
+              spans: [...spans, { from: at, to: at + sized.width, column: sized.column }],
+            },
+      { at: labelWidth + 1, spans: [] },
+    ).spans
 
 /**
  * Bars in order, broken into lines of at most `width` characters with the
@@ -179,15 +212,21 @@ export const staffLines = (
         `${label.padEnd(labelWidth)}|${system.map(({ sized }) => barRow(sized, slot)).join('')}`,
     )
     const chords = chordRow(system)
+    const columns = spansOf(system, labelWidth)
     return [
-      ...(index === 0 ? [] : [{ text: '', aside: null, chords: false }]),
+      ...(index === 0 ? [] : [{ text: '', aside: null, chords: false, columns: [] }]),
       ...(index === lines.length - 1
-        ? withAside(staff, row.aside)
-        : staff.map((text) => ({ text, aside: null, chords: false }))),
+        ? withAside(staff, row.aside, columns)
+        : staff.map((text) => ({ text, aside: null, chords: false, columns }))),
       ...(chords === null
         ? []
         : [
-            { text: `${' '.repeat(labelWidth + 1)}${chords}`, aside: null, chords: true },
+            {
+              text: `${' '.repeat(labelWidth + 1)}${chords}`,
+              aside: null,
+              chords: true,
+              columns: [],
+            },
           ]),
     ]
   })
