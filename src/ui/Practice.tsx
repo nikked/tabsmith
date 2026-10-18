@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { scoreHasContent } from '../core/edit.ts'
-import type { Key, Score, Song, Spacing } from '../core/model.ts'
+import type { Key, Row, Score, Song, Spacing } from '../core/model.ts'
 import type { Place } from '../core/setlists.ts'
 import {
   repeatText,
@@ -44,6 +44,7 @@ import { ChordLine, NotedLines } from './NotedLines.tsx'
 import { audioContext, play } from './sound.ts'
 import { Notation } from './Notation.tsx'
 import { Prompt } from './Prompt.tsx'
+import { RowPlay, useRowPlayer } from './RowPlay.tsx'
 import { SoundLevel, type MicTrouble } from './SoundLevel.tsx'
 import { Toggle } from './Toggle.tsx'
 import {
@@ -213,7 +214,15 @@ function TabLine({
 }
 
 const partView =
-  (tab: Score, key: Key | null, spacing: Spacing, columns: number, width: number) =>
+  (
+    tab: Score,
+    key: Key | null,
+    spacing: Spacing,
+    columns: number,
+    width: number,
+    playing: number | null,
+    onPlayRow: ((index: number, row: Row) => void) | null,
+  ) =>
   (part: Part, index: number) => {
     const open = openPitches(tab.tuning)
     switch (part.kind) {
@@ -268,13 +277,25 @@ const partView =
             ))}
           </p>
         )
-      case 'system':
+      case 'system': {
+        const row = trimScore({ ...tab, rows: [part.row] }).rows[0]
+        if (row === undefined) return null
         return (
           <div key={index}>
-            {part.title !== '' && <h4>{part.title}</h4>}
+            {(part.title !== '' || onPlayRow !== null) && (
+              <div className="tab-row-head">
+                {part.title !== '' && <h4>{part.title}</h4>}
+                {onPlayRow !== null && (
+                  <RowPlay
+                    playing={playing === tab.rows.indexOf(part.row)}
+                    onClick={() => onPlayRow(tab.rows.indexOf(part.row), part.row)}
+                  />
+                )}
+              </div>
+            )}
             {part.note !== '' && <p className="tab-note">{part.note}</p>}
             <pre className="tab-text">
-              {staffLines(tab, part.row, spacing, columns).map(
+              {staffLines(tab, row, spacing, columns).map(
                 ({ text, aside, chords, columns }, line) => (
                   <Fragment key={line}>
                     {line > 0 && '\n'}
@@ -290,6 +311,7 @@ const partView =
             </pre>
           </div>
         )
+      }
       case 'notation':
         return (
           <Notation
@@ -301,6 +323,15 @@ const partView =
             }}
             width={width}
             fifths={key === null ? 0 : FIFTHS[key]}
+            playing={playing}
+            onPlayRow={
+              onPlayRow === null
+                ? undefined
+                : (row) => {
+                    const played = tab.rows[row]
+                    if (played !== undefined) onPlayRow(row, played)
+                  }
+            }
           />
         )
       case 'section':
@@ -408,6 +439,8 @@ export function Practice({
     const bpm = Math.min(FASTEST_BPM, Math.max(SLOWEST_BPM, beat + by))
     setTempo({ song: songId, bpm })
   }
+  // A row plays at the metronome's tempo, which is the song's unless tried otherwise.
+  const player = useRowPlayer(songId)
   const heard = useRef<Level>(silence)
   const changeMeter = (change: Partial<Meter>) => {
     const next = { ...meter, ...change }
@@ -507,8 +540,8 @@ export function Practice({
     setFit({ step: FITS.largest, settled: false })
   }
 
-  // Notation reads durations from columns, including trailing space and rest bars.
-  const tab = asNotation ? song.tab : recognizedChords(trimScore(song.tab))
+  // Playback and notation need every column; only the displayed tab is trimmed.
+  const tab = asNotation ? song.tab : recognizedChords(song.tab)
 
   const step = chosen ?? fit.step
   const scale = STEPS[step] ?? 1
@@ -845,7 +878,20 @@ export function Practice({
             asNotation ? part.kind !== 'system' : part.kind !== 'notation',
           )
           .filter((part) => showSynths || part.kind !== 'synths')
-          .map(partView(tab, song.key, spacing, columns, widthEm))}
+          .map(
+            partView(
+              tab,
+              song.key,
+              spacing,
+              columns,
+              widthEm,
+              player.playing,
+              beat === null
+                ? null
+                : (index, row) =>
+                    player.toggle(index, row, openPitches(song.tab.tuning), beat),
+            ),
+          )}
       </div>
       {calibrating && (
         <Prompt

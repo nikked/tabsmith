@@ -1,3 +1,4 @@
+import type { Played } from '../core/playback.ts'
 import { frequencyOf, sineTone } from '../core/tone.ts'
 
 declare global {
@@ -49,24 +50,58 @@ const bufferOf = (ctx: AudioContext, midi: number): AudioBuffer => {
   return buffer
 }
 
+// How long a note held to its length takes to fall silent, so it ends without a click.
+const RELEASE_SECONDS = 0.04
+
+// The notes as one strum from `start`, lowest first, held until `until` when
+// they have a length, or left to die away when they do not.
+const strum = (
+  ctx: AudioContext,
+  midi: readonly number[],
+  start: number,
+  until: number | null,
+): readonly AudioBufferSourceNode[] => {
+  const out = ctx.createGain()
+  // Quieter per string as more sound, so a full chord is no louder than a note.
+  const level = 0.5 / Math.sqrt(midi.length)
+  out.gain.value = level
+  if (until !== null) {
+    out.gain.setValueAtTime(level, until)
+    out.gain.linearRampToValueAtTime(0, until + RELEASE_SECONDS)
+  }
+  out.connect(ctx.destination)
+  return [...midi]
+    .sort((a, b) => a - b)
+    .map((note, i) => {
+      const source = ctx.createBufferSource()
+      source.buffer = bufferOf(ctx, note)
+      source.connect(out)
+      source.start(start + i * STRUM_SECONDS)
+      if (until !== null) source.stop(until + RELEASE_SECONDS)
+      return source
+    })
+}
+
 /** Plays MIDI notes as one strum, lowest first; one note just sounds. */
 export const play = (midi: readonly number[]): void => {
   if (midi.length === 0) return
   const ctx = audio()
   void ctx.resume()
-  const out = ctx.createGain()
-  // Quieter per string as more sound, so a full chord is no louder than a note.
-  out.gain.value = 0.5 / Math.sqrt(midi.length)
-  out.connect(ctx.destination)
-  const start = ctx.currentTime + 0.01
-  ;[...midi]
-    .sort((a, b) => a - b)
-    .forEach((note, i) => {
-      const source = ctx.createBufferSource()
-      source.buffer = bufferOf(ctx, note)
-      source.connect(out)
-      source.start(start + i * STRUM_SECONDS)
-    })
+  strum(ctx, midi, ctx.currentTime + 0.01, null)
+}
+
+/**
+ * Plays a row's notes in time, all handed to the audio at once so a page in
+ * the background still plays them on time. Gives back what stops them.
+ */
+export const playRow = (notes: readonly Played[]): (() => void) => {
+  const ctx = audio()
+  void ctx.resume()
+  const start = ctx.currentTime + 0.05
+  const sources = notes.flatMap(({ midi, at, seconds }) =>
+    strum(ctx, midi, start + at, start + at + seconds),
+  )
+  return () => sources.forEach((source) => source.stop())
 }
 
 /** The same audio context, for a metronome to schedule its clicks against. */
