@@ -946,6 +946,7 @@ src/
     markdown.ts   the band's notes as Markdown: lines in pieces to style, and blocks to read
     tone.ts       a soft sine note, for hearing a column or a chord
     metronome.ts  one beat of click and silence to loop, and how long since the last beat
+    playback.ts   a tab row as notes in time, for playing it
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
     mergeSong.ts  a song changed on two devices, put together part by part
