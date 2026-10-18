@@ -3132,20 +3132,52 @@ kbd {
   }
 }
 
-/* The sound level, in the bar while the meter is on. Tabular figures, so it
-   does not shift as the reading changes; colour only once it is too much. */
+/* The sound level, in the bar while the meter is on. Tabular figures,
+   so it does not shift as the reading changes; colour only once it is too much.
+   Its contents centred, the struck-through mic as much as the reading. */
 .practice-bar > .level-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* The metronome's chip: its bpm and a dot that swells on each beat, calmly. */
+/* The metronome's chip: its bpm and a dot that swells on each beat, calmly;
+   off, the same chip quieter and its dot still. */
 .metronome-chip {
+  /* No zoom on a double tap, which turns it on or off instead. */
+  touch-action: manipulation;
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
-  color: var(--mauve);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.metronome-chip.on {
+  color: var(--mauve);
+}
+
+.metronome-chip:not(.on) .metronome-beat {
+  animation: none;
+  opacity: 0.5;
+}
+
+/* A phone's bar has no room to spare beside the song's title: with a chip in
+   it, full screen moves into the menu to make room. */
+@media (max-width: 40rem) {
+  .practice-bar:has(> .metronome-chip, > .level-chip) > .full-toggle {
+    display: none;
+  }
+
+  .practice-bar:has(> .metronome-chip, > .level-chip) .full-in-menu {
+    display: block;
+  }
+}
+
+.full-in-menu {
+  display: none;
 }
 
 .metronome-beat {

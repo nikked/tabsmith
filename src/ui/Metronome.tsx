@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { beatSamples, sinceBeat } from '../core/metronome.ts'
 import { audioContext } from './sound.ts'
 
+const DOUBLE_TAP_MS = 350
+
 // The audio clock's time of what the speaker is playing now: the clicks reach
 // it later than they are made, by a lot on an iPhone, and the light has to
 // pulse with what is heard.
@@ -15,20 +17,35 @@ const heardAt = (ctx: AudioContext): number => {
 }
 
 /**
- * A metronome at the song's bpm, sounding for as long as this is on screen,
- * and its chip in the bar: a dot that pulses on the beat and stops it when
- * tapped. Every beat alike, with no first beat marked.
+ * The metronome's chip in the bar, there whether it is on or off, opening the
+ * menu that has its controls, or on a double tap turning it on or off. While
+ * on, it sounds at the bpm, every beat alike with no first beat marked, and its
+ * dot pulses on the beat.
  */
 export function Metronome({
   bpm,
-  onStop,
+  on,
+  menu,
+  onToggle,
 }: {
   readonly bpm: number
-  readonly onStop: () => void
+  readonly on: boolean
+  /** The id of the menu the chip opens. */
+  readonly menu: string
+  readonly onToggle: () => void
 }) {
+  // A tap opens the menu only once no second tap has followed it, so a double
+  // tap turns the metronome on or off without the menu flashing open.
+  const waiting = useRef<number | null>(null)
+  // Whether the menu was open as the tap began: pressing outside it closes it
+  // before the tap lands, and that tap was meant to close it, not reopen it.
+  const wasOpen = useRef(false)
+  const menuElement = () => document.getElementById(menu)
+  useEffect(() => () => window.clearTimeout(waiting.current ?? undefined), [])
   const dot = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
+    if (!on) return
     const ctx = audioContext()
     void ctx.resume()
     const samples = beatSamples(ctx.sampleRate, bpm)
@@ -64,20 +81,37 @@ export function Metronome({
       source.stop()
       out.disconnect()
     }
-  }, [bpm])
+  }, [bpm, on])
 
   return (
     <button
       type="button"
-      className="metronome-chip"
-      title={`Metronome at ${bpm} bpm. Tap to stop.`}
-      aria-label={`Stop the metronome, ${bpm} bpm`}
-      onClick={onStop}
+      className={`metronome-chip${on ? ' on' : ''}`}
+      title={`Metronome ${on ? 'at' : 'off,'} ${bpm} bpm`}
+      aria-label={`Metronome ${on ? 'at' : 'off,'} ${bpm} bpm`}
+      aria-haspopup="true"
+      onPointerDown={() => {
+        wasOpen.current = menuElement()?.matches(':popover-open') ?? false
+      }}
+      onClick={() => {
+        const closing = wasOpen.current
+        wasOpen.current = false
+        if (waiting.current !== null) {
+          window.clearTimeout(waiting.current)
+          waiting.current = null
+          onToggle()
+        } else if (!closing) {
+          waiting.current = window.setTimeout(() => {
+            waiting.current = null
+            menuElement()?.showPopover()
+          }, DOUBLE_TAP_MS)
+        }
+      }}
     >
       <span
         ref={dot}
         className="metronome-beat"
-        style={{ animationDuration: `${60 / bpm}s` }}
+        style={on ? { animationDuration: `${60 / bpm}s` } : undefined}
       />
       {bpm}
     </button>

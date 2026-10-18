@@ -578,9 +578,13 @@ included: each song is counted in afresh. Its − and + try another tempo
 without touching the song's: shown as `87 (88)`, the metronome's then the song's, and left behind
 when another song opens, which starts at its own bpm again. It is one beat of sound,
 a click and its silence (`core/metronome.ts`), looped by the audio itself, so neither a busy page nor
-one in the background, whose timers stall, can make it drag. While it runs, a chip in the bar shows the
-bpm with a dot pulsing on the beat as it is heard, the audio's delay to the speaker allowed for, and
-tapping it stops it. It is never kept on: a click starting by itself on opening a song would startle.
+one in the background, whose timers stall, can make it drag. A chip in the bar shows the bpm, on or
+off, with a dot pulsing on the beat while it runs, as the beat is heard, the audio's delay to the
+speaker allowed for. Tapping it opens the `⋯` menu with its controls, and a double tap turns it on or
+off; the sound level's chip, there while the meter is on, opens the menu too. On a phone, where the
+bar has no room beside the title, full screen moves into the menu while either chip is there. Tab or
+Notation is the first to leave the bar for the menu. It is never kept on: a click starting by itself
+on opening a song would startle.
 A song with no bpm has no metronome to offer.
 
 **Sound level, dB** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
