@@ -242,6 +242,8 @@ const SHAPES: readonly (readonly [suffix: string, intervals: readonly number[]])
   ['m7b5', [0, 3, 6, 10]],
   ['dim7', [0, 3, 6, 9]],
   ['aug', [0, 4, 8]],
+  ['7sus4', [0, 5, 7, 10]],
+  ['aug7', [0, 4, 8, 10]],
 ]
 
 type Identified = {
@@ -288,14 +290,33 @@ const identify = (sounding: readonly number[]): Identified | null => {
   }
 }
 
-// Other ways a chart writes a chord the shapes above already name.
-const SUFFIX_ALIASES: Readonly<Record<string, string>> = {
+// A chord as a chart writes one: a root, a quality or extension, and a bass.
+// Wider than what can be played, so a line of chords reads as one even where
+// a chord is beyond the shapes above (C13, E7#9).
+const CHORD =
+  /^[A-H][#b]?(?:maj|min|m|dim|aug|sus|add|M|o|\+|-)?\d*(?:(?:sus|add|b|#)\d+)*(?:\/[A-H][#b]?)?$/
+
+export const isChordName = (word: string): boolean => CHORD.test(word)
+
+// Other ways a chart writes the quality the shapes above name, before the
+// extension after it (Amin7, C-7, C+7), and whole suffixes written otherwise.
+const QUALITY = /^(?:min|-|\+|o)/
+const QUALITY_ALIASES: Readonly<Record<string, string>> = {
   min: 'm',
+  '-': 'm',
+  '+': 'aug',
+  o: 'dim',
+}
+const SUFFIX_ALIASES: Readonly<Record<string, string>> = {
   maj: '',
   M7: 'maj7',
   sus: 'sus4',
-  '+': 'aug',
-  o: 'dim',
+  sus7: '7sus4',
+}
+
+const shapeSuffix = (written: string): string => {
+  const quality = written.replace(QUALITY, (word) => QUALITY_ALIASES[word] ?? word)
+  return SUFFIX_ALIASES[quality] ?? quality
 }
 
 // A root and its sign: H is B the way Finnish and German charts write it.
@@ -316,12 +337,13 @@ const fromE = (pc: number, e: number): number => e + ((pc - 4 + 12) % 12)
  * for a name that is no chord the shapes above know.
  */
 export const chordNotes = (name: string): readonly number[] | null => {
+  // Only what a chord line reads as a chord is played, so the two never disagree.
+  if (!isChordName(name.trim())) return null
   const [main = '', over, ...more] = name.trim().split('/')
   const root = ROOT.exec(main)
   if (root === null || more.length > 0) return null
   const [whole, letter = '', sign = ''] = root
-  const written = main.slice(whole.length)
-  const suffix = SUFFIX_ALIASES[written] ?? written
+  const suffix = shapeSuffix(main.slice(whole.length))
   const shape = SHAPES.find(([each]) => each === suffix)
   if (shape === undefined) return null
   const bassOf = over === undefined ? null : ROOT.exec(over)

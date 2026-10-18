@@ -14,6 +14,8 @@ import {
   songParts,
   staffLines,
   tabPieces,
+  type ColumnSpan,
+  type TabPiece,
   trimScore,
   type Part,
 } from '../core/render.ts'
@@ -28,9 +30,16 @@ import {
   slowDb,
   type Level,
 } from '../core/level.ts'
-import { FIFTHS, notation, recognizedChords } from '../core/notation.ts'
+import {
+  columnPitches,
+  FIFTHS,
+  notation,
+  openPitches,
+  recognizedChords,
+} from '../core/notation.ts'
 import { synthSummary } from '../core/synths.ts'
-import { NotedLines } from './NotedLines.tsx'
+import { ChordLine, NotedLines } from './NotedLines.tsx'
+import { play } from './sound.ts'
 import { Notation } from './Notation.tsx'
 import { Prompt } from './Prompt.tsx'
 import { SoundLevel, type MicTrouble } from './SoundLevel.tsx'
@@ -158,9 +167,53 @@ const overflows = (page: HTMLElement): boolean =>
   page.getBoundingClientRect().bottom + window.scrollY > window.innerHeight ||
   [...page.querySelectorAll('pre')].some((block) => block.scrollWidth > block.clientWidth)
 
+/**
+ * One string's line of the tab, coloured piece by piece, each fret a button
+ * that plays the whole column it is in: one note, or the chord the column holds.
+ */
+function TabLine({
+  text,
+  columns,
+  open,
+}: {
+  readonly text: string
+  readonly columns: readonly ColumnSpan[]
+  readonly open: readonly number[]
+}) {
+  const pieces = tabPieces(text).reduce<{
+    readonly at: number
+    readonly placed: readonly { readonly piece: TabPiece; readonly at: number }[]
+  }>(
+    ({ at, placed }, piece) => ({
+      at: at + piece.text.length,
+      placed: [...placed, { piece, at }],
+    }),
+    { at: 0, placed: [] },
+  ).placed
+  return pieces.map(({ piece, at }) => {
+    const span = columns.find(({ from, to }) => at >= from && at < to)
+    const notes = span === undefined ? [] : columnPitches(span.column, open)
+    return piece.kind === 'fret' && notes.length > 0 ? (
+      <button
+        key={at}
+        type="button"
+        className={`piece-${piece.kind} sound`}
+        onClick={() => play(notes)}
+      >
+        {piece.text}
+      </button>
+    ) : (
+      <span key={at} className={`piece-${piece.kind}`}>
+        {piece.text}
+      </span>
+    )
+  })
+}
+
 const partView =
   (tab: Score, key: Key | null, spacing: Spacing, columns: number, width: number) =>
   (part: Part, index: number) => {
+    const open = openPitches(tab.tuning)
     switch (part.kind) {
       case 'synths':
         return (
@@ -220,17 +273,13 @@ const partView =
             {part.note !== '' && <p className="tab-note">{part.note}</p>}
             <pre className="tab-text">
               {staffLines(tab, part.row, spacing, columns).map(
-                ({ text, aside, chords }, line) => (
+                ({ text, aside, chords, columns }, line) => (
                   <Fragment key={line}>
                     {line > 0 && '\n'}
                     {chords ? (
-                      <span className="chord-line">{text}</span>
+                      <ChordLine text={text} playable />
                     ) : (
-                      tabPieces(text).map((piece, at) => (
-                        <span key={at} className={`piece-${piece.kind}`}>
-                          {piece.text}
-                        </span>
-                      ))
+                      <TabLine text={text} columns={columns} open={open} />
                     )}
                     {aside !== null && <span className="tab-aside"> {aside}</span>}
                   </Fragment>
@@ -244,6 +293,10 @@ const partView =
           <Notation
             key={index}
             systems={notation(tab, key)}
+            onPlay={(row, bar, at) => {
+              const column = tab.rows[row]?.bars[bar]?.columns[at]
+              if (column !== undefined) play(columnPitches(column, open))
+            }}
             width={width}
             fifths={key === null ? 0 : FIFTHS[key]}
           />
@@ -259,7 +312,7 @@ const partView =
             )}
             {part.section.body !== '' && (
               <pre>
-                <NotedLines body={part.section.body} />
+                <NotedLines body={part.section.body} playable />
               </pre>
             )}
           </div>

@@ -487,6 +487,16 @@ describe('chordNotes', () => {
     expect(chordNotes('CM7')).toEqual(chordNotes('Cmaj7'))
     expect(chordNotes('Gsus')).toEqual(chordNotes('Gsus4'))
     expect(chordNotes('C+')).toEqual(chordNotes('Caug'))
+    expect(chordNotes('C-')).toEqual(chordNotes('Cm'))
+  })
+
+  it('reads the quality written otherwise with an extension after it', () => {
+    expect(chordNotes('Amin7')).toEqual(chordNotes('Am7'))
+    expect(chordNotes('C-7')).toEqual(chordNotes('Cm7'))
+    expect(chordNotes('Co7')).toEqual(chordNotes('Cdim7'))
+    expect(chordNotes('C+7')).toEqual([48, 52, 56, 58, 60])
+    expect(chordNotes('Gsus7')).toEqual(chordNotes('G7sus4'))
+    expect(chordNotes('G7sus4')).toEqual([43, 53, 55, 60, 62])
   })
 
   it('is the chord its notes are named as', () => {

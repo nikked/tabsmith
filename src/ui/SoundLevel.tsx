@@ -14,6 +14,7 @@ import {
   type Level,
 } from '../core/level.ts'
 import type { Meter } from '../viewing.ts'
+import { readyMicrophone } from './sound.ts'
 
 /** Why the meter could not listen, for the menu to say. */
 export type MicTrouble = 'blocked' | 'missing'
@@ -73,6 +74,7 @@ export function SoundLevel({ meter, onHear, onStop }: Props) {
     let closed = false
     let stream: MediaStream | null = null
     let timer: number | undefined
+    readyMicrophone()
     const context = new AudioContext()
     audio.current = context
 

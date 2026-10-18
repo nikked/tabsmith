@@ -559,6 +559,14 @@ with A− or A+, and Dense, are kept per song on this device (`tabsmith.viewing`
 rather than with the song: a phone and an iPad want different sizes for the same song, so they
 stay off the sheet. A song with no size chosen is fitted to the screen.
 
+Tapping a fret in Perform's tab plays its column, one note or the chord it holds; tapping a chord
+name, in a chord line of the chart or under the tab, strums that chord (`chordNotes`: the bass low,
+the chord's notes above, H read as B, `Amin7` as `Am7`; one grammar, `isChordName`, decides what
+a chord line holds and what can be played, so a name that plays never sits on a plain line); and
+tapping a note in the notation plays it. The sound is a
+plucked string made in the page (`core/pluck.ts`, Karplus–Strong) rather than a recording, so
+there is nothing to download. An iPhone on silent still plays it, the way a music app does.
+
 **Sound level, dB** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
 band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
