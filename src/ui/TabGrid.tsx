@@ -19,18 +19,22 @@ import { keyToAction } from '../core/keymap.ts'
 import { TUNINGS, type EditorState } from '../core/model.ts'
 import { openPitches, recognizedChord } from '../core/notation.ts'
 import { cellText } from '../core/render.ts'
+import { RowPlay, useRowPlayer } from './RowPlay.tsx'
 import { Toggle } from './Toggle.tsx'
 
 type Props = {
+  readonly songId: string
   readonly state: EditorState
   readonly dispatch: Dispatch<Action>
   readonly onShowKeys: () => void
 }
 
-export function TabGrid({ state, dispatch, onShowKeys }: Props) {
+export function TabGrid({ songId, state, dispatch, onShowKeys }: Props) {
+  const player = useRowPlayer(songId)
   const { cursor } = state
   const score = state.song.tab
   const open = openPitches(score.tuning)
+  const bpm = state.song.bpm
   const staff = useRef<HTMLDivElement>(null)
   const current = useRef<HTMLDivElement>(null)
   const chordFields = useRef<Record<string, HTMLInputElement | null>>({})
@@ -297,6 +301,12 @@ export function TabGrid({ state, dispatch, onShowKeys }: Props) {
                 }
                 onKeyDown={(event) => onHeadingKeyDown(event, rowIndex)}
               />
+              {bpm !== null && (
+                <RowPlay
+                  playing={player.playing === rowIndex}
+                  onClick={() => player.toggle(rowIndex, row, open, bpm)}
+                />
+              )}
               <input
                 className="row-note"
                 placeholder="Note"

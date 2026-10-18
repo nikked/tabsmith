@@ -29,6 +29,7 @@ import {
   type System,
   type Value,
 } from '../core/notation.ts'
+import { RowPlay } from './RowPlay.tsx'
 
 /**
  * Drawn in staff spaces, the gap between two lines, and sized in ems so the
@@ -363,12 +364,17 @@ export function Notation({
   width,
   fifths,
   onPlay,
+  playing = null,
+  onPlayRow,
 }: {
   readonly systems: readonly System[]
   readonly width: number
   readonly fifths: number
   /** A note tapped, by its row, bar and column: where it is in the tab. */
   readonly onPlay?: (row: number, bar: number, at: number) => void
+  /** The row being played, and what plays or stops a row; none, no buttons. */
+  readonly playing?: number | null
+  readonly onPlayRow?: (row: number) => void
 }) {
   const room = (width - 2 * INSET_EM) / SPACE_EM
   return (
@@ -381,7 +387,14 @@ export function Notation({
         const extent = reach(system)
         return (
           <div key={row}>
-            {system.title !== '' && <h4>{system.title}</h4>}
+            {(system.title !== '' || onPlayRow !== undefined) && (
+              <div className="tab-row-head">
+                {system.title !== '' && <h4>{system.title}</h4>}
+                {onPlayRow !== undefined && (
+                  <RowPlay playing={playing === row} onClick={() => onPlayRow(row)} />
+                )}
+              </div>
+            )}
             {system.note !== '' && <p className="tab-note">{system.note}</p>}
             {breakLines(system.measures, room, fifths).map((line, index) => (
               <div key={index} className="notation-line">

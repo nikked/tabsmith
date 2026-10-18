@@ -725,6 +725,7 @@ export default function App() {
                 onTodoFocused={() => setFocusTodo(false)}
               />
               <TabGrid
+                songId={library.open}
                 state={state}
                 dispatch={dispatch}
                 onShowKeys={() => show(guide.current)}

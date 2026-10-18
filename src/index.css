@@ -1158,6 +1158,60 @@ button.sound:hover {
   font-weight: 700;
 }
 
+/* A tab row's title, with the button that plays the row after it. */
+.practice-song .tab-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-bottom: 0.25em;
+}
+
+.practice-song .tab-row-head h4 {
+  margin: 0;
+}
+
+/* A small round button, faint until pointed at, so the title stays what is read. */
+.row-play {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35em;
+  height: 1.35em;
+  padding: 0;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* In the editor, between a row's title and its note. */
+.row-head .row-play {
+  flex: none;
+  align-self: center;
+}
+
+.row-play svg {
+  width: 0.6em;
+  height: 0.6em;
+  fill: currentColor;
+}
+
+.row-play:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--fg) 30%, transparent);
+}
+
+.practice-song .notation .row-play {
+  color: #666;
+  background: #f4f4f4;
+  border-color: #ddd;
+}
+
+.practice-song .notation .row-play:hover {
+  color: #000;
+  border-color: #bbb;
+}
+
 .practice-song .tab-note {
   margin: 0 0 0.3em;
   font-size: 0.9em;

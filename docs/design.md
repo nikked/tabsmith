@@ -566,6 +566,11 @@ a chord line holds and what can be played, so a name that plays never sits on a 
 tapping a note in the notation plays it. The sound is a soft
 sine synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
 download. An iPhone on silent still plays it, the way a music app does.
+The ▶ after a tab row's title, in the tab or the notation, and in Edit between a row's title and
+note, plays the whole row in time (`core/playback.ts`): each column an eighth, as the notation reads
+it, a note held until the next one or the bar line, at the metronome's tempo, which is the song's
+unless tried otherwise (in Edit, the song's). ■ stops it. A song with no bpm has no ▶, there being no
+time to play it in.
 
 **Metronome** in the `⋯` menu clicks at the song's bpm, every beat alike, for as long as Perform
 is open on the song it was turned on for, and stops when another song opens, the setlist's next
@@ -974,7 +979,8 @@ src/
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
     Metronome.tsx the metronome's clicks and its chip in Perform's bar
-    sound.ts      the page's audio: a note or chord, and the clock clicks keep to
+    RowPlay.tsx   the button that plays a tab row, and which row is playing
+    sound.ts      the page's audio: a note or chord, a row in time, and the clock clicks keep to
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
   screen.ts       which page is up, kept so a reload comes back to it
