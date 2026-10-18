@@ -11,6 +11,7 @@ import type {
   Spacing,
   Synth,
 } from './model.ts'
+import { isChordName } from './notation.ts'
 import { synthIsBlank } from './synths.ts'
 
 const PAD = '-'
@@ -293,9 +294,6 @@ export const tabPieces = (line: string): readonly TabPiece[] => {
   return label === '' ? pieces : [{ kind: 'label', text: label }, ...pieces]
 }
 
-// A chord as a chart writes one: a root, a quality or extension, and a bass.
-const CHORD =
-  /^[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|M)?\d*(?:(?:sus|add|b|#)\d+)*(?:\/[A-G][#b]?)?$/
 // What else a line of chords carries: bar lines, repeats, a held chord, no chord.
 const BESIDE_CHORDS = /^(?:\||\|\||:?\|:?|x\d+|\(x\d+\)|-+|%|N\.?C\.?|\.+)$/
 
@@ -310,8 +308,8 @@ export const isChordLine = (line: string): boolean => {
     .split(/\s+/)
     .filter((word) => word !== '')
   return (
-    words.some((word) => CHORD.test(word)) &&
-    words.every((word) => CHORD.test(word) || BESIDE_CHORDS.test(word))
+    words.some((word) => isChordName(word)) &&
+    words.every((word) => isChordName(word) || BESIDE_CHORDS.test(word))
   )
 }
 

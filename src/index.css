@@ -1034,6 +1034,29 @@ header {
   font-family: system-ui, sans-serif;
 }
 
+/* A note, a chord name or a fret in Perform that plays when tapped: still text
+   to read, with only a faint hover and the hand cursor to say so. */
+button.sound {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+button.sound:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.notation .note-hit {
+  fill: transparent;
+  /* The staff's own stroke would otherwise outline each strip, a staff space thick. */
+  stroke: none;
+  cursor: pointer;
+}
+
 /* Printed music is black on white, whatever the theme around it: a staff is
    read the way it looks on paper. */
 .notation {

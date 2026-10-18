@@ -220,12 +220,15 @@ function MeasureStaff({
   fifths,
   reach: { above, below, named },
   neighbours: { before, after },
+  onPlay,
 }: {
   readonly piece: Piece
   readonly first: boolean
   readonly fifths: number
   readonly reach: Reach
   readonly neighbours: Neighbours
+  /** A note tapped, by its column in the bar. */
+  readonly onPlay?: (at: number) => void
 }) {
   const { measure, closed } = piece
   const { xs, width: notes } = layout(measure, first, fifths)
@@ -296,6 +299,21 @@ function MeasureStaff({
           </text>
         ) : null,
       )}
+      {/* A head is too small a target, so each note is a strip the staff's height. */}
+      {onPlay !== undefined &&
+        measure.map((event, i) =>
+          event.kind === 'note' ? (
+            <rect
+              key={`play${i}`}
+              className="note-hit"
+              x={(xs[i] ?? 0) - 1}
+              y={-above}
+              width={2}
+              height={height}
+              onClick={() => onPlay(event.at)}
+            />
+          ) : null,
+        )}
       {ottavaRuns(measure).map(({ ottava, from, to }) => {
         const carriedIn = from === firstNote(measure) && before === ottava
         const carriedOn = to === lastNote(measure) && after === ottava
@@ -344,10 +362,13 @@ export function Notation({
   systems,
   width,
   fifths,
+  onPlay,
 }: {
   readonly systems: readonly System[]
   readonly width: number
   readonly fifths: number
+  /** A note tapped, by its row, bar and column: where it is in the tab. */
+  readonly onPlay?: (row: number, bar: number, at: number) => void
 }) {
   const room = (width - 2 * INSET_EM) / SPACE_EM
   return (
@@ -374,6 +395,11 @@ export function Notation({
                       first={bar === 0}
                       fifths={fifths}
                       reach={extent}
+                      onPlay={
+                        onPlay === undefined
+                          ? undefined
+                          : (at) => onPlay(row, piece.bar, at)
+                      }
                       neighbours={{
                         before:
                           previous === undefined

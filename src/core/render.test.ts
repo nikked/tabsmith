@@ -595,6 +595,10 @@ describe('isChordLine', () => {
     'Em            D             Em',
     'Em7  Dmaj7  C  G',
     'D/F#  Bm7b5  Csus4  Gadd9  E7#9  Bbmaj7',
+    'Em H7',
+    'C/H Hm H#',
+    'C+ Co',
+    'Amin7  C-  Gsus7  C+7',
     '| Am | F | x2',
     'Am  -  -  G  N.C.',
   ])('reads %j as chords', (line) => {
