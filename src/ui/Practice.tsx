@@ -30,6 +30,7 @@ import {
   slowDb,
   type Level,
 } from '../core/level.ts'
+import { FASTEST_BPM, SLOWEST_BPM } from '../core/metronome.ts'
 import {
   columnPitches,
   FIFTHS,
@@ -395,6 +396,18 @@ export function Practice({
     setTickingSong(songId)
     setTicking(false)
   }
+  // The metronome's own tempo, tried out without touching the song's bpm: it
+  // belongs to the song it was set on, so the next song starts at its own again.
+  const [tempo, setTempo] = useState<{
+    readonly song: string
+    readonly bpm: number
+  } | null>(null)
+  const beat = tempo !== null && tempo.song === songId ? tempo.bpm : song.bpm
+  const nudge = (by: number) => {
+    if (beat === null) return
+    const bpm = Math.min(FASTEST_BPM, Math.max(SLOWEST_BPM, beat + by))
+    setTempo({ song: songId, bpm })
+  }
   const heard = useRef<Level>(silence)
   const changeMeter = (change: Partial<Meter>) => {
     const next = { ...meter, ...change }
@@ -617,7 +630,7 @@ export function Practice({
                   items={[
                     {
                       id: 'metronome',
-                      label: `Metronome, ${song.bpm} bpm`,
+                      label: 'Metronome',
                       checked: ticking,
                       onToggle: () => {
                         // Inside the tap itself: Safari starts audio only there.
@@ -627,6 +640,31 @@ export function Practice({
                     },
                   ]}
                 />
+                {/* The song's own bpm in brackets once the metronome's differs. */}
+                <div className="menu-row" role="group" aria-label="Metronome tempo">
+                  <button
+                    type="button"
+                    aria-label="Slower"
+                    disabled={beat === null || beat <= SLOWEST_BPM}
+                    onClick={() => nudge(-1)}
+                  >
+                    −
+                  </button>
+                  <span className="menu-value">
+                    {beat}
+                    {beat !== song.bpm && (
+                      <span className="menu-count"> ({song.bpm})</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Faster"
+                    disabled={beat === null || beat >= FASTEST_BPM}
+                    onClick={() => nudge(1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             )}
             <div className="menu-section menu-panel" aria-label="Sound level">
@@ -732,7 +770,7 @@ export function Practice({
           A+
         </button>
         {ticking && song.bpm !== null && (
-          <Metronome bpm={song.bpm} onStop={() => setTicking(false)} />
+          <Metronome bpm={beat ?? song.bpm} onStop={() => setTicking(false)} />
         )}
         {meter.on && visible && (
           <SoundLevel

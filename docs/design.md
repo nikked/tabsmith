@@ -569,7 +569,9 @@ download. An iPhone on silent still plays it, the way a music app does.
 
 **Metronome** in the `⋯` menu clicks at the song's bpm, every beat alike, for as long as Perform
 is open on the song it was turned on for, and stops when another song opens, the setlist's next
-included: each song is counted in afresh. It is one beat of sound,
+included: each song is counted in afresh. Its − and + try another tempo
+without touching the song's: shown as `87 (88)`, the metronome's then the song's, and left behind
+when another song opens, which starts at its own bpm again. It is one beat of sound,
 a click and its silence (`core/metronome.ts`), looped by the audio itself, so neither a busy page nor
 one in the background, whose timers stall, can make it drag. While it runs, a chip in the bar shows the
 bpm with a dot pulsing on the beat as it is heard, the audio's delay to the speaker allowed for, and

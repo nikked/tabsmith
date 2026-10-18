@@ -11,6 +11,10 @@ export const sinceBeat = (start: number, bpm: number, at: number): number | null
   return (at - start) % period
 }
 
+/** The tempos the metronome can be set to, from a slow ballad to a fast punk song. */
+export const SLOWEST_BPM = 30
+export const FASTEST_BPM = 300
+
 // A short tick, high enough to cut through a band without being a beep.
 const CLICK_HZ = 1600
 const CLICK_SECONDS = 0.035
