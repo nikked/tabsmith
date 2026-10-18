@@ -28,6 +28,8 @@ type Props = {
   /** Each new reading, for calibrating against the one heard last. */
   readonly onHear: (level: Level) => void
   readonly onStop: (trouble: MicTrouble) => void
+  /** The id of the menu the chip opens, which has the meter's controls. */
+  readonly menu: string
 }
 
 // iPadOS says it is a Mac, so a touch screen is what tells it apart.
@@ -56,7 +58,7 @@ const MicOffIcon = () => (
  * chip in the bar. Its own component so the reading changing ten times a second
  * redraws the chip and not the song.
  */
-export function SoundLevel({ meter, onHear, onStop }: Props) {
+export function SoundLevel({ meter, onHear, onStop, menu }: Props) {
   const heard = useRef<Level>(silence)
   const [level, setLevel] = useState<Level>(silence)
   const hear = useEffectEvent((next: Level) => {
@@ -151,16 +153,12 @@ export function SoundLevel({ meter, onHear, onStop }: Props) {
           ? (room
               ? 'Average dB(A) since turned on, and time to a full day’s dose'
               : `Loudest dB(A) of the last ${HOLD} seconds, and the target`) +
-            (calibrated ? '' : ' (not calibrated)') +
-            '. Tap to start again.'
-          : 'Waiting for the microphone: allow it if the browser asks, or tap to start it.'
+            (calibrated ? '' : ' (not calibrated)')
+          : 'Waiting for the microphone: allow it if the browser asks.'
       }
-      onClick={() => {
-        void audio.current?.resume()
-        heard.current = silence
-        setLevel(silence)
-        onHear(silence)
-      }}
+      popoverTarget={menu}
+      // A tap is the gesture Safari waits for before it lets the mic be heard.
+      onClick={() => void audio.current?.resume()}
     >
       {listening ? reading : <MicOffIcon />}
     </button>

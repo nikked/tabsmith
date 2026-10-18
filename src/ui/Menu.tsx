@@ -16,6 +16,8 @@ type Props = {
   readonly label: ReactNode
   readonly title: string
   readonly children: ReactNode
+  /** Given, other buttons can open the menu too, by naming it as their popoverTarget. */
+  readonly id?: string
 }
 
 /**
@@ -25,8 +27,9 @@ type Props = {
  * whole action; the rest — opening a group, dragging a song, a nested menu's
  * own button — leave it open around them.
  */
-export function Menu({ label, title, children }: Props) {
-  const id = useId()
+export function Menu({ label, title, children, id: given }: Props) {
+  const own = useId()
+  const id = given ?? own
   const anchor = `--menu-${id.replaceAll(':', '')}`
 
   return (

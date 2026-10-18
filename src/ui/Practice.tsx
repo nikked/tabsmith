@@ -1,6 +1,7 @@
 import {
   Fragment,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -427,6 +428,12 @@ export function Practice({
     setTickingSong(songId)
     setTicking(false)
   }
+  const menuId = useId()
+  const toggleTicking = () => {
+    // Inside the tap itself: Safari starts audio only there.
+    if (!ticking) void audioContext().resume()
+    setTicking(!ticking)
+  }
   // The metronome's own tempo, tried out without touching the song's bpm: it
   // belongs to the song it was set on, so the next song starts at its own again.
   const [tempo, setTempo] = useState<{
@@ -564,7 +571,7 @@ export function Practice({
             well, so the bar is the song's title and nothing else that takes a
             line; anywhere wider the menu leaves those to the bar. */}
         <div className="bar-more">
-          <Menu label="⋯" title="Perform options">
+          <Menu label="⋯" title="Perform options" id={menuId}>
             {/* Panels: the setlist being played, how the song is shown, the
                 metronome, and the sound level, which is the microphone's. */}
             {place !== null && onStep !== undefined && (
@@ -603,6 +610,21 @@ export function Practice({
               </div>
             )}
             <div className="menu-section menu-panel" aria-label="View">
+              {/* A phone's bar gives full screen up to the metronome's or the sound level's chip. */}
+              {onFull !== undefined && (
+                <div className="full-in-menu">
+                  <MenuChecks
+                    items={[
+                      {
+                        id: 'full',
+                        label: 'Full screen',
+                        checked: full,
+                        onToggle: () => onFull(!full),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
               <div className="menu-row phone-only" role="group" aria-label="Text size">
                 <button
                   type="button"
@@ -665,11 +687,7 @@ export function Practice({
                       id: 'metronome',
                       label: 'Metronome',
                       checked: ticking,
-                      onToggle: () => {
-                        // Inside the tap itself: Safari starts audio only there.
-                        if (!ticking) void audioContext().resume()
-                        setTicking(!ticking)
-                      },
+                      onToggle: toggleTicking,
                     },
                   ]}
                 />
@@ -802,8 +820,15 @@ export function Practice({
         >
           A+
         </button>
-        {ticking && song.bpm !== null && (
-          <Metronome bpm={beat ?? song.bpm} onStop={() => setTicking(false)} />
+        {/* The metronome always in the bar, on or off, and the sound level while
+            it is on; either opens the menu with its controls. */}
+        {song.bpm !== null && (
+          <Metronome
+            bpm={beat ?? song.bpm}
+            on={ticking}
+            menu={menuId}
+            onToggle={toggleTicking}
+          />
         )}
         {meter.on && visible && (
           <SoundLevel
@@ -812,6 +837,7 @@ export function Practice({
               heard.current = level
             }}
             onStop={stopListening}
+            menu={menuId}
           />
         )}
         {onFull !== undefined && (
