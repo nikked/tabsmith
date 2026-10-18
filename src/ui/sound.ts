@@ -1,4 +1,4 @@
-import { frequencyOf, pluck } from '../core/pluck.ts'
+import { frequencyOf, sineTone } from '../core/tone.ts'
 
 declare global {
   interface Navigator {
@@ -42,14 +42,14 @@ export const readyMicrophone = (): void => settleSession()
 const bufferOf = (ctx: AudioContext, midi: number): AudioBuffer => {
   const cached = notes.get(midi)
   if (cached !== undefined) return cached
-  const samples = pluck(frequencyOf(midi), ctx.sampleRate, NOTE_SECONDS, midi)
+  const samples = sineTone(frequencyOf(midi), ctx.sampleRate, NOTE_SECONDS)
   const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate)
   buffer.copyToChannel(samples, 0)
   notes.set(midi, buffer)
   return buffer
 }
 
-/** Plays MIDI notes as one plucked strum, lowest first; one note is just plucked. */
+/** Plays MIDI notes as one strum, lowest first; one note just sounds. */
 export const play = (midi: readonly number[]): void => {
   if (midi.length === 0) return
   const ctx = audio()

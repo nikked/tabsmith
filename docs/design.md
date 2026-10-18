@@ -563,9 +563,9 @@ Tapping a fret in Perform's tab plays its column, one note or the chord it holds
 name, in a chord line of the chart or under the tab, strums that chord (`chordNotes`: the bass low,
 the chord's notes above, H read as B, `Amin7` as `Am7`; one grammar, `isChordName`, decides what
 a chord line holds and what can be played, so a name that plays never sits on a plain line); and
-tapping a note in the notation plays it. The sound is a
-plucked string made in the page (`core/pluck.ts`, Karplus–Strong) rather than a recording, so
-there is nothing to download. An iPhone on silent still plays it, the way a music app does.
+tapping a note in the notation plays it. The sound is a soft
+sine synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
+download. An iPhone on silent still plays it, the way a music app does.
 
 **Metronome** in the `⋯` menu clicks at the song's bpm, every beat alike, for as long as Perform
 is open on the song it was turned on for, and stops when another song opens, the setlist's next
@@ -942,7 +942,7 @@ src/
     setlists.ts   adding, renaming, ordering and deleting setlists
     bandTodos.ts  the band's own todo list, ideas and name
     markdown.ts   the band's notes as Markdown: lines in pieces to style, and blocks to read
-    pluck.ts      a plucked string's samples, for hearing a column or a chord
+    tone.ts       a soft sine note, for hearing a column or a chord
     metronome.ts  one beat of click and silence to loop, and how long since the last beat
     parse.ts      parseSong — pasted ASCII to a Song (§3b)
     sync.ts       records, merge, acknowledge — what a sync does to the shelf (§5)
@@ -971,7 +971,7 @@ src/
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
     Metronome.tsx the metronome's clicks and its chip in Perform's bar
-    sound.ts      the page's audio: a plucked note or chord, and the clock clicks keep to
+    sound.ts      the page's audio: a note or chord, and the clock clicks keep to
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
   screen.ts       which page is up, kept so a reload comes back to it
