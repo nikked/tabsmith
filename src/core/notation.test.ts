@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   beamGroups,
   chordName,
+  chordNotes,
+  columnPitches,
   KEYS_BY_SEMITONE,
   notation,
   openPitches,
@@ -461,5 +463,61 @@ describe('measure accidentals', () => {
         ),
       ),
     ).toEqual([['natural'], [null]])
+  })
+})
+
+describe('chordNotes', () => {
+  it('plays the bass low and the chord above it', () => {
+    expect(chordNotes('Em')).toEqual([40, 52, 55, 59])
+    expect(chordNotes('C')).toEqual([48, 52, 55, 60])
+    expect(chordNotes('Dbsus2')).toEqual([49, 56, 61, 63])
+  })
+
+  it('puts the note after a slash in the bass', () => {
+    expect(chordNotes('D/F#')).toEqual([42, 54, 57, 62])
+  })
+
+  it('reads H as B, the way a Finnish or German chart writes it', () => {
+    expect(chordNotes('H')).toEqual([47, 54, 59, 63])
+    expect(chordNotes('Hm')).toEqual(chordNotes('Bm'))
+  })
+
+  it('reads the other common ways of writing a suffix', () => {
+    expect(chordNotes('Amin')).toEqual(chordNotes('Am'))
+    expect(chordNotes('CM7')).toEqual(chordNotes('Cmaj7'))
+    expect(chordNotes('Gsus')).toEqual(chordNotes('Gsus4'))
+    expect(chordNotes('C+')).toEqual(chordNotes('Caug'))
+  })
+
+  it('is the chord its notes are named as', () => {
+    for (const name of [
+      'Em',
+      'G7',
+      'Cmaj7',
+      'F#m',
+      'Bb',
+      'Asus4',
+      'D/F#',
+      'Bm7b5',
+      'E5',
+    ]) {
+      expect(chordName(chordNotes(name) ?? [])).toBe(name)
+    }
+  })
+
+  it('plays nothing for what is not a chord it knows', () => {
+    for (const name of ['', 'N.C.', 'x2', 'C13', 'C/X', 'Em/G/B', 'Intro']) {
+      expect(chordNotes(name)).toBeNull()
+    }
+  })
+})
+
+describe('columnPitches', () => {
+  it('reads the fretted strings of a column as MIDI numbers, top string first', () => {
+    const open = openPitches(TUNINGS[0])
+    expect(
+      columnPitches({ cells: [fret(0), fret(1), fret(0), fret(2), fret(3), null] }, open),
+    ).toEqual([64, 60, 55, 52, 48])
+    expect(columnPitches({ cells: on(5, { kind: 'mute' }) }, open)).toEqual([])
   })
 })

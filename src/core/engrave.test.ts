@@ -85,6 +85,19 @@ describe('engraving', () => {
     expect(pieces.flatMap((piece) => piece.measure)).toEqual(wide)
   })
 
+  it('remembers which measure each piece is from, however it was cut', () => {
+    const wide = quarters(8)
+    const lines = breakLines(
+      [quarters(2), wide],
+      layout(quarters(3), true, 0).width + 2,
+      0,
+    )
+    const bars = lines.flat().map((piece) => piece.bar)
+    expect(bars[0]).toBe(0)
+    expect(bars.slice(1).every((bar) => bar === 1)).toBe(true)
+    expect(bars.length).toBeGreaterThan(2)
+  })
+
   it('clears the clef when every note sits inside the staff', () => {
     // A B on the middle line: its head and stem stay within the five lines.
     const plain = reach({ title: '', note: '', measures: [[note([4])]] })
