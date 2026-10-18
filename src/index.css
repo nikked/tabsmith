@@ -3085,6 +3085,42 @@ kbd {
   white-space: nowrap;
 }
 
+/* The metronome's chip: its bpm and a dot that swells on each beat, calmly. */
+.metronome-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--mauve);
+  font-variant-numeric: tabular-nums;
+}
+
+.metronome-beat {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: currentColor;
+  /* Held still and moved along by the metronome to the beat being heard. */
+  animation: beat linear infinite paused;
+}
+
+@keyframes beat {
+  0% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  40%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metronome-beat {
+    animation: none;
+  }
+}
+
 .level-chip.tone-quiet {
   color: var(--muted);
 }

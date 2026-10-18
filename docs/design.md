@@ -567,6 +567,15 @@ tapping a note in the notation plays it. The sound is a
 plucked string made in the page (`core/pluck.ts`, Karplus–Strong) rather than a recording, so
 there is nothing to download. An iPhone on silent still plays it, the way a music app does.
 
+**Metronome** in the `⋯` menu clicks at the song's bpm, every beat alike, for as long as Perform
+is open on the song it was turned on for, and stops when another song opens, the setlist's next
+included: each song is counted in afresh. It is one beat of sound,
+a click and its silence (`core/metronome.ts`), looped by the audio itself, so neither a busy page nor
+one in the background, whose timers stall, can make it drag. While it runs, a chip in the bar shows the
+bpm with a dot pulsing on the beat as it is heard, the audio's delay to the speaker allowed for, and
+tapping it stops it. It is never kept on: a click starting by itself on opening a song would startle.
+A song with no bpm has no metronome to offer.
+
 **Sound level, dB** in the `⋯` menu turns on a meter, for two questions asked at practice: is the
 band loud enough that we should wear earplugs, and am I singing at the level I mean to. Left
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
@@ -961,6 +970,8 @@ src/
     Prompt.tsx    a dialog that asks for one line: Copy's name, Delete's confirmation
     Practice.tsx  the reading view (§4b), also how a shared link opens
     SoundLevel.tsx the microphone and its reading on a chip in Perform's bar
+    Metronome.tsx the metronome's clicks and its chip in Perform's bar
+    sound.ts      the page's audio: a plucked note or chord, and the clock clicks keep to
     Notation.tsx  the tab drawn as notation
   storage.ts      the document format: encode, decode, migrations, load/save
   screen.ts       which page is up, kept so a reload comes back to it

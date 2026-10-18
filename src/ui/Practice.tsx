@@ -38,8 +38,9 @@ import {
   recognizedChords,
 } from '../core/notation.ts'
 import { synthSummary } from '../core/synths.ts'
+import { Metronome } from './Metronome.tsx'
 import { ChordLine, NotedLines } from './NotedLines.tsx'
-import { play } from './sound.ts'
+import { audioContext, play } from './sound.ts'
 import { Notation } from './Notation.tsx'
 import { Prompt } from './Prompt.tsx'
 import { SoundLevel, type MicTrouble } from './SoundLevel.tsx'
@@ -386,6 +387,14 @@ export function Practice({
   const visible = useSyncExternalStore(onVisibility, pageVisible, () => true)
   const [micTrouble, setMicTrouble] = useState<MicTrouble | null>(null)
   const [calibrating, setCalibrating] = useState(false)
+  // Not kept, and off whenever another song opens, even one played before: a
+  // click that starts by itself on opening a song would startle.
+  const [ticking, setTicking] = useState(false)
+  const [tickingSong, setTickingSong] = useState(songId)
+  if (tickingSong !== songId) {
+    setTickingSong(songId)
+    setTicking(false)
+  }
   const heard = useRef<Level>(silence)
   const changeMeter = (change: Partial<Meter>) => {
     const next = { ...meter, ...change }
@@ -510,8 +519,8 @@ export function Practice({
             line; anywhere wider the menu leaves those to the bar. */}
         <div className="bar-more">
           <Menu label="⋯" title="Perform options">
-            {/* Three panels: the setlist being played, how the song is shown,
-                and the sound level, which is the microphone's. */}
+            {/* Panels: the setlist being played, how the song is shown, the
+                metronome, and the sound level, which is the microphone's. */}
             {place !== null && onStep !== undefined && (
               <div className="menu-section menu-panel phone-only" aria-label="Setlist">
                 <p className="menu-heading setlist-heading">
@@ -602,6 +611,24 @@ export function Practice({
                 ]}
               />
             </div>
+            {song.bpm !== null && (
+              <div className="menu-section menu-panel" aria-label="Metronome">
+                <MenuChecks
+                  items={[
+                    {
+                      id: 'metronome',
+                      label: `Metronome, ${song.bpm} bpm`,
+                      checked: ticking,
+                      onToggle: () => {
+                        // Inside the tap itself: Safari starts audio only there.
+                        if (!ticking) void audioContext().resume()
+                        setTicking(!ticking)
+                      },
+                    },
+                  ]}
+                />
+              </div>
+            )}
             <div className="menu-section menu-panel" aria-label="Sound level">
               <MenuChecks
                 items={[
@@ -704,6 +731,9 @@ export function Practice({
         >
           A+
         </button>
+        {ticking && song.bpm !== null && (
+          <Metronome bpm={song.bpm} onStop={() => setTicking(false)} />
+        )}
         {meter.on && visible && (
           <SoundLevel
             meter={meter}
