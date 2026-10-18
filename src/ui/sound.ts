@@ -68,3 +68,6 @@ export const play = (midi: readonly number[]): void => {
       source.start(start + i * STRUM_SECONDS)
     })
 }
+
+/** The same audio context, for a metronome to schedule its clicks against. */
+export const audioContext = (): AudioContext => audio()
