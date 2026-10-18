@@ -1771,6 +1771,15 @@ button {
   box-shadow: 0 4px 16px color-mix(in srgb, #000 25%, transparent);
 }
 
+/* Opened from a home screen, iOS draws a fixed menu in one place and takes
+   taps for it a status bar's height lower, so a tap lands on the item above.
+   Placed on the page instead of the screen, it is anchored all the same. */
+@media (display-mode: standalone) {
+  .menu {
+    position: absolute;
+  }
+}
+
 /* The header's last two, in the toggle's shell, as square as the full-screen
    button. Sync says what it does with its arrows, which turn while a sync is
    on its way; the cog opens the settings. */
