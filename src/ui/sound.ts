@@ -1,5 +1,6 @@
 import type { Played } from '../core/playback.ts'
 import { frequencyOf, sineTone } from '../core/tone.ts'
+import { loadVolumes, volumeGain } from '../viewing.ts'
 
 declare global {
   interface Navigator {
@@ -27,6 +28,25 @@ const settleSession = (): void => {
   if (settled || navigator.audioSession === undefined) return
   navigator.audioSession.type = 'play-and-record'
   settled = true
+}
+
+// Everything played goes out through one limiter: turned up, the notes and the
+// clicks go past what a speaker takes, and it holds their peaks there rather
+// than letting them clip into a buzz.
+let limiter: DynamicsCompressorNode | null = null
+
+/** Where a sound is connected to be heard: the limiter in front of the speaker. */
+export const output = (ctx: AudioContext): AudioNode => {
+  if (limiter === null) {
+    limiter = ctx.createDynamicsCompressor()
+    limiter.threshold.value = -6
+    limiter.knee.value = 0
+    limiter.ratio.value = 20
+    limiter.attack.value = 0.001
+    limiter.release.value = 0.1
+    limiter.connect(ctx.destination)
+  }
+  return limiter
 }
 
 const audio = (): AudioContext => {
@@ -62,14 +82,15 @@ const strum = (
   until: number | null,
 ): readonly AudioBufferSourceNode[] => {
   const out = ctx.createGain()
-  // Quieter per string as more sound, so a full chord is no louder than a note.
-  const level = 0.5 / Math.sqrt(midi.length)
+  // Quieter per string as more sound, so a full chord is no louder than a note;
+  // the volume read afresh, so a change in Perform's menu is heard in Edit too.
+  const level = (1.5 / Math.sqrt(midi.length)) * volumeGain(loadVolumes().notes)
   out.gain.value = level
   if (until !== null) {
     out.gain.setValueAtTime(level, until)
     out.gain.linearRampToValueAtTime(0, until + RELEASE_SECONDS)
   }
-  out.connect(ctx.destination)
+  out.connect(output(ctx))
   return [...midi]
     .sort((a, b) => a - b)
     .map((note, i) => {

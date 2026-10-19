@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { beatSamples, sinceBeat } from '../core/metronome.ts'
-import { audioContext } from './sound.ts'
+import { volumeGain } from '../viewing.ts'
+import { audioContext, output } from './sound.ts'
 
 const DOUBLE_TAP_MS = 350
 
@@ -27,12 +28,15 @@ export function Metronome({
   on,
   menu,
   onToggle,
+  volume,
 }: {
   readonly bpm: number
   readonly on: boolean
   /** The id of the menu the chip opens. */
   readonly menu: string
   readonly onToggle: () => void
+  /** In percent, changed while it plays without starting the beat over. */
+  readonly volume: number
 }) {
   // A tap opens the menu only once no second tap has followed it, so a double
   // tap turns the metronome on or off without the menu flashing open.
@@ -43,6 +47,14 @@ export function Metronome({
   const menuElement = () => document.getElementById(menu)
   useEffect(() => () => window.clearTimeout(waiting.current ?? undefined), [])
   const dot = useRef<HTMLSpanElement>(null)
+  // The volume for the beat to start at, and the gain to turn while it plays.
+  const gain = volumeGain(volume) * 0.8
+  const gainNow = useRef(gain)
+  const out = useRef<GainNode | null>(null)
+  useEffect(() => {
+    gainNow.current = gain
+    if (out.current !== null) out.current.gain.value = gain
+  }, [gain])
 
   useEffect(() => {
     if (!on) return
@@ -51,9 +63,10 @@ export function Metronome({
     const samples = beatSamples(ctx.sampleRate, bpm)
     const beat = ctx.createBuffer(1, samples.length, ctx.sampleRate)
     beat.copyToChannel(samples, 0)
-    const out = ctx.createGain()
-    out.gain.value = 0.4
-    out.connect(ctx.destination)
+    const level = ctx.createGain()
+    level.gain.value = gainNow.current
+    level.connect(output(ctx))
+    out.current = level
 
     const start = ctx.currentTime + 0.05
     const source = ctx.createBufferSource()
@@ -61,7 +74,7 @@ export function Metronome({
     source.loop = true
     // The buffer ends on a whole sample; the loop on the beat's exact length.
     source.loopEnd = 60 / bpm
-    source.connect(out)
+    source.connect(level)
     source.start(start)
 
     // The dot's pulse is set to where the heard beat is on every frame, rather
@@ -79,7 +92,8 @@ export function Metronome({
     return () => {
       window.cancelAnimationFrame(frame)
       source.stop()
-      out.disconnect()
+      level.disconnect()
+      out.current = null
     }
   }, [bpm, on])
 

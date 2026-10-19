@@ -117,3 +117,36 @@ export const loadMeter = (): Meter => {
 export const saveMeter = (value: Meter): void => {
   localStorage.setItem(METER_KEY, JSON.stringify(value))
 }
+
+const VOLUMES_KEY = 'tabsmith.volumes'
+
+/**
+ * How loud the metronome and the notes play on this device, in percent: a
+ * phone and a laptop's speakers want different levels for the same song.
+ */
+export type Volumes = { readonly metronome: number; readonly notes: number }
+
+export const DEFAULT_VOLUMES: Volumes = { metronome: 50, notes: 50 }
+
+const volumes = z.object({
+  metronome: z.number().min(0).max(100),
+  notes: z.number().min(0).max(100),
+})
+
+export const loadVolumes = (): Volumes => {
+  try {
+    const result = volumes.safeParse(
+      JSON.parse(localStorage.getItem(VOLUMES_KEY) ?? 'null'),
+    )
+    return result.success ? result.data : DEFAULT_VOLUMES
+  } catch {
+    return DEFAULT_VOLUMES
+  }
+}
+
+export const saveVolumes = (value: Volumes): void => {
+  localStorage.setItem(VOLUMES_KEY, JSON.stringify(value))
+}
+
+/** A volume in percent as a gain on the sound as it is made, which plays at 33%. */
+export const volumeGain = (percent: number): number => percent / 33

@@ -3023,6 +3023,25 @@ kbd {
   color: var(--muted);
 }
 
+/* A slider and its figure on one line, the figure wide enough for 100%. */
+.menu-volume {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.menu-volume input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--mauve);
+}
+
+.menu-volume .menu-value {
+  min-width: 2.6em;
+  text-align: right;
+}
+
 /* The Perform menu in groups: the setlist at the top, then the view and the
    sound level each a panel of its own. */
 .menu-section.menu-panel {

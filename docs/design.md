@@ -583,7 +583,9 @@ off, with a dot pulsing on the beat while it runs, as the beat is heard, the aud
 speaker allowed for. Tapping it opens the `⋯` menu with its controls, and a double tap turns it on or
 off; the sound level's chip, there while the meter is on, opens the menu too. On a phone, where the
 bar has no room beside the title, full screen moves into the menu while either chip is there. Tab or
-Notation is the first to leave the bar for the menu. It is never kept on: a click starting by itself
+Notation is the first to leave the bar for the menu. Its volume, and that of the notes, chords and rows played, are sliders in the
+menu, kept per device (`tabsmith.volumes`); both start at 50%, and everything played goes through one limiter (`sound.ts`), so the top of the
+sliders is loud without clipping. It is never kept on: a click starting by itself
 on opening a song would startle.
 A song with no bpm has no metronome to offer.
 
