@@ -425,6 +425,11 @@ header {
   gap: 0.5rem;
 }
 
+/* Under the item above: its box lines up with that item's text. */
+.checklist li.indented {
+  padding-left: 1.5rem;
+}
+
 .checklist input[type='checkbox'] {
   /* Level with the first line of the text, however many lines it runs to. */
   margin: calc(0.15rem + 0.2em) 0 0;

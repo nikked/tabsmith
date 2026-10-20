@@ -6,6 +6,7 @@ import {
   emptySection,
   emptySong,
   emptySynth,
+  orphaned,
   suggestedName,
   type Bar,
   type Cell,
@@ -69,9 +70,11 @@ export type Action =
   | { readonly kind: 'addSynth'; readonly name: string }
   | { readonly kind: 'removeSynth'; readonly index: number }
   | { readonly kind: 'setSynth'; readonly index: number; readonly synth: Synth }
-  | { readonly kind: 'addTodo' }
+  /** Indented to carry on under the same todo, as Enter in an indented last one does. */
+  | { readonly kind: 'addTodo'; readonly indented?: boolean }
   | { readonly kind: 'setTodoText'; readonly index: number; readonly text: string }
   | { readonly kind: 'toggleTodo'; readonly index: number }
+  | { readonly kind: 'indentTodo'; readonly index: number; readonly indented: boolean }
   | { readonly kind: 'removeTodo'; readonly index: number }
   | { readonly kind: 'clearDoneTodos' }
   | { readonly kind: 'setIdeas'; readonly ideas: string }
@@ -354,6 +357,20 @@ const withSynths = (state: EditorState, synths: readonly Synth[]): EditorState =
     : { ...state, song: { ...state.song, synths } }
 
 // Refusing a change that changes nothing keeps it off the undo history.
+// The todos left once those `gone` go, any that sat under one of them moved up a level.
+const withoutTodos = (
+  todos: readonly Todo[],
+  gone: (todo: Todo, index: number) => boolean,
+): readonly Todo[] => {
+  const orphans = orphaned(todos, (index) => {
+    const todo = todos[index]
+    return todo !== undefined && gone(todo, index)
+  })
+  return todos.flatMap((todo, index) =>
+    gone(todo, index) ? [] : [orphans.has(index) ? { ...todo, indented: false } : todo],
+  )
+}
+
 const withTodos = (state: EditorState, todos: readonly Todo[]): EditorState =>
   todos.length === state.song.todos.length &&
   todos.every((todo, index) => todo === state.song.todos[index])
@@ -697,7 +714,14 @@ export const apply = (state: EditorState, action: Action): EditorState => {
       )
 
     case 'addTodo':
-      return withTodos(state, [...state.song.todos, { text: '', done: false }])
+      return withTodos(state, [
+        ...state.song.todos,
+        {
+          text: '',
+          done: false,
+          indented: (action.indented ?? false) && state.song.todos.length > 0,
+        },
+      ])
 
     case 'setTodoText':
       return withTodos(
@@ -715,16 +739,26 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         ),
       )
 
+    case 'indentTodo':
+      return withTodos(
+        state,
+        state.song.todos.map((todo, index) =>
+          index === action.index && index > 0 && todo.indented !== action.indented
+            ? { ...todo, indented: action.indented }
+            : todo,
+        ),
+      )
+
     case 'removeTodo':
       return withTodos(
         state,
-        state.song.todos.filter((_, index) => index !== action.index),
+        withoutTodos(state.song.todos, (_, index) => index === action.index),
       )
 
     case 'clearDoneTodos':
       return withTodos(
         state,
-        state.song.todos.filter((todo) => !todo.done),
+        withoutTodos(state.song.todos, (todo) => todo.done),
       )
 
     case 'setIdeas':

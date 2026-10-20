@@ -11,7 +11,7 @@ const base: Song = {
   title: 'Slow Machine',
   bpm: 70,
   chart: [intro, verse('Em D\nThe slow machine'), chorus],
-  todos: [{ text: 'Bridge chords', done: false }],
+  todos: [{ text: 'Bridge chords', done: false, indented: false }],
 }
 const baseVerse = verse('Em D\nThe slow machine')
 
@@ -49,21 +49,21 @@ describe('mergeSong', () => {
   it('keeps what both sides added at the end, each once', () => {
     const mine = {
       ...base,
-      todos: [...base.todos, { text: 'Try capo 2', done: false }],
+      todos: [...base.todos, { text: 'Try capo 2', done: false, indented: false }],
     }
     const theirs = {
       ...base,
       todos: [
-        { text: 'Bridge chords', done: true },
-        { text: 'Slower intro', done: false },
+        { text: 'Bridge chords', done: true, indented: false },
+        { text: 'Slower intro', done: false, indented: false },
       ],
     }
     const merged = mergeSong(base, mine, theirs)
     expect(merged.clean).toBe(true)
     expect(merged.value.todos).toEqual([
-      { text: 'Bridge chords', done: true },
-      { text: 'Try capo 2', done: false },
-      { text: 'Slower intro', done: false },
+      { text: 'Bridge chords', done: true, indented: false },
+      { text: 'Try capo 2', done: false, indented: false },
+      { text: 'Slower intro', done: false, indented: false },
     ])
   })
 
@@ -90,23 +90,27 @@ describe('mergeSong', () => {
   })
 
   it('clears done todos on one side and keeps a todo edited on the other', () => {
-    const done = { text: 'Bridge chords', done: true }
+    const done = { text: 'Bridge chords', done: true, indented: false }
     const todos = [
       done,
-      { text: 'Capo?', done: false },
-      { text: 'Count-in', done: false },
+      { text: 'Capo?', done: false, indented: false },
+      { text: 'Count-in', done: false, indented: false },
     ]
     const before = { ...base, todos }
     const cleared = { ...base, todos: todos.slice(1) }
     const edited = {
       ...base,
-      todos: [done, { text: 'Capo 2', done: false }, { text: 'Count-in', done: true }],
+      todos: [
+        done,
+        { text: 'Capo 2', done: false, indented: false },
+        { text: 'Count-in', done: true, indented: false },
+      ],
     }
     const merged = mergeSong(before, cleared, edited)
     expect(merged.clean).toBe(true)
     expect(merged.value.todos).toEqual([
-      { text: 'Capo 2', done: false },
-      { text: 'Count-in', done: true },
+      { text: 'Capo 2', done: false, indented: false },
+      { text: 'Count-in', done: true, indented: false },
     ])
   })
 

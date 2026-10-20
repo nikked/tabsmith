@@ -69,7 +69,14 @@ describe.each([
   {
     name: 'todos',
     write: 'writeTodos',
-    record: { id: 'new', at: 2, text: 'Buy strings', done: false, active: true },
+    record: {
+      id: 'new',
+      at: 2,
+      text: 'Buy strings',
+      done: false,
+      active: true,
+      indented: true,
+    },
     oversized: {
       id: 'new',
       at: 2,
@@ -77,7 +84,7 @@ describe.each([
       done: false,
       active: true,
     },
-    row: ['new', 2, '"Buy strings"', false, true],
+    row: ['new', 2, '"Buy strings"', false, true, true],
   },
   {
     name: 'band',
@@ -184,6 +191,20 @@ describe('todos in a request', () => {
     ])
   })
 
+  it('keeps a todo’s indent when it has one, and drops one whose indent is not a yes or no', () => {
+    const body = parsed({
+      token: 't',
+      records: [],
+      todos: [
+        { id: 'a', at: 1, text: 'Capo 2', done: false, active: true, indented: true },
+        { id: 'b', at: 1, text: 'Count-in', done: false, active: true, indented: 'yes' },
+      ],
+    })
+    expect(body.todos).toEqual([
+      { id: 'a', at: 1, text: 'Capo 2', done: false, active: true, indented: true },
+    ])
+  })
+
   it('reads a request from an app without todos or band fields as none', () => {
     expect(parsed({ token: 't', records: [] }).todos).toEqual([])
     expect(parsed({ token: 't', records: [] }).band).toEqual([])
@@ -270,10 +291,24 @@ describe('a sync round trip through the script', () => {
     })
     expect(reply.ok).toBe(true)
     expect(reply.todos).toEqual([
-      { id: 'a', at: 2, text: 'Buy strings', done: true, active: false },
-      { id: 'b', at: 1, text: 'Book the room', done: false, active: true },
+      { id: 'a', at: 2, text: 'Buy strings', done: true, active: false, indented: false },
+      {
+        id: 'b',
+        at: 1,
+        text: 'Book the room',
+        done: false,
+        active: true,
+        indented: false,
+      },
     ])
-    expect(tabs.get('todos')?.[0]).toEqual(['id', 'at', 'text', 'done', 'active'])
+    expect(tabs.get('todos')?.[0]).toEqual([
+      'id',
+      'at',
+      'text',
+      'done',
+      'active',
+      'indented',
+    ])
   })
 
   it('keeps a todo as typed through the sheet, a formula never read as one', () => {
@@ -286,16 +321,41 @@ describe('a sync round trip through the script', () => {
     })
     expect(tabs.get('todos')?.[1]?.[2]).toBe(JSON.stringify(text))
     const reply = post({ token: 't', records: [] })
-    expect(reply.todos).toEqual([{ id: 'a', at: 1, text, done: false, active: true }])
+    expect(reply.todos).toEqual([
+      { id: 'a', at: 1, text, done: false, active: true, indented: false },
+    ])
   })
 
-  it('reads a todo written before text went in quoted as it is', () => {
+  it('reads a todo written before text went in quoted, or before indenting, as it is', () => {
     const { tabs, post } = book()
     post({ token: 't', records: [] })
     tabs.get('todos')?.push(['old', 1, 'Buy strings', false, true])
     expect(post({ token: 't', records: [] }).todos).toEqual([
-      { id: 'old', at: 1, text: 'Buy strings', done: false, active: true },
+      {
+        id: 'old',
+        at: 1,
+        text: 'Buy strings',
+        done: false,
+        active: true,
+        indented: false,
+      },
     ])
+  })
+
+  it('keeps a todo indented through the sheet, and when an app from before indenting ticks it', () => {
+    const { post } = book()
+    const room = { id: 'b', text: 'Book the room', active: true }
+    post({
+      token: 't',
+      records: [],
+      todos: [{ ...room, at: 1, done: false, indented: true }],
+    })
+    const reply = post({
+      token: 't',
+      records: [],
+      todos: [{ ...room, at: 2, done: true }],
+    })
+    expect(reply.todos).toEqual([{ ...room, at: 2, done: true, indented: true }])
   })
 
   it('keeps a setlist’s place when an app from before the order renames it', () => {

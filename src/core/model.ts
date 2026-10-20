@@ -107,10 +107,34 @@ export const emptySynth = (name: string): Synth => ({
  * Something to sort out before the next practice. Kept once ticked, struck
  * through, until cleared, so what got done since last time can still be seen.
  */
-export type Todo = { readonly text: string; readonly done: boolean }
+export type Todo = {
+  readonly text: string
+  readonly done: boolean
+  /** Under the nearest todo above that is not; one level deep, never the first. */
+  readonly indented: boolean
+}
 
 /** A todo with nothing typed in it is not one waiting to be done. */
 export const isOpen = (todo: Todo): boolean => !todo.done && todo.text.trim() !== ''
+
+/**
+ * The places of the indented items left with nothing to sit under once those
+ * `gone` go, so they can move up a level rather than slide in under the item
+ * before the one they were under.
+ */
+export const orphaned = (
+  items: readonly { readonly indented: boolean }[],
+  gone: (index: number) => boolean,
+): ReadonlySet<number> =>
+  new Set(
+    items.reduce<{ readonly parentGone: boolean; readonly found: readonly number[] }>(
+      ({ parentGone, found }, item, index) =>
+        !item.indented
+          ? { parentGone: gone(index), found }
+          : { parentGone, found: parentGone && !gone(index) ? [...found, index] : found },
+      { parentGone: true, found: [] },
+    ).found,
+  )
 
 export type Song = {
   readonly title: string

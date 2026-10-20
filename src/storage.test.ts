@@ -145,8 +145,8 @@ describe('encode / decode', () => {
     const song: Song = {
       ...emptySong(),
       todos: [
-        { text: 'Bridge chords', done: false },
-        { text: 'Try capo 2', done: true },
+        { text: 'Bridge chords', done: false, indented: false },
+        { text: 'Try capo 2', done: true, indented: true },
       ],
       ideas: 'sail away\n  on a line',
     }
@@ -157,6 +157,14 @@ describe('encode / decode', () => {
     const { todos: _, ideas: __, ...before } = emptySong()
     const result = decode(JSON.stringify({ version: 4, song: before }))
     expect(result.ok && [result.song.todos, result.song.ideas]).toEqual([[], ''])
+  })
+
+  it('reads a todo saved before todos could be indented as one not indented', () => {
+    const song = { ...emptySong(), todos: [{ text: 'Bridge chords', done: false }] }
+    const result = decode(JSON.stringify({ version: 4, song }))
+    expect(result.ok && result.song.todos).toEqual([
+      { text: 'Bridge chords', done: false, indented: false },
+    ])
   })
 
   it('reads a song saved before synths as one with none', () => {
@@ -464,6 +472,7 @@ describe('loadLibrary', () => {
         id: 't1',
         text: 'Buy strings',
         done: true,
+        indented: false,
         active: true,
         updatedAt: 5,
         syncedAt: 5,
@@ -472,6 +481,7 @@ describe('loadLibrary', () => {
         id: 't2',
         text: 'Book the room',
         done: true,
+        indented: false,
         active: false,
         updatedAt: 6,
         syncedAt: null,

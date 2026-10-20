@@ -137,7 +137,16 @@ const song = z.preprocess(
     tab: score,
     tabFirst: z.boolean().default(false),
     synths: z.array(synth).default([]),
-    todos: z.array(z.object({ text: z.string(), done: z.boolean() })).default([]),
+    todos: z
+      .array(
+        z.object({
+          text: z.string(),
+          done: z.boolean(),
+          // Nor one stored before todos could be indented.
+          indented: z.boolean().default(false),
+        }),
+      )
+      .default([]),
     ideas: z.string().default(''),
   }),
 )
@@ -283,6 +292,8 @@ const library = z.object({
         id: z.string().min(1),
         text: z.string(),
         done: z.boolean(),
+        // Nor one stored before todos could be indented.
+        indented: z.boolean().default(false),
         active: z.boolean(),
         updatedAt: z.number(),
         syncedAt: z.number().nullable().default(null),

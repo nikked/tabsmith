@@ -119,7 +119,11 @@ type Section = {
   readonly body: string                 // chords, and lyrics under them, exactly as typed
 }
 
-type Todo = { readonly text: string; readonly done: boolean }
+type Todo = {
+  readonly text: string
+  readonly done: boolean
+  readonly indented: boolean            // under the nearest todo above that is not; one level
+}
 
 type Synth = {
   readonly name: string                 // 'iRig'
@@ -701,7 +705,9 @@ which is for writing. Copy asks for a name, then the copy joins the shelf and op
 in the header and marks no song as the open one: a song picked there opens in Perform, and that is
 the way out. It holds the band's notes and
 todo list at the top, side by side from an iPad held upright and the notes first above the list on a
-narrower one, then setlists on one side,
+narrower one (a todo, the band's or a song's, goes under the one above with Tab and back out with
+Shift+Tab, one level deep, from a keyboard; removing or clearing one moves those under it up a
+level, rather than under the one before), then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
@@ -840,7 +846,10 @@ the position the row already had.
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
-on each device until it is redeployed. The band's name and ideas sync beside it in a `band`
+on each device until it is redeployed. A todo indented under the one above has `indented` in the
+sheet's sixth column. An app from before indenting sends none, and the sheet keeps the indent it
+held; a script from before it drops the indent, so an indented todo stays waiting to go up, and
+indented only on the device that indented it, until the script is redeployed. The band's name and ideas sync beside it in a `band`
 tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
 is still kept and synced, so a device that has it does not lose it.
 

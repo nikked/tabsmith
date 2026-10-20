@@ -16,6 +16,7 @@ import {
 import {
   activeBandTodos,
   clearDoneBandTodos,
+  indentBandTodo,
   removeBandTodo,
   setBandField,
   setBandTodoText,
@@ -147,7 +148,7 @@ type Props = {
   readonly onMoveSetlist: (setlist: string, step: -1 | 1) => void
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
-  readonly onAddBandTodo: () => void
+  readonly onAddBandTodo: (indented: boolean) => void
   /** Any other change to the band's todos or ideas, stamped with when it was made. */
   readonly onBandEdit: (edit: (library: Library, at: number) => Library) => void
 }
@@ -355,7 +356,12 @@ export function SongsPage(props: Props) {
         <section className="band-box band-todo" aria-label="Band todos">
           <Checklist
             title="TODO"
-            items={bandTodos.map(({ id, text, done }) => ({ key: id, text, done }))}
+            items={bandTodos.map(({ id, text, done, indented }) => ({
+              key: id,
+              text,
+              done,
+              indented,
+            }))}
             onAdd={props.onAddBandTodo}
             onText={(index, text) =>
               onBandTodo(index, (current, id, at) =>
@@ -363,6 +369,11 @@ export function SongsPage(props: Props) {
               )
             }
             onToggle={(index) => onBandTodo(index, toggleBandTodo)}
+            onIndent={(index, indented) =>
+              onBandTodo(index, (current, id, at) =>
+                indentBandTodo(current, id, indented, at),
+              )
+            }
             onRemove={(index) => onBandTodo(index, removeBandTodo)}
             onClearDone={() => props.onBandEdit(clearDoneBandTodos)}
           />

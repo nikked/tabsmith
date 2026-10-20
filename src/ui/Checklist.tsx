@@ -6,14 +6,17 @@ export type ChecklistItem = {
   readonly key: string
   readonly text: string
   readonly done: boolean
+  readonly indented: boolean
 }
 
 type Props = {
   readonly title: string
   readonly items: readonly ChecklistItem[]
-  readonly onAdd: () => void
+  /** Indented to carry on under the same item, as Enter in an indented last one does. */
+  readonly onAdd: (indented: boolean) => void
   readonly onText: (index: number, text: string) => void
   readonly onToggle: (index: number) => void
+  readonly onIndent: (index: number, indented: boolean) => void
   readonly onRemove: (index: number) => void
   readonly onClearDone: () => void
   /** Asked for once, from a count of what is left: the first item still to do takes focus. */
@@ -25,6 +28,8 @@ type Props = {
  * A list of things to do: a box to tick and the text beside it. A ticked item
  * stays, struck through, until Clear done, so what got done since last time
  * can be seen. Enter in an item starts the next one, the way a list is typed.
+ * Tab puts an item under the one above, one level deep, and Shift+Tab takes it
+ * back out; where neither changes anything, they move focus as anywhere else.
  */
 export function Checklist({
   title,
@@ -32,6 +37,7 @@ export function Checklist({
   onAdd,
   onText,
   onToggle,
+  onIndent,
   onRemove,
   onClearDone,
   focusFirstOpen = false,
@@ -65,9 +71,9 @@ export function Checklist({
     if (focusFirstOpen) focusOpen()
   }, [focusFirstOpen])
 
-  const add = () => {
+  const add = (indented: boolean) => {
     focusLast.current = true
-    onAdd()
+    onAdd(indented)
   }
 
   return (
@@ -76,7 +82,14 @@ export function Checklist({
       {items.length > 0 && (
         <ul ref={list}>
           {items.map((item, index) => (
-            <li key={item.key} className={item.done ? 'done' : undefined}>
+            <li
+              key={item.key}
+              className={
+                [item.done && 'done', item.indented && index > 0 && 'indented']
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+            >
               <input
                 type="checkbox"
                 aria-label={`Done: ${item.text === '' ? 'empty item' : item.text}`}
@@ -96,9 +109,17 @@ export function Checklist({
                     onText(index, event.target.value.replace(/\n/g, ' '))
                   }
                   onKeyDown={(event) => {
+                    if (event.key === 'Tab') {
+                      if (event.ctrlKey || event.metaKey || event.altKey) return
+                      const indented = !event.shiftKey
+                      if (index === 0 || item.indented === indented) return
+                      event.preventDefault()
+                      onIndent(index, indented)
+                      return
+                    }
                     if (event.key !== 'Enter') return
                     event.preventDefault()
-                    add()
+                    add(index === items.length - 1 && item.indented)
                   }}
                 />
               </span>
@@ -110,7 +131,7 @@ export function Checklist({
         </ul>
       )}
       <div className="checklist-actions">
-        <button type="button" className="chip" onClick={add}>
+        <button type="button" className="chip" onClick={() => add(false)}>
           + Add
         </button>
         {items.some((item) => item.done) && (

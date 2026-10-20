@@ -2,7 +2,7 @@
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
  * POST takes { token, records: [{ id, at, title, song, active, baseAt? }], setlists:
- * [{ id, at, name, songs, active, position? }], todos: [{ id, at, text, done, active }],
+ * [{ id, at, name, songs, active, position? }], todos: [{ id, at, text, done, indented?, active }],
  * band: [{ id, at, text }] }, where song is the document a tabsmith file holds,
  * packed by the app, songs is a setlist's song ids in order, todos are the
  * band's list, band holds the band's own fields by name (ideas), and active is
@@ -22,7 +22,7 @@
  */
 const HEADER = ['id', 'at', 'title', 'song', 'active']
 const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active', 'position']
-const TODO_HEADER = ['id', 'at', 'text', 'done', 'active']
+const TODO_HEADER = ['id', 'at', 'text', 'done', 'active', 'indented']
 const BAND_HEADER = ['id', 'at', 'text']
 
 function tab(name, header) {
@@ -106,7 +106,12 @@ function doPost(e) {
 
     // An app from before the band's todos sends none, which changes nothing here.
     const todoTab = tab('todos', TODO_HEADER)
-    const todos = newestOf(readTodos(todoTab), body.todos, (todo) => todo)
+    // An app from before todos could be indented sends none; the indent it had stays.
+    const todos = newestOf(readTodos(todoTab), body.todos, (todo, before) =>
+      todo.indented === undefined
+        ? { ...todo, indented: before ? before.indented : false }
+        : todo,
+    )
     writeTodos(todoTab, todos)
 
     // The band's own fields, by name; an app from before them sends none.
@@ -228,6 +233,8 @@ function readTodos(sheet) {
       text: textOf(row[2]),
       done: row[3] === true,
       active: row[4] === true,
+      // A row written before todos could be indented has no such cell.
+      indented: row[5] === true,
     }))
     .filter((todo) => todo.id !== '' && Number.isFinite(todo.at))
 }
@@ -236,7 +243,14 @@ function writeTodos(sheet, todos) {
   writeRows(
     sheet,
     TODO_HEADER.length,
-    todos.map((todo) => [todo.id, todo.at, textCell(todo.text), todo.done, todo.active]),
+    todos.map((todo) => [
+      todo.id,
+      todo.at,
+      textCell(todo.text),
+      todo.done,
+      todo.active,
+      todo.indented === true,
+    ]),
   )
 }
 
@@ -335,7 +349,8 @@ function parseBody(text) {
         Number.isFinite(todo.at) &&
         typeof todo.text === 'string' &&
         typeof todo.done === 'boolean' &&
-        typeof todo.active === 'boolean',
+        typeof todo.active === 'boolean' &&
+        (todo.indented === undefined || typeof todo.indented === 'boolean'),
     )
     .map((todo) => ({
       id: todo.id,
@@ -343,6 +358,7 @@ function parseBody(text) {
       text: todo.text,
       done: todo.done,
       active: todo.active,
+      ...(todo.indented === undefined ? {} : { indented: todo.indented }),
     }))
   const band = (Array.isArray(body.band) ? body.band : [])
     .filter(

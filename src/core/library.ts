@@ -72,6 +72,8 @@ export type BandTodo = {
   readonly id: string
   readonly text: string
   readonly done: boolean
+  /** Under the nearest shown item above that is not; one level deep, never the first. */
+  readonly indented: boolean
   readonly active: boolean
   readonly updatedAt: number
   /** The stamp the sheet was last seen holding it at; null for never. */

@@ -683,8 +683,8 @@ export default function App() {
           onRemoveFromSetlist={(setlist, song) =>
             changeSetlists((current, at) => removeFromSetlist(current, setlist, song, at))
           }
-          onAddBandTodo={() =>
-            changeSetlists((current, at) => addBandTodo(current, newId(), at))
+          onAddBandTodo={(indented) =>
+            changeSetlists((current, at) => addBandTodo(current, newId(), at, indented))
           }
           onBandEdit={changeSetlists}
           onPlace={(setlist, song, to) =>

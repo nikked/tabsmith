@@ -73,6 +73,8 @@ const todoRow = z.object({
   at: z.number(),
   text: z.string(),
   done: z.boolean(),
+  // A script deployed before todos could be indented sends none.
+  indented: z.boolean().default(false),
   active: z.boolean(),
 })
 
@@ -191,6 +193,7 @@ export const todosToWire = (library: Library) =>
     at: todo.updatedAt,
     text: todo.text,
     done: todo.done,
+    indented: todo.indented,
     active: todo.active,
   }))
 
@@ -237,8 +240,8 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
     todos: parsed.data.todos.flatMap((value): BandTodo[] => {
       const each = todoRow.safeParse(value)
       if (!each.success) return []
-      const { id, at, text, done, active } = each.data
-      return [{ id, text, done, active, updatedAt: at, syncedAt: at }]
+      const { id, at, text, done, indented, active } = each.data
+      return [{ id, text, done, indented, active, updatedAt: at, syncedAt: at }]
     }),
     // A field this build does not know is someone else's, and left to them.
     band: parsed.data.band.reduce<Partial<Band>>((band, value) => {
