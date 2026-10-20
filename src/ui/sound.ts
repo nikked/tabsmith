@@ -39,8 +39,11 @@ export const onSound = (listener: () => void): (() => void) => {
 
 // Everything played goes out through one limiter: turned up, the notes and the
 // clicks go past what a speaker takes, and it holds their peaks there rather
-// than letting them clip into a buzz.
+// than letting them clip into a buzz. The limiter adds a gain of its own after
+// holding them, which took a loud chord's attack 0.8 dB past full scale, so
+// the trim after it keeps the loudest of them 0.7 dB under.
 let limiter: DynamicsCompressorNode | null = null
+const TRIM = 10 ** (-1.5 / 20)
 
 /** Where a sound is connected to be heard: the limiter in front of the speaker. */
 export const output = (ctx: AudioContext): AudioNode => {
@@ -51,7 +54,9 @@ export const output = (ctx: AudioContext): AudioNode => {
     limiter.ratio.value = 20
     limiter.attack.value = 0.001
     limiter.release.value = 0.1
-    limiter.connect(ctx.destination)
+    const trim = ctx.createGain()
+    trim.gain.value = TRIM
+    limiter.connect(trim).connect(ctx.destination)
   }
   return limiter
 }
