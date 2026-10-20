@@ -137,7 +137,8 @@ const lineOf = (line: string): Line => {
   if (item !== null)
     return {
       kind: 'item',
-      indent: item[1]?.length ?? 0,
+      // A tab as the four spaces it stands in for, so the two can be mixed.
+      indent: (item[1] ?? '').replace(/\t/g, '    ').length,
       ordered: /\d/.test(item[2] ?? ''),
       words: words(item[4] ?? ''),
     }
@@ -235,6 +236,28 @@ export const listEnter = (before: string, after: string): ListEnter | null => {
   if (rest.trim() === '' && after.trim() === '') return { kind: 'end' }
   const next = /\d/.test(bullet) ? `${Number.parseInt(bullet, 10) + 1}.` : bullet
   return { kind: 'continue', marker: `${indent}${next} ` }
+}
+
+/** A change to a line: the text from `from` to `to` replaced by `text`. */
+export type LineEdit = {
+  readonly from: number
+  readonly to: number
+  readonly text: string
+}
+
+/**
+ * Tab or Shift+Tab in a list item: a tab in at the start of the line, or one
+ * taken out, or up to four spaces from before tabs were used. A tab, one
+ * character, so taking a bullet away leaves one to delete, not a row of spaces.
+ * Null when the line is no item, or has nothing to take out.
+ */
+export const listIndent = (line: string, indent: boolean): LineEdit | null => {
+  const item = ITEM.exec(line)
+  if (item === null) return null
+  if (indent) return { from: 0, to: 0, text: '\t' }
+  const spaces = /^ {1,4}/.exec(line)?.[0].length ?? 0
+  const out = line.startsWith('\t') ? 1 : spaces
+  return out === 0 ? null : { from: 0, to: out, text: '' }
 }
 
 /**

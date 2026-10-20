@@ -22,7 +22,7 @@ import {
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
-import { listEnter } from '../core/markdown.ts'
+import { listEnter, listIndent } from '../core/markdown.ts'
 import { isOpen } from '../core/model.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
@@ -49,11 +49,41 @@ const insertText = (field: HTMLTextAreaElement, text: string): void => {
 }
 
 /**
+ * Tab in a list item indents its line by a tab, wherever the caret is in it,
+ * and Shift+Tab takes one out; elsewhere they move focus as anywhere else.
+ */
+const onNotesTab = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  const field = event.currentTarget
+  const { selectionStart: at, selectionEnd, value } = field
+  const start = value.lastIndexOf('\n', at - 1) + 1
+  const end = value.indexOf('\n', at)
+  const edit = listIndent(
+    value.slice(start, end === -1 ? undefined : end),
+    !event.shiftKey,
+  )
+  if (edit === null) return
+  event.preventDefault()
+  field.setSelectionRange(start + edit.from, start + edit.to)
+  insertText(field, edit.text)
+  const moved = edit.text.length - (edit.to - edit.from)
+  field.setSelectionRange(
+    Math.max(start, at + moved),
+    Math.max(start, selectionEnd + moved),
+  )
+}
+
+/**
  * Enter in a list item starts the next one at its depth, and in an empty one
  * takes the bullet away, so a list is typed the way it is in an editor.
  */
 const onNotesKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+  if (event.nativeEvent.isComposing) return
+  if (event.key === 'Tab') {
+    onNotesTab(event)
+    return
+  }
+  if (event.key !== 'Enter') return
   if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return
   const field = event.currentTarget
   const { selectionStart: at, selectionEnd, value } = field

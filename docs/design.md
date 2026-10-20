@@ -860,7 +860,10 @@ Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabb
 the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
 the marks kept and weight drawn as a shadow, so no character moves from under the caret.
 Enter in a list item starts the next one at its depth, numbered one on, and in an empty item
-takes the bullet away and ends the list (`listEnter`).
+takes the bullet away and ends the list (`listEnter`). Tab in a list item indents its line by a
+tab and Shift+Tab takes one out, or up to four spaces from before (`listIndent`); a tab is one
+character, so a bullet taken away leaves one to delete rather than a row of spaces. A tab reads as
+four spaces when lists nest, and is set four wide; elsewhere Tab leaves the field.
 The browser tab takes the words of the notes' first `#` heading, wherever it is, as the page's
 title (`notesTitle`), so a band's tab reads as theirs; with none, it keeps the app's own.
 

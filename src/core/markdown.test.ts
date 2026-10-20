@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   listEnter,
+  listIndent,
   markdownBlocks,
   markdownLine,
   notesTitle,
@@ -191,6 +192,12 @@ describe('markdownBlocks', () => {
     ])
   })
 
+  it('nests an item indented by a tab, a tab counting as four spaces', () => {
+    expect(shape('- a\n\t- b\n\t\t- c')).toEqual(['ul text:a (ul text:b (ul text:c))'])
+    expect(shape('- a\n    - b\n\t- c')).toEqual(['ul text:a (ul text:b | text:c)'])
+    expect(shape('- a\n\t- b\n  - c')).toEqual(['ul text:a (ul text:b | text:c)'])
+  })
+
   it('takes an item indented less than the first as one of the outer list', () => {
     expect(shape('  - a\n- b')).toEqual(['ul text:a | text:b'])
   })
@@ -263,5 +270,27 @@ describe('listEnter', () => {
     expect(listEnter('plain words', '')).toBeNull()
     expect(listEnter('-no space', '')).toBeNull()
     expect(listEnter('', '- after the caret')).toBeNull()
+  })
+})
+
+describe('listIndent', () => {
+  it('indents a list item by a tab at the start of its line', () => {
+    expect(listIndent('- Add nested bullets', true)).toEqual({
+      from: 0,
+      to: 0,
+      text: '\t',
+    })
+    expect(listIndent('\t1. deeper', true)).toEqual({ from: 0, to: 0, text: '\t' })
+  })
+
+  it('takes one tab back out, or up to four spaces from before tabs were used', () => {
+    expect(listIndent('\t\t- like this', false)).toEqual({ from: 0, to: 1, text: '' })
+    expect(listIndent('  - like this', false)).toEqual({ from: 0, to: 2, text: '' })
+    expect(listIndent('      - like this', false)).toEqual({ from: 0, to: 4, text: '' })
+  })
+
+  it('leaves a line alone that is no item, or an item with nothing to take out', () => {
+    expect(listIndent('plain words', true)).toBeNull()
+    expect(listIndent('- top', false)).toBeNull()
   })
 })

@@ -2508,6 +2508,9 @@ kbd {
    break their lines in the same places and the field never scrolls. */
 .markdown-field {
   position: relative;
+  /* A nested bullet is a tab, set four wide in the field and its mirror alike,
+     the width the notes read a tab as. */
+  tab-size: 4;
 }
 
 .markdown-mirror {
