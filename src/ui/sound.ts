@@ -95,7 +95,10 @@ const strum = (
   const out = ctx.createGain()
   // Quieter per string as more sound, so a full chord is no louder than a note;
   // the volume read afresh, so a change in Perform's menu is heard in Edit too.
-  const level = (1.5 / Math.sqrt(midi.length)) * volumeGain(loadVolumes().notes)
+  // Low enough that a chord meets the limiter rather than being squashed flat by
+  // it: a few dB over the metronome, not drowning it, with the slider still
+  // making a difference all the way up.
+  const level = (0.375 / Math.sqrt(midi.length)) * volumeGain(loadVolumes().notes)
   out.gain.value = level
   if (until !== null) {
     out.gain.setValueAtTime(level, until)
