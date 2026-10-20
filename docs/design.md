@@ -850,6 +850,8 @@ devices through the sheet, and a `javascript:` link in them would run when it wa
 Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
 the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
 the marks kept and weight drawn as a shadow, so no character moves from under the caret.
+Enter in a list item starts the next one at its depth, numbered one on, and in an empty item
+takes the bullet away and ends the list (`listEnter`).
 The browser tab takes the words of the notes' first `#` heading, wherever it is, as the page's
 title (`notesTitle`), so a band's tab reads as theirs; with none, it keeps the app's own.
 

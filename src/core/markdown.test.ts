@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  listEnter,
   markdownBlocks,
   markdownLine,
   notesTitle,
@@ -230,5 +231,37 @@ describe('notesTitle', () => {
     expect(notesTitle('#hashtag')).toBeNull()
     expect(notesTitle('# \nplain')).toBeNull()
     expect(notesTitle('')).toBeNull()
+  })
+})
+
+describe('listEnter', () => {
+  it('starts the next item at the same depth, with the same bullet', () => {
+    expect(listEnter('- Add nested bullets', '')).toEqual({
+      kind: 'continue',
+      marker: '- ',
+    })
+    expect(listEnter('    * like this', '')).toEqual({
+      kind: 'continue',
+      marker: '    * ',
+    })
+  })
+
+  it('numbers the next item one on', () => {
+    expect(listEnter('  9. ninth', '')).toEqual({ kind: 'continue', marker: '  10. ' })
+  })
+
+  it('continues an item split at the caret, as one ended there', () => {
+    expect(listEnter('- split ', 'here')).toEqual({ kind: 'continue', marker: '- ' })
+  })
+
+  it('ends the list from an empty item', () => {
+    expect(listEnter('  - ', '')).toEqual({ kind: 'end' })
+    expect(listEnter('3. ', ' ')).toEqual({ kind: 'end' })
+  })
+
+  it('leaves a line that is not an item to the field', () => {
+    expect(listEnter('plain words', '')).toBeNull()
+    expect(listEnter('-no space', '')).toBeNull()
+    expect(listEnter('', '- after the caret')).toBeNull()
   })
 })

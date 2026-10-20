@@ -1,4 +1,4 @@
-import { useState, type PointerEvent, type ReactNode } from 'react'
+import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { z } from 'zod'
 import {
   clockOf,
@@ -21,6 +21,7 @@ import {
   setBandTodoText,
   toggleBandTodo,
 } from '../core/bandTodos.ts'
+import { listEnter } from '../core/markdown.ts'
 import { isOpen } from '../core/model.ts'
 import { songFacts } from '../core/render.ts'
 import { activeSetlists, setlistsWith, songsOf } from '../core/setlists.ts'
@@ -29,6 +30,51 @@ import { MarkdownLines } from './MarkdownLines.tsx'
 import { MarkdownView } from './MarkdownView.tsx'
 import { Menu, MenuChecks, MenuItems, type MenuItem } from './Menu.tsx'
 import { Toggle } from './Toggle.tsx'
+
+/**
+ * Types `text` over the selection through execCommand, so the browser keeps
+ * its own undo history and React sees the input, the way Chart's Tab does.
+ */
+const insertText = (field: HTMLTextAreaElement, text: string): void => {
+  if (document.execCommand?.('insertText', false, text)) return
+  const { selectionStart: from, selectionEnd: to, value } = field
+  const setValue = Object.getOwnPropertyDescriptor(
+    HTMLTextAreaElement.prototype,
+    'value',
+  )?.set
+  setValue?.call(field, `${value.slice(0, from)}${text}${value.slice(to)}`)
+  field.setSelectionRange(from + text.length, from + text.length)
+  field.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+/**
+ * Enter in a list item starts the next one at its depth, and in an empty one
+ * takes the bullet away, so a list is typed the way it is in an editor.
+ */
+const onNotesKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+  if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return
+  const field = event.currentTarget
+  const { selectionStart: at, selectionEnd, value } = field
+  if (at !== selectionEnd) return
+  const start = value.lastIndexOf('\n', at - 1) + 1
+  const end = value.indexOf('\n', at)
+  const enter = listEnter(
+    value.slice(start, at),
+    value.slice(at, end === -1 ? undefined : end),
+  )
+  if (enter === null) return
+  event.preventDefault()
+  if (enter.kind === 'continue') {
+    insertText(field, `\n${enter.marker}`)
+    return
+  }
+  field.setSelectionRange(start, at)
+  insertText(field, '')
+  // Chrome leaves the caret before the line break when the line it emptied is
+  // the last, so what is typed next would join the item above.
+  field.setSelectionRange(start, start)
+}
 
 /** An arrow up and one down side by side, the one in force drawn full and the other faint. */
 const DirectionIcon = ({ direction }: { readonly direction: Direction }) => (
@@ -279,6 +325,7 @@ export function SongsPage(props: Props) {
                   event.currentTarget.setSelectionRange(end, end)
                 }}
                 onBlur={() => setWritingNotes(false)}
+                onKeyDown={onNotesKeyDown}
                 onChange={(event) => {
                   const text = event.target.value
                   props.onBandEdit((current, at) =>

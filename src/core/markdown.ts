@@ -220,6 +220,23 @@ export const markdownBlocks = (text: string): readonly MarkdownBlock[] =>
         : [block],
     )
 
+/** What Enter does in a list item: start the next one, or end the list from an empty one. */
+export type ListEnter =
+  { readonly kind: 'continue'; readonly marker: string } | { readonly kind: 'end' }
+
+/**
+ * Enter with the caret in a line, by the line's text before the caret and
+ * after it. Null when the line is no list item, and Enter is just a new line.
+ */
+export const listEnter = (before: string, after: string): ListEnter | null => {
+  const item = ITEM.exec(before)
+  if (item === null) return null
+  const [, indent = '', bullet = '', , rest = ''] = item
+  if (rest.trim() === '' && after.trim() === '') return { kind: 'end' }
+  const next = /\d/.test(bullet) ? `${Number.parseInt(bullet, 10) + 1}.` : bullet
+  return { kind: 'continue', marker: `${indent}${next} ` }
+}
+
 /**
  * What the notes call themselves: the words of their first # heading, wherever
  * it is, its marks dropped. Null when they have none.
