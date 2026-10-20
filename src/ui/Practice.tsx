@@ -736,6 +736,9 @@ export function Practice({
                     },
                   ]}
                 />
+                {meter.on && (
+                  <p className="menu-label">Off while the sound level listens</p>
+                )}
                 {/* The song's own bpm in brackets once the metronome's differs. */}
                 <div className="menu-row" role="group" aria-label="Metronome tempo">
                   <button
@@ -787,6 +790,7 @@ export function Practice({
                   },
                 ]}
               />
+              {ticking && <p className="menu-label">Off while the metronome plays</p>}
               {micTrouble !== null && (
                 <p className="menu-label">
                   {micTrouble === 'blocked'
@@ -887,6 +891,7 @@ export function Practice({
             menu={menuId}
             onToggle={toggleTicking}
             volume={volumes.metronome}
+            blocked={meter.on}
           />
         )}
         {meter.on && visible && (

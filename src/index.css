@@ -3201,6 +3201,13 @@ kbd {
   opacity: 0.5;
 }
 
+/* Off while the sound level listens: struck through, the way the microphone
+   is while it waits, and fainter still. */
+.metronome-chip.blocked {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 /* A phone's bar has no room to spare beside the song's title: with a chip in
    it, full screen moves into the menu to make room. */
 @media (max-width: 40rem) {

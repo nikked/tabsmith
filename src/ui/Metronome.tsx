@@ -21,7 +21,8 @@ const heardAt = (ctx: AudioContext): number => {
  * The metronome's chip in the bar, there whether it is on or off, opening the
  * menu that has its controls, or on a double tap turning it on or off. While
  * on, it sounds at the bpm, every beat alike with no first beat marked, and its
- * dot pulses on the beat.
+ * dot pulses on the beat. While the sound level listens it is struck through,
+ * since the two are never on at once.
  */
 export function Metronome({
   bpm,
@@ -29,6 +30,7 @@ export function Metronome({
   menu,
   onToggle,
   volume,
+  blocked,
 }: {
   readonly bpm: number
   readonly on: boolean
@@ -37,6 +39,8 @@ export function Metronome({
   readonly onToggle: () => void
   /** In percent, changed while it plays without starting the beat over. */
   readonly volume: number
+  /** Off because the sound level listens; turning it on turns that off. */
+  readonly blocked: boolean
 }) {
   // A tap opens the menu only once no second tap has followed it, so a double
   // tap turns the metronome on or off without the menu flashing open.
@@ -47,6 +51,11 @@ export function Metronome({
   const menuElement = () => document.getElementById(menu)
   useEffect(() => () => window.clearTimeout(waiting.current ?? undefined), [])
   const dot = useRef<HTMLSpanElement>(null)
+  const label = on
+    ? `Metronome at ${bpm} bpm`
+    : blocked
+      ? `Metronome off while the sound level listens, ${bpm} bpm`
+      : `Metronome off, ${bpm} bpm`
   // The volume for the beat to start at, and the gain to turn while it plays.
   const gain = volumeGain(volume) * 0.8
   const gainNow = useRef(gain)
@@ -100,9 +109,9 @@ export function Metronome({
   return (
     <button
       type="button"
-      className={`metronome-chip${on ? ' on' : ''}`}
-      title={`Metronome ${on ? 'at' : 'off,'} ${bpm} bpm`}
-      aria-label={`Metronome ${on ? 'at' : 'off,'} ${bpm} bpm`}
+      className={`metronome-chip${on ? ' on' : ''}${blocked ? ' blocked' : ''}`}
+      title={label}
+      aria-label={label}
       aria-haspopup="true"
       onPointerDown={() => {
         wasOpen.current = menuElement()?.matches(':popover-open') ?? false
