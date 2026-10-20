@@ -569,8 +569,10 @@ the chord's notes above, H read as B, `Amin7` as `Am7`; one grammar, `isChordNam
 a chord line holds and what can be played, so a name that plays never sits on a plain line); and
 tapping a note in the notation plays it. The sound is a
 synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
-download: each note with five overtones that fade faster than it does, bright at first and
-mellower as it rings, since a phone's speaker plays little of a low string but its overtones. An iPhone on silent still plays it, the way a music app does.
+download: each note with seven bright overtones that fade a little faster than it does, since a
+phone's speaker plays little of a low string but its overtones and the ear is keenest higher up,
+each started at its own point in its cycle so their peaks do not stack and the limiter lets more
+of it through. An iPhone on silent still plays it, the way a music app does.
 The ▶ after a tab row's title, in the tab or the notation, and in Edit between a row's title and
 note, plays the whole row in time (`core/playback.ts`): each column an eighth, as the notation reads
 it, a note held until the next one or the bar line, at the metronome's tempo, which is the song's

@@ -1,6 +1,6 @@
 /**
- * The sound of a tapped note: a tone that rises in a moment and dies away,
- * bright at first and mellower as its overtones fade, the way a plucked string
+ * The sound of a tapped note: a bright tone that rises in a moment and dies
+ * away, mellowing a little as its overtones fade, the way a plucked string
  * does. Made in the page rather than recorded, so there is nothing to download.
  * Pure, so it can be tested.
  */
@@ -11,16 +11,24 @@ export const frequencyOf = (midi: number): number => 440 * 2 ** ((midi - 69) / 1
 const ATTACK_SECONDS = 0.012
 // How fast it dies away: about a second to fall to a twentieth.
 const DECAY_PER_SECOND = 3
-// The note and five overtones, each fainter. A phone's speaker plays little
-// below a few hundred Hz, so a low string a pure tone would leave all but
-// silent is heard by these. Each dies away sooner the higher it is, but not
-// so soon that a held note falls back to the pure tone a phone cannot play.
-const OVERTONES = [1, 2, 3, 4, 5, 6] as const
+// The note and seven overtones, each a little fainter. A phone's speaker plays
+// little below a few hundred Hz, so a low string a pure tone would leave all
+// but silent is heard by these, and the ear is keenest higher up still, so the
+// brighter the note, the louder it sounds at the same level. Each dies away a
+// little sooner the higher it is, mellowing a held note without leaving it to
+// the pure tone a phone cannot play.
+const OVERTONES = [1, 2, 3, 4, 5, 6, 7, 8] as const
+const strengthOf = (k: number): number => 1 / Math.sqrt(k)
+const fadeOf = (k: number): number => DECAY_PER_SECOND * ((k + 7) / 8)
+// Each starts at its own point in its cycle, Schroeder's way, so their peaks do
+// not all land together: the same sound with lower peaks, and so louder once
+// the limiter holds the peaks down.
+const phaseOf = (k: number): number => (Math.PI * k * (k - 1)) / OVERTONES.length
 const wave = (phase: number): number =>
-  OVERTONES.reduce((sum, k) => sum + Math.sin(k * phase) / k, 0)
+  OVERTONES.reduce((sum, k) => sum + strengthOf(k) * Math.sin(k * phase + phaseOf(k)), 0)
 // The overtones' highest peak together, so a note reaches full scale and no further.
 const PEAK = Math.max(
-  ...Array.from({ length: 2000 }, (_, i) => Math.abs(wave((2 * Math.PI * i) / 2000))),
+  ...Array.from({ length: 4000 }, (_, i) => Math.abs(wave((2 * Math.PI * i) / 4000))),
 )
 
 export const noteTone = (
@@ -38,7 +46,7 @@ export const noteTone = (
     const phase = 2 * Math.PI * frequency * t
     const sound = OVERTONES.reduce(
       (sum, k) =>
-        sum + (Math.sin(k * phase) / k) * Math.exp((-t * DECAY_PER_SECOND * (k + 1)) / 2),
+        sum + strengthOf(k) * Math.sin(k * phase + phaseOf(k)) * Math.exp(-t * fadeOf(k)),
       0,
     )
     return (sound / PEAK) * rise * tail

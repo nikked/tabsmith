@@ -63,11 +63,12 @@ describe('noteTone', () => {
 
   // A phone's speaker plays little below a few hundred Hz, so a low string is
   // heard by its overtones.
-  it('has overtones above the note, the higher ones dying away sooner', () => {
+  it('has bright overtones above the note, the highest dying away sooner', () => {
     const tone = noteTone(110, rate, 2)
     const at = (multiple: number, from: number) =>
       strength(tone, rate, 110 * multiple, from, from + 800)
-    expect(at(3, 100)).toBeGreaterThan(at(1, 100) / 5)
-    expect(at(3, 6000) / at(1, 6000)).toBeLessThan(at(3, 100) / at(1, 100) / 2)
+    expect(at(4, 100)).toBeGreaterThan(at(1, 100) / 3)
+    expect(at(8, 100)).toBeGreaterThan(at(1, 100) / 4)
+    expect(at(8, 6000) / at(1, 6000)).toBeLessThan(at(8, 100) / at(1, 100) / 2)
   })
 })
