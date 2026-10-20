@@ -594,7 +594,7 @@ band loud enough that we should wear earplugs, and am I singing at the level I m
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
 microphone closes while Perform is left or the page is hidden and opens again on coming back,
 the average started afresh, and stepping through a setlist keeps it running. A microphone the
-browser refuses turns it off, so the question is not asked again each time. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
+browser refuses turns it off, so the question is not asked again each time. It and sound never run at once, since an iPhone plays everything quietly while its microphone is open: turning the meter on stops the metronome and a row playing, and any sound played turns the meter off. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
 A-weighted average since it was turned on (LAeq) and the time left to a full day's dose by
 NIOSH's rule, 85 dB(A) for 8 hours with each 3 dB more halving it, rounded down so it never
 promises time there is not: `94 · 1h`. It turns yellow from 80 dB(A), where protection should

@@ -37,7 +37,8 @@ export function RowPlay({
 /**
  * Which tab row of the song is playing, by its place in the tab, since the tab
  * may be drawn afresh from a trimmed copy each time; and the one way to play a
- * row or stop it. Playing stops on leaving the song, or on playing another row.
+ * row or stop it, and one to stop whatever plays. Playing stops on leaving the
+ * song, or on playing another row.
  */
 export const useRowPlayer = (songId: string) => {
   const [playing, setPlaying] = useState<{
@@ -70,5 +71,11 @@ export const useRowPlayer = (songId: string) => {
     setPlaying({ song: songId, index })
   }
 
-  return { playing: playing?.song === songId ? playing.index : null, toggle }
+  const stop = () => {
+    stopRow.current?.()
+    stopRow.current = null
+    setPlaying(null)
+  }
+
+  return { playing: playing?.song === songId ? playing.index : null, toggle, stop }
 }

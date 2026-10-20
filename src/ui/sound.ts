@@ -18,16 +18,23 @@ const NOTE_SECONDS = 2.5
 // Low to high, a little apart, the way a pick crosses the strings.
 const STRUM_SECONDS = 0.028
 
-// Set once, before the first sound or the microphone, and never changed: on an
-// iPhone, switching it while the metronome played left the sound level with no
-// microphone. Play-and-record both records and, like playback, plays through
-// the silent switch, without which an iPhone on silent plays nothing, which
-// reads as broken.
-let settled = false
-const settleSession = (): void => {
-  if (settled || navigator.audioSession === undefined) return
-  navigator.audioSession.type = 'play-and-record'
-  settled = true
+// On an iPhone, play-and-record plays everything quietly, as on a call, so the
+// session is play-and-record only while the microphone is open and playback
+// otherwise; both play through the silent switch, without which an iPhone on
+// silent plays nothing, which reads as broken. Sound and the microphone never
+// run at once: switching while the metronome played left the sound level with
+// no microphone.
+const setSession = (type: 'playback' | 'play-and-record'): void => {
+  if (navigator.audioSession === undefined || navigator.audioSession.type === type) return
+  navigator.audioSession.type = type
+}
+
+const soundListeners = new Set<() => void>()
+
+/** Calls `listener` as any sound is about to play; gives back what stops it. */
+export const onSound = (listener: () => void): (() => void) => {
+  soundListeners.add(listener)
+  return () => soundListeners.delete(listener)
 }
 
 // Everything played goes out through one limiter: turned up, the notes and the
@@ -50,15 +57,14 @@ export const output = (ctx: AudioContext): AudioNode => {
 }
 
 const audio = (): AudioContext => {
-  if (context === null) {
-    settleSession()
-    context = new AudioContext()
-  }
+  setSession('playback')
+  soundListeners.forEach((listener) => listener())
+  context ??= new AudioContext()
   return context
 }
 
 /** Readies the audio session for the microphone, before the sound level opens it. */
-export const readyMicrophone = (): void => settleSession()
+export const readyMicrophone = (): void => setSession('play-and-record')
 
 const bufferOf = (ctx: AudioContext, midi: number): AudioBuffer => {
   const cached = notes.get(midi)

@@ -1,6 +1,7 @@
 import {
   Fragment,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useRef,
@@ -42,7 +43,7 @@ import {
 import { synthSummary } from '../core/synths.ts'
 import { Metronome } from './Metronome.tsx'
 import { ChordLine, NotedLines } from './NotedLines.tsx'
-import { audioContext, play } from './sound.ts'
+import { audioContext, onSound, play } from './sound.ts'
 import { Notation } from './Notation.tsx'
 import { Prompt } from './Prompt.tsx'
 import { RowPlay, useRowPlayer } from './RowPlay.tsx'
@@ -492,8 +493,17 @@ export function Practice({
   const toggleListening = () => {
     heard.current = silence
     setMicTrouble(null)
+    // The microphone or sound, never both: with the microphone open, sound plays quietly.
+    if (!meter.on) {
+      setTicking(false)
+      player.stop()
+    }
     changeMeter({ on: !meter.on })
   }
+  const soundStarts = useEffectEvent(() => {
+    if (meter.on) changeMeter({ on: false })
+  })
+  useEffect(() => onSound(soundStarts), [])
   // Off for good, so a blocked microphone is not asked for each time Perform opens.
   const stopListening = (trouble: MicTrouble) => {
     changeMeter({ on: false })
