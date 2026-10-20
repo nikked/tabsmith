@@ -844,8 +844,8 @@ on each device until it is redeployed. The band's name and ideas sync beside it 
 tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
 is still kept and synced, so a device that has it does not lose it.
 
-The notes are Markdown: headings, lists (nested by indenting an item under the one above), quotes, bold, italic, code, links and images (`core/markdown.ts`).
-A link goes only to the web or to mail and an image only to the web: the notes arrive from other
+The notes are Markdown: headings, lists (nested by indenting an item under the one above), quotes, bold, italic, code, links and images (`core/markdown.ts`). An image is on the web or a file beside the app, by a relative path such as `pug-banner.jpg`, since the site is served from under its repo's name.
+A link goes only to the web or to mail and an image only to the web or to a file beside the app: the notes arrive from other
 devices through the sheet, and a `javascript:` link in them would run when it was clicked.
 Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
 the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with

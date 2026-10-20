@@ -90,6 +90,23 @@ describe('markdownLine', () => {
     ])
   })
 
+  it('reads an image beside the app by its relative path, not by a path from the root', () => {
+    expect(read('![pug](pug-banner.jpg)')).toEqual([
+      'mark:![',
+      'image:pug',
+      'mark:](pug-banner.jpg)',
+    ])
+    expect(read('![pug](./pug-banner.jpg)')).toEqual([
+      'mark:![',
+      'image:pug',
+      'mark:](./pug-banner.jpg)',
+    ])
+    expect(read('![x](/pug-banner.jpg)')).toEqual(['text:![x](/pug-banner.jpg)'])
+    expect(read('![x](//other.example/a.png)')).toEqual([
+      'text:![x](//other.example/a.png)',
+    ])
+  })
+
   it('only links to the web or to mail, anything else left as words', () => {
     expect(read('[mail](mailto:band@example.com)')).toEqual([
       'mark:[',

@@ -17,11 +17,13 @@ type Plain = Exclude<MarkdownPiece['kind'], 'link' | 'image' | 'heading'>
 const piece = (kind: Plain, text: string): MarkdownPiece => ({ kind, text })
 
 // An image before a link, since it is one with a ! in front, and bold before
-// italic, so ** is not read as two stars of emphasis. A link or an image only
-// goes to the web or to mail: notes arrive from other devices through the
-// sheet, and a javascript: link in them would run when it was clicked.
+// italic, so ** is not read as two stars of emphasis. A link only goes to the
+// web or to mail, and an image to the web or to a path beside the app: notes
+// arrive from other devices through the sheet, and a javascript: link in them
+// would run when it was clicked. The path has no : to name a scheme with, and
+// is relative, since the site is served from under its repo's name, not the root.
 const INLINE =
-  /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_/g
+  /!\[([^\]]*)\]\((https?:\/\/[^)\s]+|(?!\/)[^)\s:]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_/g
 
 const HEADING = /^(#{1,6})(\s+)(.*)$/
 const ITEM = /^(\s*)([-*+]|\d+\.)(\s+)(.*)$/
