@@ -16,15 +16,18 @@ export const SLOWEST_BPM = 30
 export const FASTEST_BPM = 300
 
 // A short tick, high enough to cut through a band without being a beep.
-const CLICK_HZ = 1600
-const CLICK_SECONDS = 0.035
+// Near where hearing is keenest, and left ringing for a few hundredths of a
+// second: the ear judges loudness over about a tenth, so a click gone in ten
+// milliseconds sounds faint at any volume, the more so from a phone's speaker.
+const CLICK_HZ = 2500
+const CLICK_SECONDS = 0.08
 
 /** One click: a tone that dies away within a few hundredths of a second. */
 export const clickSamples = (sampleRate: number): Float32Array<ArrayBuffer> => {
   const length = Math.round(sampleRate * CLICK_SECONDS)
   return Float32Array.from({ length }, (_, i) => {
     const t = i / sampleRate
-    return Math.sin(2 * Math.PI * CLICK_HZ * t) * Math.exp(-t * 140)
+    return Math.sin(2 * Math.PI * CLICK_HZ * t) * Math.exp(-t * 60)
   })
 }
 
