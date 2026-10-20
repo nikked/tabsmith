@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { markdownBlocks, type Words } from '../core/markdown.ts'
+import { Fragment, type ReactNode } from 'react'
+import { markdownBlocks, type MarkdownList, type Words } from '../core/markdown.ts'
 
 const HEADINGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
 
@@ -25,6 +25,22 @@ const wordsOf = (words: Words): ReactNode =>
     }
   })
 
+const listOf = ({ ordered, items }: MarkdownList): ReactNode => {
+  const List = ordered ? 'ol' : 'ul'
+  return (
+    <List>
+      {items.map(({ words, nested }, at) => (
+        <li key={at}>
+          {wordsOf(words)}
+          {nested.map((list, inner) => (
+            <Fragment key={inner}>{listOf(list)}</Fragment>
+          ))}
+        </li>
+      ))}
+    </List>
+  )
+}
+
 /** Notes set out the way a README is: real headings, lists and emphasis. */
 export function MarkdownView({ text }: { readonly text: string }) {
   return markdownBlocks(text).map((block, index) => {
@@ -33,16 +49,8 @@ export function MarkdownView({ text }: { readonly text: string }) {
         const Heading = HEADINGS[block.level - 1] ?? 'h6'
         return <Heading key={index}>{wordsOf(block.words)}</Heading>
       }
-      case 'list': {
-        const List = block.ordered ? 'ol' : 'ul'
-        return (
-          <List key={index}>
-            {block.items.map((item, at) => (
-              <li key={at}>{wordsOf(item)}</li>
-            ))}
-          </List>
-        )
-      }
+      case 'list':
+        return <Fragment key={index}>{listOf(block)}</Fragment>
       case 'quote':
         return (
           <blockquote key={index}>

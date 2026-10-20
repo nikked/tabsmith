@@ -844,7 +844,7 @@ on each device until it is redeployed. The band's name and ideas sync beside it 
 tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
 is still kept and synced, so a device that has it does not lose it.
 
-The notes are Markdown: headings, lists, quotes, bold, italic, code, links and images (`core/markdown.ts`).
+The notes are Markdown: headings, lists (nested by indenting an item under the one above), quotes, bold, italic, code, links and images (`core/markdown.ts`).
 A link goes only to the web or to mail and an image only to the web: the notes arrive from other
 devices through the sheet, and a `javascript:` link in them would run when it was clicked.
 Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are

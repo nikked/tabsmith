@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { markdownBlocks, markdownLine, notesTitle, type Words } from './markdown.ts'
+import {
+  markdownBlocks,
+  markdownLine,
+  notesTitle,
+  type MarkdownList,
+  type Words,
+} from './markdown.ts'
 
 const read = (line: string) =>
   markdownLine(line).map(({ kind, text }) => `${kind}:${text}`)
@@ -106,12 +112,19 @@ describe('markdownLine', () => {
 describe('markdownBlocks', () => {
   const said = (line: Words) =>
     line.map((piece) => `${piece.kind}:${piece.text}`).join(' ')
+  const listed = (list: MarkdownList): string =>
+    `${list.ordered ? 'ol' : 'ul'} ${list.items
+      .map(
+        ({ words, nested }) =>
+          `${said(words)}${nested.map((list) => ` (${listed(list)})`).join('')}`,
+      )
+      .join(' | ')}`
   const shape = (text: string) =>
     markdownBlocks(text).map((block) =>
       block.kind === 'heading'
         ? `h${block.level} ${said(block.words)}`
         : block.kind === 'list'
-          ? `${block.ordered ? 'ol' : 'ul'} ${block.items.map(said).join(' | ')}`
+          ? listed(block)
           : `${block.kind === 'quote' ? 'q' : 'p'} ${block.lines.map(said).join(' | ')}`,
     )
 
@@ -138,6 +151,30 @@ describe('markdownBlocks', () => {
       'ol text:b | text:c',
       'ul text:d',
     ])
+  })
+
+  it('nests a more indented item under the one above it, however deep', () => {
+    expect(
+      shape('- Add nested bullets\n  - like this\n    - and this\n  - back\n- top'),
+    ).toEqual([
+      'ul text:Add nested bullets (ul text:like this (ul text:and this) | text:back) | text:top',
+    ])
+  })
+
+  it('nests a list of the other kind under an item, and keeps the outer list going', () => {
+    expect(shape('1. intro\n   - riff\n2. verse')).toEqual([
+      'ol text:intro (ul text:riff) | text:verse',
+    ])
+  })
+
+  it('starts a new nested list when the kind of list changes under an item', () => {
+    expect(shape('- a\n  - b\n  1. c\n  2. d\n- e')).toEqual([
+      'ul text:a (ul text:b) (ol text:c | text:d) | text:e',
+    ])
+  })
+
+  it('takes an item indented less than the first as one of the outer list', () => {
+    expect(shape('  - a\n- b')).toEqual(['ul text:a | text:b'])
   })
 
   it('gathers quoted lines into one quote, ended by a line that is not quoted', () => {

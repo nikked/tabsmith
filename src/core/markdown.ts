@@ -1,5 +1,5 @@
 /**
- * The Markdown notes are written with: headings, lists, quotes, bold, italic,
+ * The Markdown notes are written with: headings, nested lists, quotes, bold, italic,
  * code, links and images. Read two ways: as lines cut into pieces with every mark kept, for
  * styling the text in place while it is typed, and as blocks with the marks
  * gone, for reading it set out the way a README is.
@@ -93,9 +93,18 @@ export const markdownLine = (line: string): readonly MarkdownPiece[] => {
 /** What a line's words are, with its marks left out. */
 export type Words = readonly MarkdownPiece[]
 
+/** A list, each item with the lists indented under it, one more each time the kind changes. */
+export type MarkdownList = {
+  readonly ordered: boolean
+  readonly items: readonly {
+    readonly words: Words
+    readonly nested: readonly MarkdownList[]
+  }[]
+}
+
 export type MarkdownBlock =
   | { readonly kind: 'heading'; readonly level: number; readonly words: Words }
-  | { readonly kind: 'list'; readonly ordered: boolean; readonly items: readonly Words[] }
+  | ({ readonly kind: 'list' } & MarkdownList)
   | { readonly kind: 'paragraph'; readonly lines: readonly Words[] }
   | { readonly kind: 'quote'; readonly lines: readonly Words[] }
 
@@ -103,7 +112,12 @@ const words = (text: string): Words => inline(text).filter((each) => each.kind !
 
 type Line =
   | { readonly kind: 'heading'; readonly level: number; readonly words: Words }
-  | { readonly kind: 'item'; readonly ordered: boolean; readonly words: Words }
+  | {
+      readonly kind: 'item'
+      readonly indent: number
+      readonly ordered: boolean
+      readonly words: Words
+    }
   | { readonly kind: 'quote'; readonly words: Words }
   | { readonly kind: 'text'; readonly words: Words }
   | { readonly kind: 'blank' }
@@ -121,6 +135,7 @@ const lineOf = (line: string): Line => {
   if (item !== null)
     return {
       kind: 'item',
+      indent: item[1]?.length ?? 0,
       ordered: /\d/.test(item[2] ?? ''),
       words: words(item[4] ?? ''),
     }
@@ -129,16 +144,52 @@ const lineOf = (line: string): Line => {
   return { kind: 'text', words: words(line) }
 }
 
+type Item = Extract<Line, { kind: 'item' }>
+type Items = readonly [Item, ...Item[]]
+
+// Each item no more indented than the first starts one of the list's items,
+// and those more indented after it are nested under it; a change of kind
+// among the items starts another list, at any depth alike.
+const nest = (items: Items): readonly MarkdownList[] => {
+  const [first] = items
+  const gathered = items.reduce<
+    readonly { readonly item: Item; readonly under: readonly Item[] }[]
+  >((tops, item) => {
+    const last = tops.at(-1)
+    return last === undefined || item.indent <= first.indent
+      ? [...tops, { item, under: [] }]
+      : [...tops.slice(0, -1), { ...last, under: [...last.under, item] }]
+  }, [])
+  return gathered.reduce<readonly MarkdownList[]>(
+    (lists, { item, under: [head, ...rest] }) => {
+      const entry = {
+        words: item.words,
+        nested: head === undefined ? [] : nest([head, ...rest]),
+      }
+      const last = lists.at(-1)
+      return last?.ordered === item.ordered
+        ? [...lists.slice(0, -1), { ...last, items: [...last.items, entry] }]
+        : [...lists, { ordered: item.ordered, items: [entry] }]
+    },
+    [],
+  )
+}
+
+type Gathered =
+  | Exclude<MarkdownBlock, { kind: 'list' }>
+  | { readonly kind: 'list'; readonly items: Items }
+
 /**
  * The notes as a README sets them out: headings, lists and paragraphs, a blank
  * line ending a paragraph or a list. Unlike a README, a line break within a
- * paragraph stays one, since notes are written a line at a time.
+ * paragraph stays one, since notes are written a line at a time. An item
+ * indented more than the list's first is nested under the one above it.
  */
 export const markdownBlocks = (text: string): readonly MarkdownBlock[] =>
   text
     .split('\n')
     .map(lineOf)
-    .reduce<readonly MarkdownBlock[]>((blocks, line) => {
+    .reduce<readonly Gathered[]>((blocks, line) => {
       const last = blocks.at(-1)
       const before = blocks.slice(0, -1)
       switch (line.kind) {
@@ -147,9 +198,9 @@ export const markdownBlocks = (text: string): readonly MarkdownBlock[] =>
         case 'heading':
           return [...blocks, line]
         case 'item':
-          return last?.kind === 'list' && last.ordered === line.ordered
-            ? [...before, { ...last, items: [...last.items, line.words] }]
-            : [...blocks, { kind: 'list', ordered: line.ordered, items: [line.words] }]
+          return last?.kind === 'list'
+            ? [...before, { ...last, items: [...last.items, line] }]
+            : [...blocks, { kind: 'list', items: [line] }]
         case 'quote':
           return last?.kind === 'quote'
             ? [...before, { ...last, lines: [...last.lines, line.words] }]
@@ -161,6 +212,11 @@ export const markdownBlocks = (text: string): readonly MarkdownBlock[] =>
       }
     }, [])
     .filter((block) => block.kind !== 'paragraph' || block.lines.length > 0)
+    .flatMap((block): readonly MarkdownBlock[] =>
+      block.kind === 'list'
+        ? nest(block.items).map((list) => ({ kind: 'list', ...list }))
+        : [block],
+    )
 
 /**
  * What the notes call themselves: the words of their first # heading, wherever
