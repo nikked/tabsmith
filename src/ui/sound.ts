@@ -1,5 +1,5 @@
 import type { Played } from '../core/playback.ts'
-import { frequencyOf, sineTone } from '../core/tone.ts'
+import { frequencyOf, noteTone } from '../core/tone.ts'
 import { loadVolumes, volumeGain } from '../viewing.ts'
 
 declare global {
@@ -69,7 +69,7 @@ export const readyMicrophone = (): void => setSession('play-and-record')
 const bufferOf = (ctx: AudioContext, midi: number): AudioBuffer => {
   const cached = notes.get(midi)
   if (cached !== undefined) return cached
-  const samples = sineTone(frequencyOf(midi), ctx.sampleRate, NOTE_SECONDS)
+  const samples = noteTone(frequencyOf(midi), ctx.sampleRate, NOTE_SECONDS)
   const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate)
   buffer.copyToChannel(samples, 0)
   notes.set(midi, buffer)

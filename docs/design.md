@@ -567,9 +567,10 @@ Tapping a fret in Perform's tab plays its column, one note or the chord it holds
 name, in a chord line of the chart or under the tab, strums that chord (`chordNotes`: the bass low,
 the chord's notes above, H read as B, `Amin7` as `Am7`; one grammar, `isChordName`, decides what
 a chord line holds and what can be played, so a name that plays never sits on a plain line); and
-tapping a note in the notation plays it. The sound is a soft
-sine synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
-download. An iPhone on silent still plays it, the way a music app does.
+tapping a note in the notation plays it. The sound is a
+synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
+download: each note with five overtones that fade faster than it does, bright at first and
+mellower as it rings, since a phone's speaker plays little of a low string but its overtones. An iPhone on silent still plays it, the way a music app does.
 The ▶ after a tab row's title, in the tab or the notation, and in Edit between a row's title and
 note, plays the whole row in time (`core/playback.ts`): each column an eighth, as the notation reads
 it, a note held until the next one or the bar line, at the metronome's tempo, which is the song's
