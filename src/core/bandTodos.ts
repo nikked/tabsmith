@@ -1,38 +1,71 @@
 import { stampAfter, type Band, type BandTodo, type Library } from './library.ts'
 import { orphaned } from './model.ts'
 
-/** The list as it is shown: what is left once cleared and removed ones go. */
+/**
+ * The list as it is shown: what is left once cleared and removed ones go, in
+ * their order. Two added on two devices at once can share a position, and
+ * then keep the order they arrived in.
+ */
 export const activeBandTodos = (library: Library): readonly BandTodo[] =>
-  library.todos.filter((todo) => todo.active)
+  library.todos.filter((todo) => todo.active).toSorted((a, b) => a.position - b.position)
 
-/** Indented to carry on under the same item, as Enter in an indented last one does. */
+/**
+ * A new item at `place` among the shown ones, the end by default; indented to
+ * carry on under the one above, as Enter in an indented one does. Between two
+ * others it takes the position halfway, so no other item is stamped and a tick
+ * made meanwhile on another device still holds. Only when the two share a
+ * position is the list numbered afresh around it, every item stamped.
+ */
 export const addBandTodo = (
   library: Library,
   id: string,
   at: number,
   indented = false,
-): Library => ({
-  ...library,
-  todos: [
-    ...library.todos,
-    {
-      id,
-      text: '',
-      done: false,
-      indented: indented && activeBandTodos(library).length > 0,
-      active: true,
-      updatedAt: at,
-      syncedAt: null,
-    },
-  ],
-})
+  place?: number,
+): Library => {
+  const shown = activeBandTodos(library)
+  const index = place ?? shown.length
+  const before = shown[index - 1]?.position
+  const after = shown[index]?.position
+  const added = (position: number): BandTodo => ({
+    id,
+    text: '',
+    done: false,
+    indented: indented && index > 0,
+    active: true,
+    position,
+    updatedAt: at,
+    syncedAt: null,
+  })
+  if (after === undefined)
+    return {
+      ...library,
+      todos: [
+        ...library.todos,
+        added(Math.max(-1, ...library.todos.map((todo) => todo.position)) + 1),
+      ],
+    }
+  if (before === undefined)
+    return { ...library, todos: [...library.todos, added(after - 1)] }
+  const halfway = (before + after) / 2
+  if (before < halfway && halfway < after)
+    return { ...library, todos: [...library.todos, added(halfway)] }
+  const renumbered = shown.reduce(
+    (current, todo, each) =>
+      change(current, todo.id, at, () => ({ position: each < index ? each : each + 1 })),
+    library,
+  )
+  return { ...renumbered, todos: [...renumbered.todos, added(index)] }
+}
 
 /** Every change to an item is stamped, which is all another device compares by. */
 const change = (
   library: Library,
   id: string,
   at: number,
-  edit: (todo: BandTodo) => Partial<Pick<BandTodo, 'text' | 'done' | 'indented'>>,
+  edit: (
+    todo: BandTodo,
+  ) => Partial<Pick<BandTodo, 'text' | 'done' | 'indented' | 'position'>>,
 ): Library => ({
   ...library,
   todos: library.todos.map((todo) =>

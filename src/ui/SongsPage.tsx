@@ -178,7 +178,7 @@ type Props = {
   readonly onMoveSetlist: (setlist: string, step: -1 | 1) => void
   readonly onRemoveFromSetlist: (setlist: string, song: string) => void
   readonly onPlace: (setlist: string, song: string, to: number) => void
-  readonly onAddBandTodo: (indented: boolean) => void
+  readonly onAddBandTodo: (index: number, indented: boolean) => void
   /** Any other change to the band's todos or ideas, stamped with when it was made. */
   readonly onBandEdit: (edit: (library: Library, at: number) => Library) => void
 }

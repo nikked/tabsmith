@@ -75,6 +75,11 @@ export type BandTodo = {
   /** Under the nearest shown item above that is not; one level deep, never the first. */
   readonly indented: boolean
   readonly active: boolean
+  /**
+   * Where it goes in the list, lowest first. Not a whole number when put
+   * between two others, so placing one stamps it alone.
+   */
+  readonly position: number
   readonly updatedAt: number
   /** The stamp the sheet was last seen holding it at; null for never. */
   readonly syncedAt: number | null

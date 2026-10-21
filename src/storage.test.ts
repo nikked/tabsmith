@@ -474,6 +474,7 @@ describe('loadLibrary', () => {
         done: true,
         indented: false,
         active: true,
+        position: 0,
         updatedAt: 5,
         syncedAt: 5,
       },
@@ -483,6 +484,7 @@ describe('loadLibrary', () => {
         done: true,
         indented: false,
         active: false,
+        position: 1,
         updatedAt: 6,
         syncedAt: null,
       },
@@ -544,6 +546,35 @@ describe('loadLibrary', () => {
     expect(
       loadLibrary()?.setlists.map((setlist) => [setlist.id, setlist.position]),
     ).toEqual([
+      ['first', 0],
+      ['second', 1],
+    ])
+  })
+
+  it('orders band todos saved before they had an order as they were listed', () => {
+    const old = (id: string) => ({
+      id,
+      text: id,
+      done: false,
+      active: true,
+      updatedAt: 1,
+    })
+    storage(
+      new Map([
+        [
+          'tabsmith.library',
+          JSON.stringify({
+            version: 1,
+            library: {
+              songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }],
+              open: 'a',
+              todos: [old('first'), old('second')],
+            },
+          }),
+        ],
+      ]),
+    )
+    expect(loadLibrary()?.todos.map((todo) => [todo.id, todo.position])).toEqual([
       ['first', 0],
       ['second', 1],
     ])

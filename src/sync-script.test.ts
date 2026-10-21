@@ -76,6 +76,7 @@ describe.each([
       done: false,
       active: true,
       indented: true,
+      position: 3,
     },
     oversized: {
       id: 'new',
@@ -84,7 +85,7 @@ describe.each([
       done: false,
       active: true,
     },
-    row: ['new', 2, '"Buy strings"', false, true, true],
+    row: ['new', 2, '"Buy strings"', false, true, true, 3],
   },
   {
     name: 'band',
@@ -308,6 +309,7 @@ describe('a sync round trip through the script', () => {
       'done',
       'active',
       'indented',
+      'position',
     ])
   })
 
@@ -356,6 +358,23 @@ describe('a sync round trip through the script', () => {
       todos: [{ ...room, at: 2, done: true }],
     })
     expect(reply.todos).toEqual([{ ...room, at: 2, done: true, indented: true }])
+  })
+
+  it('keeps a todo’s place when an app from before placing them ticks it', () => {
+    const { tabs, post } = book()
+    const room = { id: 'b', text: 'Book the room', active: true, indented: false }
+    post({
+      token: 't',
+      records: [],
+      todos: [{ ...room, at: 1, done: false, position: 0.5 }],
+    })
+    const reply = post({
+      token: 't',
+      records: [],
+      todos: [{ ...room, at: 2, done: true }],
+    })
+    expect(reply.todos).toEqual([{ ...room, at: 2, done: true, position: 0.5 }])
+    expect(tabs.get('todos')?.[1]?.[6]).toBe(0.5)
   })
 
   it('keeps a setlist’s place when an app from before the order renames it', () => {

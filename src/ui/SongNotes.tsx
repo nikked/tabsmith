@@ -17,7 +17,7 @@ export function SongNotes({ song, dispatch, focusTodo, onTodoFocused }: Props) {
         title="TODO"
         // Song todos carry no ids, so a row is known by its place.
         items={song.todos.map((todo, index) => ({ key: String(index), ...todo }))}
-        onAdd={(indented) => dispatch({ kind: 'addTodo', indented })}
+        onAdd={(index, indented) => dispatch({ kind: 'addTodo', index, indented })}
         onText={(index, text) => dispatch({ kind: 'setTodoText', index, text })}
         onToggle={(index) => dispatch({ kind: 'toggleTodo', index })}
         onIndent={(index, indented) => dispatch({ kind: 'indentTodo', index, indented })}

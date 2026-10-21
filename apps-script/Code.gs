@@ -2,7 +2,7 @@
  * tabsmith song sync, bound to the Google Sheet that stores the songs.
  *
  * POST takes { token, records: [{ id, at, title, song, active, baseAt? }], setlists:
- * [{ id, at, name, songs, active, position? }], todos: [{ id, at, text, done, indented?, active }],
+ * [{ id, at, name, songs, active, position? }], todos: [{ id, at, text, done, indented?, active, position? }],
  * band: [{ id, at, text }] }, where song is the document a tabsmith file holds,
  * packed by the app, songs is a setlist's song ids in order, todos are the
  * band's list, band holds the band's own fields by name (ideas), and active is
@@ -22,7 +22,7 @@
  */
 const HEADER = ['id', 'at', 'title', 'song', 'active']
 const SETLIST_HEADER = ['id', 'at', 'name', 'songs', 'active', 'position']
-const TODO_HEADER = ['id', 'at', 'text', 'done', 'active', 'indented']
+const TODO_HEADER = ['id', 'at', 'text', 'done', 'active', 'indented', 'position']
 const BAND_HEADER = ['id', 'at', 'text']
 
 function tab(name, header) {
@@ -106,12 +106,16 @@ function doPost(e) {
 
     // An app from before the band's todos sends none, which changes nothing here.
     const todoTab = tab('todos', TODO_HEADER)
-    // An app from before todos could be indented sends none; the indent it had stays.
-    const todos = newestOf(readTodos(todoTab), body.todos, (todo, before) =>
-      todo.indented === undefined
-        ? { ...todo, indented: before ? before.indented : false }
-        : todo,
-    )
+    // An app from before todos could be indented sends none; the indent it had
+    // stays. Nor, from before they could be put between others, a position;
+    // the one it had stays.
+    const todos = newestOf(readTodos(todoTab), body.todos, (todo, before) => ({
+      ...todo,
+      indented: todo.indented ?? (before ? before.indented : false),
+      ...(todo.position === undefined && before && before.position !== undefined
+        ? { position: before.position }
+        : {}),
+    }))
     writeTodos(todoTab, todos)
 
     // The band's own fields, by name; an app from before them sends none.
@@ -235,6 +239,10 @@ function readTodos(sheet) {
       active: row[4] === true,
       // A row written before todos could be indented has no such cell.
       indented: row[5] === true,
+      // Nor one written before they could be put between others.
+      ...(row[6] === '' || !Number.isFinite(Number(row[6]))
+        ? {}
+        : { position: Number(row[6]) }),
     }))
     .filter((todo) => todo.id !== '' && Number.isFinite(todo.at))
 }
@@ -250,6 +258,7 @@ function writeTodos(sheet, todos) {
       todo.done,
       todo.active,
       todo.indented === true,
+      todo.position ?? '',
     ]),
   )
 }
@@ -350,7 +359,8 @@ function parseBody(text) {
         typeof todo.text === 'string' &&
         typeof todo.done === 'boolean' &&
         typeof todo.active === 'boolean' &&
-        (todo.indented === undefined || typeof todo.indented === 'boolean'),
+        (todo.indented === undefined || typeof todo.indented === 'boolean') &&
+        (todo.position === undefined || Number.isFinite(todo.position)),
     )
     .map((todo) => ({
       id: todo.id,
@@ -359,6 +369,7 @@ function parseBody(text) {
       done: todo.done,
       active: todo.active,
       ...(todo.indented === undefined ? {} : { indented: todo.indented }),
+      ...(todo.position === undefined ? {} : { position: todo.position }),
     }))
   const band = (Array.isArray(body.band) ? body.band : [])
     .filter(

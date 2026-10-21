@@ -710,7 +710,8 @@ the way out. It holds the band's notes and
 todo list at the top, side by side from an iPad held upright and the notes first above the list on a
 narrower one (a todo, the band's or a song's, goes under the one above with Tab and back out with
 Shift+Tab, one level deep, from a keyboard; removing or clearing one moves those under it up a
-level, rather than under the one before), then setlists on one side,
+level, rather than under the one before; Enter in one starts a new one right below it, at its
+depth, and + Add starts one at the end), then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
@@ -852,7 +853,13 @@ the way a deleted setlist is. A script deployed before them answers without them
 on each device until it is redeployed. A todo indented under the one above has `indented` in the
 sheet's sixth column. An app from before indenting sends none, and the sheet keeps the indent it
 held; a script from before it drops the indent, so an indented todo stays waiting to go up, and
-indented only on the device that indented it, until the script is redeployed. The band's name and ideas sync beside it in a `band`
+indented only on the device that indented it, until the script is redeployed. A todo's `position`,
+lowest first, is the seventh column. One put between two others takes the position halfway
+between theirs, so it is the only one stamped and a tick made meanwhile on another device holds;
+only when the two share a position, as two added at once on two devices can, is the list numbered
+afresh, every todo stamped. A row written before it has none, and the app reads the sheet's row
+order in its place; an app from before it sends none, and the sheet keeps the position the row
+held. The band's name and ideas sync beside it in a `band`
 tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
 is still kept and synced, so a device that has it does not lose it.
 

@@ -389,6 +389,7 @@ describe('what the sheet holds of the band', () => {
     done: false,
     indented: false,
     active: true,
+    position: 0,
     updatedAt: 5,
     syncedAt: null,
   }

@@ -50,6 +50,7 @@ const library: Library = {
       done: true,
       indented: false,
       active: true,
+      position: 0,
       updatedAt: 5,
       syncedAt: null,
     },
@@ -59,6 +60,7 @@ const library: Library = {
       done: false,
       indented: true,
       active: false,
+      position: 1,
       updatedAt: 6,
       syncedAt: null,
     },
@@ -246,6 +248,8 @@ describe('sync wire format', () => {
           // A script from before indenting sends none.
           indented: false,
           active: true,
+          // Second on the sheet; a script from before positions sends none.
+          position: 1,
           updatedAt: 2,
           syncedAt: 2,
         },

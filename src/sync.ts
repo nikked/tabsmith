@@ -76,6 +76,9 @@ const todoRow = z.object({
   // A script deployed before todos could be indented sends none.
   indented: z.boolean().default(false),
   active: z.boolean(),
+  // Nor, from before they could be put between others, a position; the
+  // sheet's own row order stands in.
+  position: z.number().optional(),
 })
 
 /** One of the band's own fields, by name: its name, and its ideas. */
@@ -195,6 +198,7 @@ export const todosToWire = (library: Library) =>
     done: todo.done,
     indented: todo.indented,
     active: todo.active,
+    position: todo.position,
   }))
 
 // Never edited is nothing to send: a sheet without the row loses nothing.
@@ -237,11 +241,11 @@ export const fromWire = async (data: unknown): Promise<Pulled> => {
       const { id, at, name, songs, active, position = index } = each.data
       return [{ id, name, songs, active, position, updatedAt: at, syncedAt: at }]
     }),
-    todos: parsed.data.todos.flatMap((value): BandTodo[] => {
+    todos: parsed.data.todos.flatMap((value, index): BandTodo[] => {
       const each = todoRow.safeParse(value)
       if (!each.success) return []
-      const { id, at, text, done, indented, active } = each.data
-      return [{ id, text, done, indented, active, updatedAt: at, syncedAt: at }]
+      const { id, at, text, done, indented, active, position = index } = each.data
+      return [{ id, text, done, indented, active, position, updatedAt: at, syncedAt: at }]
     }),
     // A field this build does not know is someone else's, and left to them.
     band: parsed.data.band.reduce<Partial<Band>>((band, value) => {

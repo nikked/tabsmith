@@ -1237,6 +1237,19 @@ describe('todos and ideas', () => {
     expect(apply(state, { kind: 'indentTodo', index: 0, indented: true })).toBe(state)
   })
 
+  it('puts a todo at the place asked, never indented as the first', () => {
+    const texts = (state: EditorState) => todosOf(state).map((todo) => todo.text)
+    expect(texts(apply(three(), { kind: 'addTodo', index: 1 }))).toEqual([
+      'Bridge chords',
+      '',
+      'Try capo 2',
+      'Slower intro?',
+    ])
+    expect(
+      todosOf(apply(three(), { kind: 'addTodo', index: 0, indented: true }))[0],
+    ).toEqual({ text: '', done: false, indented: false })
+  })
+
   it('adds a todo indented when asked, as Enter in an indented last one does', () => {
     expect(shape(apply(nested(), { kind: 'addTodo', indented: true })).at(-1)).toBe('  ')
   })

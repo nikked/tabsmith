@@ -71,7 +71,8 @@ export type Action =
   | { readonly kind: 'removeSynth'; readonly index: number }
   | { readonly kind: 'setSynth'; readonly index: number; readonly synth: Synth }
   /** Indented to carry on under the same todo, as Enter in an indented last one does. */
-  | { readonly kind: 'addTodo'; readonly indented?: boolean }
+  /** At `index`, pushing the rest down; the end when none is given. */
+  | { readonly kind: 'addTodo'; readonly index?: number; readonly indented?: boolean }
   | { readonly kind: 'setTodoText'; readonly index: number; readonly text: string }
   | { readonly kind: 'toggleTodo'; readonly index: number }
   | { readonly kind: 'indentTodo'; readonly index: number; readonly indented: boolean }
@@ -713,15 +714,14 @@ export const apply = (state: EditorState, action: Action): EditorState => {
         ),
       )
 
-    case 'addTodo':
+    case 'addTodo': {
+      const at = action.index ?? state.song.todos.length
       return withTodos(state, [
-        ...state.song.todos,
-        {
-          text: '',
-          done: false,
-          indented: (action.indented ?? false) && state.song.todos.length > 0,
-        },
+        ...state.song.todos.slice(0, at),
+        { text: '', done: false, indented: (action.indented ?? false) && at > 0 },
+        ...state.song.todos.slice(at),
       ])
+    }
 
     case 'setTodoText':
       return withTodos(
