@@ -1,6 +1,7 @@
 import {
   Fragment,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useRef,
@@ -42,7 +43,7 @@ import {
 import { synthSummary } from '../core/synths.ts'
 import { Metronome } from './Metronome.tsx'
 import { ChordLine, NotedLines } from './NotedLines.tsx'
-import { audioContext, play } from './sound.ts'
+import { audioContext, onSound, play } from './sound.ts'
 import { Notation } from './Notation.tsx'
 import { Prompt } from './Prompt.tsx'
 import { RowPlay, useRowPlayer } from './RowPlay.tsx'
@@ -50,15 +51,18 @@ import { SoundLevel, type MicTrouble } from './SoundLevel.tsx'
 import { Toggle } from './Toggle.tsx'
 import {
   loadMeter,
+  loadVolumes,
   loadReading,
   loadSynthsShown,
   loadViews,
   saveMeter,
+  saveVolumes,
   saveReading,
   saveSynthsShown,
   saveViews,
   withView,
   type Meter,
+  type Volumes,
   type Reading,
   type View,
   type Views,
@@ -354,6 +358,32 @@ const partView =
     }
   }
 
+/** A volume in the menu, in percent, its figure beside the slider. */
+function Volume({
+  label,
+  value,
+  onChange,
+}: {
+  readonly label: string
+  readonly value: number
+  readonly onChange: (value: number) => void
+}) {
+  return (
+    <div className="menu-volume">
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={value}
+        aria-label={label}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <span className="menu-value">{value}%</span>
+    </div>
+  )
+}
+
 /**
  * The whole song in one scroll, set as large as it will go: this is the view
  * read from a music stand at arm's length, so the only controls are the size
@@ -429,6 +459,12 @@ export function Practice({
     setTicking(false)
   }
   const menuId = useId()
+  const [volumes, setVolumes] = useState<Volumes>(loadVolumes)
+  const changeVolumes = (change: Partial<Volumes>) => {
+    const next = { ...volumes, ...change }
+    saveVolumes(next)
+    setVolumes(next)
+  }
   const toggleTicking = () => {
     // Inside the tap itself: Safari starts audio only there.
     if (!ticking) void audioContext().resume()
@@ -457,8 +493,17 @@ export function Practice({
   const toggleListening = () => {
     heard.current = silence
     setMicTrouble(null)
+    // The microphone or sound, never both: with the microphone open, sound plays quietly.
+    if (!meter.on) {
+      setTicking(false)
+      player.stop()
+    }
     changeMeter({ on: !meter.on })
   }
+  const soundStarts = useEffectEvent(() => {
+    if (meter.on) changeMeter({ on: false })
+  })
+  useEffect(() => onSound(soundStarts), [])
   // Off for good, so a blocked microphone is not asked for each time Perform opens.
   const stopListening = (trouble: MicTrouble) => {
     changeMeter({ on: false })
@@ -691,6 +736,9 @@ export function Practice({
                     },
                   ]}
                 />
+                {meter.on && (
+                  <p className="menu-label">Off while the sound level listens</p>
+                )}
                 {/* The song's own bpm in brackets once the metronome's differs. */}
                 <div className="menu-row" role="group" aria-label="Metronome tempo">
                   <button
@@ -716,8 +764,21 @@ export function Practice({
                     +
                   </button>
                 </div>
+                <Volume
+                  label="Metronome volume"
+                  value={volumes.metronome}
+                  onChange={(metronome) => changeVolumes({ metronome })}
+                />
               </div>
             )}
+            <div className="menu-section menu-panel" aria-label="Notes">
+              <p className="menu-label">Notes, chords and rows played</p>
+              <Volume
+                label="Volume of notes"
+                value={volumes.notes}
+                onChange={(notes) => changeVolumes({ notes })}
+              />
+            </div>
             <div className="menu-section menu-panel" aria-label="Sound level">
               <MenuChecks
                 items={[
@@ -729,6 +790,7 @@ export function Practice({
                   },
                 ]}
               />
+              {ticking && <p className="menu-label">Off while the metronome plays</p>}
               {micTrouble !== null && (
                 <p className="menu-label">
                   {micTrouble === 'blocked'
@@ -828,6 +890,8 @@ export function Practice({
             on={ticking}
             menu={menuId}
             onToggle={toggleTicking}
+            volume={volumes.metronome}
+            blocked={meter.on}
           />
         )}
         {meter.on && visible && (

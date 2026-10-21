@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
 
 export type MenuItem = {
   readonly label: string
@@ -31,6 +31,7 @@ export function Menu({ label, title, children, id: given }: Props) {
   const own = useId()
   const id = given ?? own
   const anchor = `--menu-${id.replaceAll(':', '')}`
+  const opener = useRef<HTMLButtonElement>(null)
 
   return (
     <>
@@ -40,6 +41,7 @@ export function Menu({ label, title, children, id: given }: Props) {
         aria-label={title}
         title={title}
         popoverTarget={id}
+        ref={opener}
         style={{ anchorName: anchor }}
       >
         {label}
@@ -49,6 +51,18 @@ export function Menu({ label, title, children, id: given }: Props) {
         popover="auto"
         className="menu"
         style={{ positionAnchor: anchor }}
+        // The side is chosen here rather than left to flip-inline: absolute in
+        // the home-screen app, a menu opened on a scrolled page overflows the
+        // top of the document either way, so WebKit never flips it.
+        onBeforeToggle={(event) => {
+          const box = opener.current?.getBoundingClientRect()
+          if (event.newState === 'open' && box !== undefined) {
+            event.currentTarget.style.positionArea =
+              box.left + box.width / 2 > window.innerWidth / 2
+                ? 'bottom span-left'
+                : 'bottom span-right'
+          }
+        }}
         onClick={(event) => {
           if (
             event.target instanceof Element &&

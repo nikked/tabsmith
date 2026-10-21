@@ -1190,9 +1190,9 @@ describe('todos and ideas', () => {
 
   it('adds todos at the end and ticks one without touching the rest', () => {
     expect(todosOf(apply(three(), { kind: 'toggleTodo', index: 1 }))).toEqual([
-      { text: 'Bridge chords', done: false },
-      { text: 'Try capo 2', done: true },
-      { text: 'Slower intro?', done: false },
+      { text: 'Bridge chords', done: false, indented: false },
+      { text: 'Try capo 2', done: true, indented: false },
+      { text: 'Slower intro?', done: false, indented: false },
     ])
   })
 
@@ -1203,7 +1203,7 @@ describe('todos and ideas', () => {
       { kind: 'toggleTodo', index: 2 },
     )
     expect(todosOf(apply(ticked, { kind: 'clearDoneTodos' }))).toEqual([
-      { text: 'Try capo 2', done: false },
+      { text: 'Try capo 2', done: false, indented: false },
     ])
     expect(
       todosOf(apply(three(), { kind: 'removeTodo', index: 0 })).map((todo) => todo.text),
@@ -1213,6 +1213,70 @@ describe('todos and ideas', () => {
   it('leaves the song alone when there is nothing done to clear', () => {
     const state = three()
     expect(apply(state, { kind: 'clearDoneTodos' })).toBe(state)
+  })
+
+  const shape = (state: EditorState) =>
+    todosOf(state).map((todo) => `${todo.indented ? '  ' : ''}${todo.text}`)
+  // Bridge chords, with Try capo 2 and Slower intro? under it.
+  const nested = (): EditorState =>
+    run(
+      three(),
+      { kind: 'indentTodo', index: 1, indented: true },
+      { kind: 'indentTodo', index: 2, indented: true },
+    )
+
+  it('indents a todo under the one above, and takes it back out', () => {
+    expect(shape(nested())).toEqual(['Bridge chords', '  Try capo 2', '  Slower intro?'])
+    expect(
+      shape(apply(nested(), { kind: 'indentTodo', index: 2, indented: false })),
+    ).toEqual(['Bridge chords', '  Try capo 2', 'Slower intro?'])
+  })
+
+  it('never indents the first todo, having none above it', () => {
+    const state = three()
+    expect(apply(state, { kind: 'indentTodo', index: 0, indented: true })).toBe(state)
+  })
+
+  it('puts a todo at the place asked, never indented as the first', () => {
+    const texts = (state: EditorState) => todosOf(state).map((todo) => todo.text)
+    expect(texts(apply(three(), { kind: 'addTodo', index: 1 }))).toEqual([
+      'Bridge chords',
+      '',
+      'Try capo 2',
+      'Slower intro?',
+    ])
+    expect(
+      todosOf(apply(three(), { kind: 'addTodo', index: 0, indented: true }))[0],
+    ).toEqual({ text: '', done: false, indented: false })
+  })
+
+  it('adds a todo indented when asked, as Enter in an indented last one does', () => {
+    expect(shape(apply(nested(), { kind: 'addTodo', indented: true })).at(-1)).toBe('  ')
+  })
+
+  it('moves the todos under a removed one up a level, rather than under the one before', () => {
+    const second = run(
+      nested(),
+      { kind: 'addTodo' },
+      { kind: 'setTodoText', index: 3, text: 'Ending' },
+      { kind: 'addTodo', indented: true },
+      { kind: 'setTodoText', index: 4, text: 'Fade' },
+    )
+    expect(shape(apply(second, { kind: 'removeTodo', index: 3 }))).toEqual([
+      'Bridge chords',
+      '  Try capo 2',
+      '  Slower intro?',
+      'Fade',
+    ])
+  })
+
+  it('moves them up the same way when the one they sat under is cleared', () => {
+    const ticked = run(
+      nested(),
+      { kind: 'toggleTodo', index: 0 },
+      { kind: 'toggleTodo', index: 2 },
+    )
+    expect(shape(apply(ticked, { kind: 'clearDoneTodos' }))).toEqual(['Try capo 2'])
   })
 
   it('keeps ideas as typed, and counts both as work', () => {

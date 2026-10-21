@@ -6,14 +6,20 @@ export type ChecklistItem = {
   readonly key: string
   readonly text: string
   readonly done: boolean
+  readonly indented: boolean
 }
 
 type Props = {
   readonly title: string
   readonly items: readonly ChecklistItem[]
-  readonly onAdd: () => void
+  /**
+   * At `index` among the items; indented to carry on under the same one, as
+   * Enter in an indented one does.
+   */
+  readonly onAdd: (index: number, indented: boolean) => void
   readonly onText: (index: number, text: string) => void
   readonly onToggle: (index: number) => void
+  readonly onIndent: (index: number, indented: boolean) => void
   readonly onRemove: (index: number) => void
   readonly onClearDone: () => void
   /** Asked for once, from a count of what is left: the first item still to do takes focus. */
@@ -24,7 +30,10 @@ type Props = {
 /**
  * A list of things to do: a box to tick and the text beside it. A ticked item
  * stays, struck through, until Clear done, so what got done since last time
- * can be seen. Enter in an item starts the next one, the way a list is typed.
+ * can be seen. Enter in an item starts a new one right below it, at its
+ * indent, the way a list is typed; + Add puts one at the end.
+ * Tab puts an item under the one above, one level deep, and Shift+Tab takes it
+ * back out; where neither changes anything, they move focus as anywhere else.
  */
 export function Checklist({
   title,
@@ -32,6 +41,7 @@ export function Checklist({
   onAdd,
   onText,
   onToggle,
+  onIndent,
   onRemove,
   onClearDone,
   focusFirstOpen = false,
@@ -40,15 +50,15 @@ export function Checklist({
   const list = useRef<HTMLUListElement>(null)
   // Set by adding, so the new item takes the typing once it is drawn; any
   // other change leaves focus where it is.
-  const focusLast = useRef(false)
+  const focusAt = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!focusLast.current) return
-    focusLast.current = false
-    const fields = list.current?.querySelectorAll<HTMLTextAreaElement>(
-      '.checklist-text textarea',
-    )
-    fields?.[fields.length - 1]?.focus()
+    if (focusAt.current === null) return
+    const index = focusAt.current
+    focusAt.current = null
+    list.current
+      ?.querySelectorAll<HTMLTextAreaElement>('.checklist-text textarea')
+      [index]?.focus()
   }, [items.length])
 
   const focusOpen = useEffectEvent(() => {
@@ -65,9 +75,9 @@ export function Checklist({
     if (focusFirstOpen) focusOpen()
   }, [focusFirstOpen])
 
-  const add = () => {
-    focusLast.current = true
-    onAdd()
+  const add = (index: number, indented: boolean) => {
+    focusAt.current = index
+    onAdd(index, indented)
   }
 
   return (
@@ -76,7 +86,14 @@ export function Checklist({
       {items.length > 0 && (
         <ul ref={list}>
           {items.map((item, index) => (
-            <li key={item.key} className={item.done ? 'done' : undefined}>
+            <li
+              key={item.key}
+              className={
+                [item.done && 'done', item.indented && index > 0 && 'indented']
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+            >
               <input
                 type="checkbox"
                 aria-label={`Done: ${item.text === '' ? 'empty item' : item.text}`}
@@ -96,9 +113,17 @@ export function Checklist({
                     onText(index, event.target.value.replace(/\n/g, ' '))
                   }
                   onKeyDown={(event) => {
+                    if (event.key === 'Tab') {
+                      if (event.ctrlKey || event.metaKey || event.altKey) return
+                      const indented = !event.shiftKey
+                      if (index === 0 || item.indented === indented) return
+                      event.preventDefault()
+                      onIndent(index, indented)
+                      return
+                    }
                     if (event.key !== 'Enter') return
                     event.preventDefault()
-                    add()
+                    add(index + 1, index > 0 && item.indented)
                   }}
                 />
               </span>
@@ -110,7 +135,7 @@ export function Checklist({
         </ul>
       )}
       <div className="checklist-actions">
-        <button type="button" className="chip" onClick={add}>
+        <button type="button" className="chip" onClick={() => add(items.length, false)}>
           + Add
         </button>
         {items.some((item) => item.done) && (

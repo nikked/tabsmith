@@ -137,7 +137,16 @@ const song = z.preprocess(
     tab: score,
     tabFirst: z.boolean().default(false),
     synths: z.array(synth).default([]),
-    todos: z.array(z.object({ text: z.string(), done: z.boolean() })).default([]),
+    todos: z
+      .array(
+        z.object({
+          text: z.string(),
+          done: z.boolean(),
+          // Nor one stored before todos could be indented.
+          indented: z.boolean().default(false),
+        }),
+      )
+      .default([]),
     ideas: z.string().default(''),
   }),
 )
@@ -283,12 +292,20 @@ const library = z.object({
         id: z.string().min(1),
         text: z.string(),
         done: z.boolean(),
+        // Nor one stored before todos could be indented.
+        indented: z.boolean().default(false),
         active: z.boolean(),
+        // Nor one stored before they could be put between others; the list's
+        // own order stands in.
+        position: z.number().optional(),
         updatedAt: z.number(),
         syncedAt: z.number().nullable().default(null),
       }),
     )
-    .default([]),
+    .default([])
+    .transform((todos) =>
+      todos.map((each, index) => ({ ...each, position: each.position ?? index })),
+    ),
   // Nor the band's name or ideas; never edited, so any copy from another device wins.
   band: z
     .object({ name: bandField, ideas: bandField })

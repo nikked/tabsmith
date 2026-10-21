@@ -387,7 +387,9 @@ describe('what the sheet holds of the band', () => {
     id: 't',
     text: 'Buy strings',
     done: false,
+    indented: false,
     active: true,
+    position: 0,
     updatedAt: 5,
     syncedAt: null,
   }

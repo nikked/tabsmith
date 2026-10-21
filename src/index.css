@@ -425,6 +425,11 @@ header {
   gap: 0.5rem;
 }
 
+/* Under the item above: its box lines up with that item's text. */
+.checklist li.indented {
+  padding-left: 1.5rem;
+}
+
 .checklist input[type='checkbox'] {
   /* Level with the first line of the text, however many lines it runs to. */
   margin: calc(0.15rem + 0.2em) 0 0;
@@ -2503,6 +2508,9 @@ kbd {
    break their lines in the same places and the field never scrolls. */
 .markdown-field {
   position: relative;
+  /* A nested bullet is a tab, set four wide in the field and its mirror alike,
+     the width the notes read a tab as. */
+  tab-size: 4;
 }
 
 .markdown-mirror {
@@ -2654,6 +2662,10 @@ kbd {
 .markdown-view ul,
 .markdown-view ol {
   padding-left: 1.6em;
+}
+
+.markdown-view li > :is(ul, ol) {
+  margin-bottom: 0;
 }
 
 .markdown-view blockquote {
@@ -3023,6 +3035,25 @@ kbd {
   color: var(--muted);
 }
 
+/* A slider and its figure on one line, the figure wide enough for 100%. */
+.menu-volume {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.menu-volume input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--mauve);
+}
+
+.menu-volume .menu-value {
+  min-width: 2.6em;
+  text-align: right;
+}
+
 /* The Perform menu in groups: the setlist at the top, then the view and the
    sound level each a panel of its own. */
 .menu-section.menu-panel {
@@ -3171,6 +3202,13 @@ kbd {
 .metronome-chip:not(.on) .metronome-beat {
   animation: none;
   opacity: 0.5;
+}
+
+/* Off while the sound level listens: struck through, the way the microphone
+   is while it waits, and fainter still. */
+.metronome-chip.blocked {
+  text-decoration: line-through;
+  opacity: 0.6;
 }
 
 /* A phone's bar has no room to spare beside the song's title: with a chip in

@@ -113,10 +113,10 @@ describe('library', () => {
       song: {
         ...named('a'),
         todos: [
-          { text: 'Bridge chords', done: false },
-          { text: 'Try capo 2', done: true },
-          { text: '  ', done: false },
-          { text: 'Slower intro?', done: false },
+          { text: 'Bridge chords', done: false, indented: false },
+          { text: 'Try capo 2', done: true, indented: false },
+          { text: '  ', done: false, indented: false },
+          { text: 'Slower intro?', done: false, indented: false },
         ],
       },
     }

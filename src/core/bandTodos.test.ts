@@ -3,6 +3,7 @@ import {
   activeBandTodos,
   addBandTodo,
   clearDoneBandTodos,
+  indentBandTodo,
   removeBandTodo,
   setBandField,
   setBandTodoText,
@@ -65,6 +66,116 @@ describe('band todos', () => {
   })
 })
 
+describe('band todos put between others', () => {
+  const names = (library: Library) => activeBandTodos(library).map((todo) => todo.text)
+  const stamps = (library: Library) =>
+    Object.fromEntries(library.todos.map((todo) => [todo.id, todo.updatedAt]))
+  const between = setBandTodoText(addBandTodo(room, 'c', 5, false, 1), 'c', 'Pay', 6)
+
+  it('puts one between two others, stamping it alone', () => {
+    expect(names(between)).toEqual(['Buy strings', 'Pay', 'Book the room'])
+    expect(stamps(between)).toEqual({ a: 2, b: 4, c: 6 })
+  })
+
+  it('puts one first, never indented', () => {
+    const first = addBandTodo(room, 'c', 5, true, 0)
+    expect(names(first)).toEqual(['', 'Buy strings', 'Book the room'])
+    expect(activeBandTodos(first)[0]?.indented).toBe(false)
+  })
+
+  it('puts one indented under an indented one, before the next under it', () => {
+    const nested = indentBandTodo(indentBandTodo(between, 'c', true, 7), 'b', true, 8)
+    const added = setBandTodoText(addBandTodo(nested, 'd', 9, true, 2), 'd', 'Tune', 10)
+    expect(
+      activeBandTodos(added).map(
+        ({ text, indented }) => `${indented ? '  ' : ''}${text}`,
+      ),
+    ).toEqual(['Buy strings', '  Pay', '  Tune', '  Book the room'])
+  })
+
+  it('numbers the list afresh between two sharing a position, stamping each', () => {
+    // Book the room's, as one added at once on another device can have.
+    const theirs: BandTodo = {
+      id: 'd',
+      text: 'Tune',
+      done: false,
+      indented: false,
+      active: true,
+      position: 1,
+      updatedAt: 5,
+      syncedAt: null,
+    }
+    const tied = mergeTodos(room, [theirs])
+    expect(names(tied)).toEqual(['Buy strings', 'Book the room', 'Tune'])
+    const added = addBandTodo(tied, 'e', 9, false, 2)
+    expect(names(added)).toEqual(['Buy strings', 'Book the room', '', 'Tune'])
+    expect(stamps(added)).toEqual({ a: 9, b: 9, d: 9, e: 9 })
+  })
+
+  it('reaches another device in the same place, keeping a tick made there meanwhile', () => {
+    const there = toggleBandTodo(mergeTodos(shelf, room.todos), 'b', 5)
+    const synced = mergeTodos(there, between.todos)
+    expect(names(synced)).toEqual(['Buy strings', 'Pay', 'Book the room'])
+    expect(activeBandTodos(synced)[2]?.done).toBe(true)
+  })
+})
+
+describe('indented band todos', () => {
+  const shape = (library: Library) =>
+    activeBandTodos(library).map(({ text, indented }) => `${indented ? '  ' : ''}${text}`)
+  const stampOf = (library: Library, id: string) =>
+    library.todos.find((todo) => todo.id === id)?.updatedAt
+  // Buy strings, with Book the room and Pay the room under it.
+  const nested = indentBandTodo(
+    indentBandTodo(
+      setBandTodoText(addBandTodo(room, 'c', 5), 'c', 'Pay the room', 6),
+      'b',
+      true,
+      7,
+    ),
+    'c',
+    true,
+    8,
+  )
+
+  it('indents an item under the one above, stamped as any change is', () => {
+    expect(shape(nested)).toEqual(['Buy strings', '  Book the room', '  Pay the room'])
+    expect(stampOf(nested, 'b')).toBe(7)
+    const out = indentBandTodo(nested, 'c', false, 9)
+    expect(shape(out)).toEqual(['Buy strings', '  Book the room', 'Pay the room'])
+  })
+
+  it('never indents the first item shown, nor stamps one left as it was', () => {
+    expect(indentBandTodo(room, 'a', true, 9)).toBe(room)
+    expect(indentBandTodo(nested, 'b', true, 9)).toBe(nested)
+    // The first shown once the one before it is cleared.
+    const first = removeBandTodo(room, 'a', 9)
+    expect(indentBandTodo(first, 'b', true, 10)).toBe(first)
+  })
+
+  it('adds an item indented when asked, but never as the first', () => {
+    expect(shape(addBandTodo(nested, 'd', 9, true)).at(-1)).toBe('  ')
+    expect(addBandTodo(shelf, 'd', 9, true).todos[0]?.indented).toBe(false)
+  })
+
+  it('moves the items under a removed one up a level, stamping them', () => {
+    const removed = removeBandTodo(nested, 'a', 9)
+    expect(shape(removed)).toEqual(['Book the room', 'Pay the room'])
+    expect([stampOf(removed, 'b'), stampOf(removed, 'c')]).toEqual([9, 9])
+  })
+
+  it('moves them up the same way when the one they sat under is cleared', () => {
+    const cleared = clearDoneBandTodos(toggleBandTodo(nested, 'a', 9), 10)
+    expect(shape(cleared)).toEqual(['Book the room', 'Pay the room'])
+  })
+
+  it('leaves the items under another one alone', () => {
+    const removed = removeBandTodo(nested, 'c', 9)
+    expect(shape(removed)).toEqual(['Buy strings', '  Book the room'])
+    expect(stampOf(removed, 'b')).toBe(7)
+  })
+})
+
 describe('the band', () => {
   it('keeps its name and ideas as typed, each stamped on its own', () => {
     const named = setBandField(shelf, 'name', 'Fättig', 8)
@@ -103,7 +214,9 @@ describe('syncing band todos', () => {
     id,
     text,
     done: false,
+    indented: false,
     active,
+    position: 0,
     updatedAt: at,
     syncedAt: null,
   })

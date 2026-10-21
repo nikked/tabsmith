@@ -145,8 +145,8 @@ describe('encode / decode', () => {
     const song: Song = {
       ...emptySong(),
       todos: [
-        { text: 'Bridge chords', done: false },
-        { text: 'Try capo 2', done: true },
+        { text: 'Bridge chords', done: false, indented: false },
+        { text: 'Try capo 2', done: true, indented: true },
       ],
       ideas: 'sail away\n  on a line',
     }
@@ -157,6 +157,14 @@ describe('encode / decode', () => {
     const { todos: _, ideas: __, ...before } = emptySong()
     const result = decode(JSON.stringify({ version: 4, song: before }))
     expect(result.ok && [result.song.todos, result.song.ideas]).toEqual([[], ''])
+  })
+
+  it('reads a todo saved before todos could be indented as one not indented', () => {
+    const song = { ...emptySong(), todos: [{ text: 'Bridge chords', done: false }] }
+    const result = decode(JSON.stringify({ version: 4, song }))
+    expect(result.ok && result.song.todos).toEqual([
+      { text: 'Bridge chords', done: false, indented: false },
+    ])
   })
 
   it('reads a song saved before synths as one with none', () => {
@@ -464,7 +472,9 @@ describe('loadLibrary', () => {
         id: 't1',
         text: 'Buy strings',
         done: true,
+        indented: false,
         active: true,
+        position: 0,
         updatedAt: 5,
         syncedAt: 5,
       },
@@ -472,7 +482,9 @@ describe('loadLibrary', () => {
         id: 't2',
         text: 'Book the room',
         done: true,
+        indented: false,
         active: false,
+        position: 1,
         updatedAt: 6,
         syncedAt: null,
       },
@@ -534,6 +546,35 @@ describe('loadLibrary', () => {
     expect(
       loadLibrary()?.setlists.map((setlist) => [setlist.id, setlist.position]),
     ).toEqual([
+      ['first', 0],
+      ['second', 1],
+    ])
+  })
+
+  it('orders band todos saved before they had an order as they were listed', () => {
+    const old = (id: string) => ({
+      id,
+      text: id,
+      done: false,
+      active: true,
+      updatedAt: 1,
+    })
+    storage(
+      new Map([
+        [
+          'tabsmith.library',
+          JSON.stringify({
+            version: 1,
+            library: {
+              songs: [{ id: 'a', song: emptySong(), updatedAt: 1 }],
+              open: 'a',
+              todos: [old('first'), old('second')],
+            },
+          }),
+        ],
+      ]),
+    )
+    expect(loadLibrary()?.todos.map((todo) => [todo.id, todo.position])).toEqual([
       ['first', 0],
       ['second', 1],
     ])

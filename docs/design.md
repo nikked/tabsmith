@@ -119,7 +119,11 @@ type Section = {
   readonly body: string                 // chords, and lyrics under them, exactly as typed
 }
 
-type Todo = { readonly text: string; readonly done: boolean }
+type Todo = {
+  readonly text: string
+  readonly done: boolean
+  readonly indented: boolean            // under the nearest todo above that is not; one level
+}
 
 type Synth = {
   readonly name: string                 // 'iRig'
@@ -563,9 +567,12 @@ Tapping a fret in Perform's tab plays its column, one note or the chord it holds
 name, in a chord line of the chart or under the tab, strums that chord (`chordNotes`: the bass low,
 the chord's notes above, H read as B, `Amin7` as `Am7`; one grammar, `isChordName`, decides what
 a chord line holds and what can be played, so a name that plays never sits on a plain line); and
-tapping a note in the notation plays it. The sound is a soft
-sine synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
-download. An iPhone on silent still plays it, the way a music app does.
+tapping a note in the notation plays it. The sound is a
+synth made in the page (`core/tone.ts`) rather than a recording, so there is nothing to
+download: each note with seven bright overtones that fade a little faster than it does, since a
+phone's speaker plays little of a low string but its overtones and the ear is keenest higher up,
+each started at its own point in its cycle so their peaks do not stack and the limiter lets more
+of it through. An iPhone on silent still plays it, the way a music app does.
 The ▶ after a tab row's title, in the tab or the notation, and in Edit between a row's title and
 note, plays the whole row in time (`core/playback.ts`): each column an eighth, as the notation reads
 it, a note held until the next one or the bar line, at the metronome's tempo, which is the song's
@@ -583,7 +590,9 @@ off, with a dot pulsing on the beat while it runs, as the beat is heard, the aud
 speaker allowed for. Tapping it opens the `⋯` menu with its controls, and a double tap turns it on or
 off; the sound level's chip, there while the meter is on, opens the menu too. On a phone, where the
 bar has no room beside the title, full screen moves into the menu while either chip is there. Tab or
-Notation is the first to leave the bar for the menu. It is never kept on: a click starting by itself
+Notation is the first to leave the bar for the menu. Its volume, and that of the notes, chords and rows played, are sliders in the
+menu, kept per device (`tabsmith.volumes`); both start at 50%, and everything played goes through one limiter (`sound.ts`), so the top of the
+sliders is loud without clipping. It is never kept on: a click starting by itself
 on opening a song would startle.
 A song with no bpm has no metronome to offer.
 
@@ -592,7 +601,7 @@ band loud enough that we should wear earplugs, and am I singing at the level I m
 on, it is on again whenever Perform opens, so it carries on through a rehearsal; the
 microphone closes while Perform is left or the page is hidden and opens again on coming back,
 the average started afresh, and stepping through a setlist keeps it running. A microphone the
-browser refuses turns it off, so the question is not asked again each time. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
+browser refuses turns it off, so the question is not asked again each time. It and sound never run at once, since an iPhone plays everything quietly while its microphone is open: turning the meter on stops the metronome and a row playing, and any sound played turns the meter off. While the meter listens the metronome's chip is struck through, and the menu says under each of the two that it is off while the other is on. Its reading is a chip in the bar (`SoundLevel.tsx`), in one of two modes. **Room** shows the
 A-weighted average since it was turned on (LAeq) and the time left to a full day's dose by
 NIOSH's rule, 85 dB(A) for 8 hours with each 3 dB more halving it, rounded down so it never
 promises time there is not: `94 · 1h`. It turns yellow from 80 dB(A), where protection should
@@ -699,7 +708,10 @@ which is for writing. Copy asks for a name, then the copy joins the shelf and op
 in the header and marks no song as the open one: a song picked there opens in Perform, and that is
 the way out. It holds the band's notes and
 todo list at the top, side by side from an iPad held upright and the notes first above the list on a
-narrower one, then setlists on one side,
+narrower one (a todo, the band's or a song's, goes under the one above with Tab and back out with
+Shift+Tab, one level deep, from a keyboard; removing or clearing one moves those under it up a
+level, rather than under the one before; Enter in one starts a new one right below it, at its
+depth, and + Add starts one at the end), then setlists on one side,
 every song on the other, stacked on a phone. All songs can be narrowed to songs that **Have a tab** (`hasTab`: the same `scoreHasContent` Perform
 uses) or **Have structure** (`hasStructure`: at least two sections with something written under
 them, since every song starts with an empty Intro), filters ticked behind a funnel button that
@@ -838,16 +850,30 @@ the position the row already had.
 The band's todo list syncs the same way, each todo on its own in a `todos` tab, so two people
 ticking different ones offline both keep their ticks. Clearing done ones marks them inactive,
 the way a deleted setlist is. A script deployed before them answers without them, and they stay
-on each device until it is redeployed. The band's name and ideas sync beside it in a `band`
+on each device until it is redeployed. A todo indented under the one above has `indented` in the
+sheet's sixth column. An app from before indenting sends none, and the sheet keeps the indent it
+held; a script from before it drops the indent, so an indented todo stays waiting to go up, and
+indented only on the device that indented it, until the script is redeployed. A todo's `position`,
+lowest first, is the seventh column. One put between two others takes the position halfway
+between theirs, so it is the only one stamped and a tick made meanwhile on another device holds;
+only when the two share a position, as two added at once on two devices can, is the list numbered
+afresh, every todo stamped. A row written before it has none, and the app reads the sheet's row
+order in its place; an app from before it sends none, and the sheet keeps the position the row
+held. The band's name and ideas sync beside it in a `band`
 tab, each by field name, the newer text winning whole. The name is no longer shown anywhere but
 is still kept and synced, so a device that has it does not lose it.
 
-The notes are Markdown: headings, lists, quotes, bold, italic, code, links and images (`core/markdown.ts`).
-A link goes only to the web or to mail and an image only to the web: the notes arrive from other
+The notes are Markdown: headings, lists (nested by indenting an item under the one above), quotes, bold, italic, code, links and images (`core/markdown.ts`). An image is on the web or a file beside the app, by a relative path such as `pug-banner.jpg`, since the site is served from under its repo's name.
+A link goes only to the web or to mail and an image only to the web or to a file beside the app: the notes arrive from other
 devices through the sheet, and a `javascript:` link in them would run when it was clicked.
 Read, they are set out the way a README is (`MarkdownView.tsx`); clicked or tabbed into, they are
 the plain text again, styled in place by a copy drawn under the field (`MarkdownLines.tsx`) with
 the marks kept and weight drawn as a shadow, so no character moves from under the caret.
+Enter in a list item starts the next one at its depth, numbered one on, and in an empty item
+takes the bullet away and ends the list (`listEnter`). Tab in a list item indents its line by a
+tab and Shift+Tab takes one out, or up to four spaces from before (`listIndent`); a tab is one
+character, so a bullet taken away leaves one to delete rather than a row of spaces. A tab reads as
+four spaces when lists nest, and is set four wide; elsewhere Tab leaves the field.
 The browser tab takes the words of the notes' first `#` heading, wherever it is, as the page's
 title (`notesTitle`), so a band's tab reads as theirs; with none, it keeps the app's own.
 
